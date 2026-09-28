@@ -36,16 +36,15 @@ jobs:
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
+            -derivedDataPath build \
             build
 
       - name: Package app
         run: |
           mkdir -p artifacts
-          cp -R build/Release-iphoneos/VideoSaver.app artifacts/VideoSaver.app 2>/dev/null || true
-          if [ ! -d artifacts/VideoSaver.app ]; then
-            APP_PATH=$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Build/Products/Release-iphoneos/VideoSaver.app' -print -quit)
-            cp -R "$APP_PATH" artifacts/VideoSaver.app
-          fi
+          APP_PATH="build/Build/Products/Release-iphoneos/VideoSaver.app"
+          test -d "$APP_PATH"
+          cp -R "$APP_PATH" artifacts/VideoSaver.app
           ditto -c -k --sequesterRsrc --keepParent artifacts/VideoSaver.app artifacts/VideoSaver-iOS-unsigned.zip
 
       - name: Upload build artifact

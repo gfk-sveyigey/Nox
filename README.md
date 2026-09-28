@@ -60,3 +60,8 @@ VideoSaver/
 ## 限制
 
 本项目不实现 DRM 解密、付费墙绕过、账号权限绕过或其他访问控制绕过。能否解析取决于目标页面当前提供给浏览器的公开运行时数据和网络访问条件。
+
+
+## GitHub Actions
+
+工程已经明确配置为 iOS target（iphoneos/iphonesimulator），并包含共享 Scheme。GitHub Actions 使用 `generic/platform=iOS` 进行无签名 Release 构建。
