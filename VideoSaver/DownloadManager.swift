@@ -3,9 +3,13 @@ import Foundation
 @MainActor
 final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDelegate {
     @Published private(set) var activeTasks: [UUID: URLSessionDownloadTask] = [:]
+    /// 下载中的实时统计（已下载 / 总大小 / 速度），仅内存。
+    @Published private(set) var transfers: [UUID: TransferStats] = [:]
 
     private let appState: AppState
     private var cancellingIDs = Set<UUID>()
+    private var speedSamples: [UUID: (bytes: Int64, date: Date, speed: Double)] = [:]
+    private var progressTimer: Timer?
 
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.background(
@@ -79,6 +83,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             task.cancel()
         }
 
+        clearTransferStats(for: record.id)
+
         var updated = record
         updated.status = .cancelled
         updated.errorMessage = nil
@@ -108,6 +114,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             try? FileManager.default.removeItem(at: fileURL)
         }
 
+        clearTransferStats(for: record.id)
         appState.removeDownload(record)
     }
 
@@ -136,12 +143,96 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         cancellingIDs.remove(record.id)
         activeTasks[record.id] = task
 
+        // 初始化统计采样，第一秒即可算出速度
+        speedSamples[record.id] = (0, Date(), 0)
+        transfers[record.id] = TransferStats()
+
         var updated = record
         updated.status = .downloading
         appState.updateDownload(updated)
 
+        startProgressTimerIfNeeded()
         task.resume()
     }
+
+    // MARK: - 进度 / 速度
+
+    private func startProgressTimerIfNeeded() {
+        guard progressTimer == nil else { return }
+
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.tickProgress()
+            }
+        }
+
+        // 必须加到 .common，否则滚动列表时计时器暂停、进度会卡住
+        RunLoop.main.add(timer, forMode: .common)
+        progressTimer = timer
+    }
+
+    private func stopProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = nil
+    }
+
+    private func tickProgress() {
+        guard !activeTasks.isEmpty else {
+            stopProgressTimer()
+            return
+        }
+
+        let now = Date()
+
+        for (id, task) in activeTasks {
+            guard !cancellingIDs.contains(id),
+                  var record = appState.downloads.first(where: { $0.id == id }),
+                  record.status == .downloading else {
+                continue
+            }
+
+            let received = max(task.countOfBytesReceived, 0)
+            let expected = task.countOfBytesExpectedToReceive
+
+            var speed: Double = 0
+
+            if let previous = speedSamples[id] {
+                let interval = now.timeIntervalSince(previous.date)
+
+                if interval > 0 {
+                    let delta = received - previous.bytes
+
+                    if delta >= 0 {
+                        let instantaneous = Double(delta) / interval
+                        // 指数平滑，避免速度数字跳动
+                        speed = previous.speed > 0
+                            ? previous.speed * 0.6 + instantaneous * 0.4
+                            : instantaneous
+                    }
+                }
+            }
+
+            speedSamples[id] = (received, now, speed)
+
+            transfers[id] = TransferStats(
+                bytesReceived: received,
+                totalBytes: max(expected, 0),
+                bytesPerSecond: speed
+            )
+
+            if expected > 0 {
+                record.progress = min(Double(received) / Double(expected), 1)
+                appState.updateDownload(record)
+            }
+        }
+    }
+
+    private func clearTransferStats(for id: UUID) {
+        transfers.removeValue(forKey: id)
+        speedSamples.removeValue(forKey: id)
+    }
+
+    // MARK: - URLSessionDownloadDelegate
 
     nonisolated func urlSession(
         _ session: URLSession,
@@ -189,6 +280,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func finishDownload(id: UUID, stagedURL: URL) {
+        clearTransferStats(for: id)
+
         if cancellingIDs.remove(id) != nil {
             activeTasks.removeValue(forKey: id)
             try? FileManager.default.removeItem(at: stagedURL)
@@ -245,6 +338,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func fail(id: UUID, message: String) {
+        clearTransferStats(for: id)
+
         guard var record = appState.downloads.first(where: { $0.id == id }) else {
             return
         }
@@ -278,12 +373,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         Task { @MainActor in
             guard !self.cancellingIDs.contains(id),
                   var record = self.appState.downloads.first(where: { $0.id == id }),
-                  record.status != .cancelled else {
+                  record.status == .downloading else {
                 return
             }
 
             record.progress = progress
-            self.appState.updateDownload(record)
+            // 高频进度只改内存，不写 UserDefaults
+            self.appState.updateDownload(record, persist: false)
         }
     }
 
@@ -304,6 +400,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         Task { @MainActor in
             if self.cancellingIDs.remove(id) != nil {
                 self.activeTasks.removeValue(forKey: id)
+                self.clearTransferStats(for: id)
 
                 if var record = self.appState.downloads.first(where: { $0.id == id }) {
                     record.status = .cancelled
@@ -318,6 +415,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                 record.status != .finished
             else {
                 self.activeTasks.removeValue(forKey: id)
+                self.clearTransferStats(for: id)
                 return
             }
 

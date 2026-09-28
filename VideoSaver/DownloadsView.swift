@@ -28,6 +28,7 @@ struct DownloadsView: View {
                         ForEach(appState.downloads) { record in
                             DownloadRow(
                                 record: record,
+                                stats: manager.transfers[record.id],
                                 onShare: { record in
                                     share(record)
                                 },
@@ -93,6 +94,7 @@ struct DownloadsView: View {
 
 struct DownloadRow: View {
     let record: DownloadRecord
+    let stats: TransferStats?
     let onShare: (DownloadRecord) -> Void
     let onRetry: (DownloadRecord) -> Void
     let onCancel: (DownloadRecord) -> Void
@@ -130,6 +132,15 @@ struct DownloadRow: View {
                 .progressViewStyle(.linear)
                 .tint(progressColor)
                 .animation(.easeInOut(duration: 0.2), value: displayProgress)
+
+            // 已下载大小 / 总大小 / 速度
+            if record.status == .downloading, let stats {
+                Text(stats.displayText)
+                    .font(.footnote)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
         .padding(.vertical, 5)
         .contentShape(Rectangle())

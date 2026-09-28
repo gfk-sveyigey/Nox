@@ -94,6 +94,51 @@ struct DownloadRecord: Identifiable, Codable {
     }
 }
 
+/// 下载过程中的实时统计（仅内存，不持久化）。
+struct TransferStats: Equatable {
+    /// 已下载字节数
+    var bytesReceived: Int64 = 0
+    /// 总字节数；0 表示服务器未返回 Content-Length
+    var totalBytes: Int64 = 0
+    /// 平滑后的瞬时速度（字节/秒）
+    var bytesPerSecond: Double = 0
+
+    /// "12.4 MB / 58.7 MB"，总大小未知时只有已下载部分
+    var sizeText: String {
+        let received = Self.size(bytesReceived)
+        guard totalBytes > 0 else { return received }
+        return "\(received) / \(Self.size(totalBytes))"
+    }
+
+    var speedText: String {
+        let value = max(bytesPerSecond, 0)
+        if value >= 1_000_000 {
+            return String(format: "%.1f MB/s", value / 1_000_000)
+        }
+        if value >= 1_000 {
+            return String(format: "%.0f KB/s", value / 1_000)
+        }
+        return String(format: "%.0f B/s", value)
+    }
+
+    var displayText: String {
+        "\(sizeText) · \(speedText)"
+    }
+
+    private static func size(_ bytes: Int64) -> String {
+        guard bytes > 0 else { return "0 KB" }
+        return byteFormatter.string(fromByteCount: bytes)
+    }
+
+    private static let byteFormatter: ByteCountFormatter = {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowedUnits = [.useKB, .useMB, .useGB]
+        formatter.isAdaptive = false
+        return formatter
+    }()
+}
+
 struct HistoryItem: Identifiable, Codable {
     let id: UUID
     let title: String

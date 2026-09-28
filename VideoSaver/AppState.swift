@@ -47,13 +47,17 @@ final class AppState: ObservableObject {
         persist()
     }
 
-    func updateDownload(_ record: DownloadRecord) {
+    /// - Parameter persist: 高频进度回调传 false，避免每次分片都写 UserDefaults。
+    func updateDownload(_ record: DownloadRecord, persist shouldPersist: Bool = true) {
         guard let index = downloads.firstIndex(where: { $0.id == record.id }) else {
             return
         }
 
         downloads[index] = record
-        persist()
+
+        if shouldPersist {
+            persist()
+        }
     }
 
     func removeDownload(_ record: DownloadRecord) {
