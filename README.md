@@ -16,27 +16,6 @@
 - SwiftUI 原生界面
 - GitHub Actions 自动构建
 
-## 项目结构
-
-```text
-VideoSaver/
-├── .github/workflows/ios.yml
-├── VideoSaver.xcodeproj/
-│   └── project.pbxproj
-├── VideoSaver/
-│   ├── AppState.swift
-│   ├── ContentView.swift
-│   ├── DownloadManager.swift
-│   ├── DownloadsView.swift
-│   ├── HistoryView.swift
-│   ├── Models.swift
-│   ├── SettingsView.swift
-│   ├── VideoBrowserView.swift
-│   ├── VideoParser.swift
-│   └── VideoSaverApp.swift
-└── README.md
-```
-
 ## 本地编译
 
 要求：
