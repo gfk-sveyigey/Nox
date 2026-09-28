@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct HistoryView: View {
     @EnvironmentObject private var appState: AppState
@@ -8,19 +9,45 @@ struct HistoryView: View {
         NavigationStack {
             Group {
                 if appState.history.isEmpty {
-                    ContentUnavailableView("暂无历史", systemImage: "clock", description: Text("打开过的视频页面会显示在这里。"))
+                    ContentUnavailableView(
+                        "暂无历史",
+                        systemImage: "clock",
+                        description: Text("打开过的视频页面会显示在这里。")
+                    )
                 } else {
                     List {
                         ForEach(appState.history) { item in
-                            Button { openInBrowser(item.url) } label: {
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text(item.title).foregroundStyle(.primary).lineLimit(2)
-                                    Text(item.url.absoluteString).foregroundStyle(.secondary).lineLimit(1)
-                                    Text(item.visitedAt.formatted(date: .abbreviated, time: .shortened)).foregroundStyle(.tertiary)
-                                }
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(item.title)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(2)
+                                Text(item.url.absoluteString)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                Text(item.visitedAt.formatted(date: .abbreviated, time: .shortened))
+                                    .foregroundStyle(.tertiary)
                             }
-                            .swipeActions {
-                                Button(role: .destructive) { appState.removeHistory(item) } label: { Label("删除", systemImage: "trash") }
+                            .contentShape(Rectangle())
+                            .contextMenu {
+                                Button {
+                                    openInBrowser(item.url)
+                                } label: {
+                                    Label("跳转网页", systemImage: "safari")
+                                }
+
+                                Button {
+                                    UIPasteboard.general.string = item.url.absoluteString
+                                } label: {
+                                    Label("复制链接", systemImage: "doc.on.doc")
+                                }
+
+                                Divider()
+
+                                Button(role: .destructive) {
+                                    appState.removeHistory(item)
+                                } label: {
+                                    Label("删除记录", systemImage: "trash")
+                                }
                             }
                         }
                     }
@@ -29,7 +56,11 @@ struct HistoryView: View {
             .navigationTitle("历史")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    if !appState.history.isEmpty { Button("清空") { appState.clearHistory() } }
+                    if !appState.history.isEmpty {
+                        Button("清空") {
+                            appState.clearHistory()
+                        }
+                    }
                 }
             }
         }
