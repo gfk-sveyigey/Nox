@@ -23,9 +23,16 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     init(appState: AppState) {
         self.appState = appState
         super.init()
-        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(
+            at: Self.documentsDirectory,
+            withIntermediateDirectories: true
+        )
         _ = session
+    }
+
+    /// 每次都实时解析，避免持久化绝对路径。
+    static var documentsDirectory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
     func enqueue(
@@ -56,6 +63,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         updated.status = .queued
         updated.progress = 0
         updated.errorMessage = nil
+        updated.fileName = nil
         updated.fileURL = nil
 
         appState.updateDownload(updated)
@@ -77,16 +85,26 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.updateDownload(updated)
     }
 
+    /// 解析出真实存在的本地文件地址：
+    /// 1) 优先用记录里的文件名拼当前的 Documents 路径；
+    /// 2) 旧记录只有绝对路径时，取最后一段文件名重新拼（容器 UUID 变了也能命中）。
     func shareableFileURL(for record: DownloadRecord) -> URL? {
-        guard let url = record.fileURL,
-              FileManager.default.fileExists(atPath: url.path) else {
-            return nil
+        let directory = Self.documentsDirectory
+
+        let candidates: [URL] = [
+            record.fileName.map { directory.appendingPathComponent($0) },
+            record.fileURL.map { directory.appendingPathComponent($0.lastPathComponent) }
+        ].compactMap { $0 }
+
+        return candidates.first {
+            FileManager.default.fileExists(atPath: $0.path)
         }
-        return url
     }
 
     func deleteFile(for record: DownloadRecord) {
-        if let fileURL = record.fileURL {
+        if let fileURL = shareableFileURL(for: record) {
+            try? FileManager.default.removeItem(at: fileURL)
+        } else if let fileURL = record.fileURL {
             try? FileManager.default.removeItem(at: fileURL)
         }
 
@@ -184,10 +202,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             return
         }
 
-        let documentsDirectory = FileManager.default.urls(
-            for: .documentDirectory,
-            in: .userDomainMask
-        )[0]
+        let documentsDirectory = Self.documentsDirectory
 
         do {
             try FileManager.default.createDirectory(
@@ -206,6 +221,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             let destination = documentsDirectory
                 .appendingPathComponent(filename)
 
+            // 复制失败必须抛错，否则会出现「已完成但没有文件」的记录。
             try? FileManager.default.removeItem(at: destination)
             try FileManager.default.copyItem(
                 at: stagedURL,
@@ -214,6 +230,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
             try? FileManager.default.removeItem(at: stagedURL)
 
+            record.fileName = filename
             record.fileURL = destination
             record.status = .finished
             record.progress = 1

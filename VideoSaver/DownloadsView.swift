@@ -5,8 +5,6 @@ struct DownloadsView: View {
     @ObservedObject var appState: AppState
     @ObservedObject private var manager: DownloadManager
 
-    @State private var shareURL: URL?
-    @State private var showingShare = false
     @State private var showingClearConfirmation = false
     @State private var shareFailureMessage: String?
     @State private var showShareFailureAlert = false
@@ -31,13 +29,7 @@ struct DownloadsView: View {
                             DownloadRow(
                                 record: record,
                                 onShare: { record in
-                                    guard let url = manager.shareableFileURL(for: record) else {
-                                        shareFailureMessage = "文件不存在或已删除"
-                                        showShareFailureAlert = true
-                                        return
-                                    }
-                                    shareURL = url
-                                    showingShare = true
+                                    share(record)
                                 },
                                 onRetry: { manager.retry($0) },
                                 onCancel: { manager.cancel($0) }
@@ -78,13 +70,23 @@ struct DownloadsView: View {
             } message: {
                 Text(shareFailureMessage ?? "无法分享此文件")
             }
-            .sheet(isPresented: $showingShare, onDismiss: {
-                shareURL = nil
-            }) {
-                if let url = shareURL {
-                    ActivityView(activityItems: [url])
-                }
+        }
+    }
+
+    /// 由长按菜单的「分享」触发。
+    /// contextMenu 退场动画期间同步 present 会被系统静默丢弃（表现为点击无反应），
+    /// 因此延后一拍再弹出系统分享面板。
+    private func share(_ record: DownloadRecord) {
+        guard let url = manager.shareableFileURL(for: record) else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                shareFailureMessage = "文件不存在或已删除"
+                showShareFailureAlert = true
             }
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            SharePresenter.present(items: [url])
         }
     }
 }
@@ -140,7 +142,7 @@ struct DownloadRow: View {
                 }
             }
 
-            if record.status == .finished, record.fileURL != nil {
+            if record.status == .finished, record.hasLocalFile {
                 Button {
                     onShare(record)
                 } label: {
@@ -203,18 +205,42 @@ struct DownloadRow: View {
     }
 }
 
-struct ActivityView: UIViewControllerRepresentable {
-    let activityItems: [Any]
+/// 从当前最上层视图控制器弹出系统分享面板。
+/// 相比把 UIActivityViewController 塞进 SwiftUI .sheet（部分系统版本会渲染空白），
+/// 主动 present 更稳定。
+enum SharePresenter {
+    static func present(items: [Any]) {
+        guard
+            let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first(where: { $0.activationState == .foregroundActive }),
+            let root = scene.windows
+                .first(where: { $0.isKeyWindow })?
+                .rootViewController
+        else {
+            return
+        }
 
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(
-            activityItems: activityItems,
+        var top = root
+        while let presented = top.presentedViewController {
+            top = presented
+        }
+
+        let controller = UIActivityViewController(
+            activityItems: items,
             applicationActivities: nil
         )
-    }
 
-    func updateUIViewController(
-        _ uiViewController: UIActivityViewController,
-        context: Context
-    ) {}
+        if let popover = controller.popoverPresentationController {
+            popover.sourceView = top.view
+            popover.sourceRect = CGRect(
+                x: top.view.bounds.midX,
+                y: top.view.bounds.midY,
+                width: 0,
+                height: 0
+            )
+        }
+
+        top.present(controller, animated: true)
+    }
 }

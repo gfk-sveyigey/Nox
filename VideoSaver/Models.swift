@@ -60,6 +60,9 @@ struct DownloadRecord: Identifiable, Codable {
     let sourceURL: URL
     var refererURL: URL?
     var cookieHeader: String?
+    /// 仅文件名（相对 Documents）。沙盒容器路径会随重装/更新变化，不能持久化绝对路径。
+    var fileName: String?
+    /// 兼容旧数据：新写入仅作参考，读取时一律以 Documents + 文件名为准。
     var fileURL: URL?
     var status: DownloadStatus
     var progress: Double
@@ -67,9 +70,9 @@ struct DownloadRecord: Identifiable, Codable {
     var errorMessage: String?
 
     init(id: UUID = UUID(), title: String, quality: String, format: String, sourceURL: URL,
-         refererURL: URL? = nil, cookieHeader: String? = nil, fileURL: URL? = nil,
-         status: DownloadStatus = .queued, progress: Double = 0, createdAt: Date = .now,
-         errorMessage: String? = nil) {
+         refererURL: URL? = nil, cookieHeader: String? = nil, fileName: String? = nil,
+         fileURL: URL? = nil, status: DownloadStatus = .queued, progress: Double = 0,
+         createdAt: Date = .now, errorMessage: String? = nil) {
         self.id = id
         self.title = title
         self.quality = quality
@@ -77,11 +80,17 @@ struct DownloadRecord: Identifiable, Codable {
         self.sourceURL = sourceURL
         self.refererURL = refererURL
         self.cookieHeader = cookieHeader
+        self.fileName = fileName
         self.fileURL = fileURL
         self.status = status
         self.progress = progress
         self.createdAt = createdAt
         self.errorMessage = errorMessage
+    }
+
+    /// 用于长按菜单判断是否显示「分享」。
+    var hasLocalFile: Bool {
+        fileName != nil || fileURL != nil
     }
 }
 
