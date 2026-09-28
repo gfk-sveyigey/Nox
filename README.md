@@ -1,32 +1,220 @@
-# VideoSaver 修正版补丁
+import SwiftUI
+import UIKit
 
-本补丁针对上一版的三个实际问题：
+struct DownloadsView: View {
+    @ObservedObject var appState: AppState
+    @ObservedObject private var manager: DownloadManager
 
-1. **文件 App 完全看不到 VideoSaver**
-   - 下载文件仍固定保存到 App/Documents。
-   - 增加 `Info.plist` 模板，必须确保最终 App 的 Info.plist 真正包含：
-     - `UIFileSharingEnabled = YES`
-     - `LSSupportsOpeningDocumentsInPlace = YES`
-   - App 启动时主动创建 Documents 目录。
-   - 注意：仅替换 Swift 文件不会修改 Xcode Target 的 Info.plist；请按 `PROJECT_SETTINGS.txt` 把两个 key 真正加入 Target。安装旧 IPA 后建议删除旧 App，再安装新构建，避免旧包缓存影响测试。
+    @State private var shareURL: URL?
+    @State private var showingShare = false
+    @State private var showingClearConfirmation = false
+    @State private var shareFailureMessage: String?
+    @State private var showShareFailureAlert = false
 
-2. **取消按钮只有动画，实际下载还在继续**
-   - 浏览页和下载页现在共享同一个 `DownloadManager`。
-   - 不再为两个页面各创建一个独立的 background `URLSession`。
-   - 取消时先调用真实 `URLSessionDownloadTask.cancel()`，再把记录标记为 cancelled；取消回调到达后清理任务。
-   - 取消中的任务不会再被进度回调或完成回调重新标记为下载中/成功。
+    init(appState: AppState, manager: DownloadManager) {
+        self.appState = appState
+        _manager = ObservedObject(wrappedValue: manager)
+    }
 
-3. **成功后的分享无法分享**
-   - 分享前检查 `fileURL` 确实存在于 Documents。
-   - 仍通过系统 `UIActivityViewController` 分享本地文件 URL。
-   - 分享 sheet 关闭后清理临时 SwiftUI 状态。
+    var body: some View {
+        NavigationStack {
+            Group {
+                if appState.downloads.isEmpty {
+                    ContentUnavailableView(
+                        "暂无下载",
+                        systemImage: "arrow.down.circle",
+                        description: Text("在浏览页面解析视频后即可加入下载队列。")
+                    )
+                } else {
+                    List {
+                        ForEach(appState.downloads) { record in
+                            DownloadRow(
+                                record: record,
+                                onShare: { record in
+                                    guard let url = manager.shareableFileURL(for: record) else {
+                                        shareFailureMessage = "文件不存在或已删除"
+                                        showShareFailureAlert = true
+                                        return
+                                    }
+                                    shareURL = url
+                                    showingShare = true
+                                },
+                                onRetry: { manager.retry($0) },
+                                onCancel: { manager.cancel($0) }
+                            )
+                        }
+                        .onDelete { indexSet in
+                            for index in indexSet {
+                                manager.deleteFile(for: appState.downloads[index])
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("下载")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if appState.downloads.contains(where: {
+                        $0.status == .finished ||
+                        $0.status == .failed ||
+                        $0.status == .cancelled
+                    }) {
+                        Button("清理") {
+                            showingClearConfirmation = true
+                        }
+                    }
+                }
+            }
+            .alert("清理下载记录？", isPresented: $showingClearConfirmation) {
+                Button("取消", role: .cancel) {}
+                Button("清理", role: .destructive) {
+                    appState.clearFinishedDownloads()
+                }
+            } message: {
+                Text("已完成、失败和已取消的任务将从下载列表中移除。")
+            }
+            .alert("分享失败", isPresented: $showShareFailureAlert) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text(shareFailureMessage ?? "无法分享此文件")
+            }
+            .sheet(isPresented: $showingShare, onDismiss: {
+                shareURL = nil
+            }) {
+                if let url = shareURL {
+                    ActivityView(activityItems: [url])
+                }
+            }
+        }
+    }
+}
 
-其他上一版功能继续保留：
-- 历史记录改为长按菜单：跳转网页 / 复制链接 / 删除。
-- 下载失败/取消后长按重试；成功后长按分享。
-- 取消按钮为图标。
-- 进度条位于每行底部，颜色表示成功/失败/取消/进行中。
-- 下载清理有二次确认。
-- 删除下载目录设置。
-- 下载质量“每次询问”。
-- 浏览器按钮使用 iOS 26 Liquid Glass。
+struct DownloadRow: View {
+    let record: DownloadRecord
+    let onShare: (DownloadRecord) -> Void
+    let onRetry: (DownloadRecord) -> Void
+    let onCancel: (DownloadRecord) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: iconName)
+                    .foregroundStyle(iconColor)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(record.title)
+                        .lineLimit(2)
+
+                    Text("\(record.quality) · \(record.format.uppercased())")
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                if record.status == .queued || record.status == .downloading {
+                    Button {
+                        onCancel(record)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("取消下载")
+                }
+            }
+
+            ProgressView(value: displayProgress)
+                .progressViewStyle(.linear)
+                .tint(progressColor)
+                .animation(.easeInOut(duration: 0.2), value: displayProgress)
+        }
+        .padding(.vertical, 5)
+        .contentShape(Rectangle())
+        .contextMenu {
+            if record.status == .failed || record.status == .cancelled {
+                Button {
+                    onRetry(record)
+                } label: {
+                    Label("重试", systemImage: "arrow.clockwise")
+                }
+            }
+
+            if record.status == .finished, record.fileURL != nil {
+                Button {
+                    onShare(record)
+                } label: {
+                    Label("分享", systemImage: "square.and.arrow.up")
+                }
+            }
+        }
+    }
+
+    private var displayProgress: Double {
+        switch record.status {
+        case .finished:
+            return 1
+        case .failed:
+            return max(record.progress, 0.05)
+        case .cancelled:
+            return max(record.progress, 0)
+        case .queued, .downloading:
+            return record.progress
+        }
+    }
+
+    private var progressColor: Color {
+        switch record.status {
+        case .finished:
+            return .green
+        case .failed:
+            return .red
+        case .cancelled:
+            return .gray
+        case .queued, .downloading:
+            return .accentColor
+        }
+    }
+
+    private var iconColor: Color {
+        switch record.status {
+        case .finished:
+            return .green
+        case .failed:
+            return .red
+        case .cancelled:
+            return .secondary
+        case .queued, .downloading:
+            return .accentColor
+        }
+    }
+
+    private var iconName: String {
+        switch record.status {
+        case .finished:
+            return "checkmark.circle.fill"
+        case .failed:
+            return "exclamationmark.circle.fill"
+        case .cancelled:
+            return "arrow.clockwise.circle"
+        case .queued, .downloading:
+            return "arrow.down.circle"
+        }
+    }
+}
+
+struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: nil
+        )
+    }
+
+    func updateUIViewController(
+        _ uiViewController: UIActivityViewController,
+        context: Context
+    ) {}
+}
