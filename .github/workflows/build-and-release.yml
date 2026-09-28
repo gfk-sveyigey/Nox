@@ -25,6 +25,18 @@ jobs:
         with:
           xcode-version: '26.6'
 
+      - name: Validate Info.plist
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          set -e
+          test -f Info.plist || { echo "::error::Info.plist not found"; exit 1; }
+          plutil -lint Info.plist
+          # 关键键必须是真正的布尔 true
+          plutil -extract UIFileSharingEnabled raw Info.plist | grep -qx true \
+            || { echo "::error::UIFileSharingEnabled must be <true/>"; exit 1; }
+          plutil -extract LSSupportsOpeningDocumentsInPlace raw Info.plist | grep -qx true \
+            || { echo "::error::LSSupportsOpeningDocumentsInPlace must be <true/>"; exit 1; }
+
       - name: Read version
         id: version
         run: |
