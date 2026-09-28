@@ -2,20 +2,23 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var appState: AppState
+    @StateObject private var downloadManager: DownloadManager
     @State private var selectedTab = 0
     @State private var browserURL: URL?
 
     init() {
-        _appState = StateObject(wrappedValue: AppState())
+        let state = AppState()
+        _appState = StateObject(wrappedValue: state)
+        _downloadManager = StateObject(wrappedValue: DownloadManager(appState: state))
     }
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            VideoBrowserView(appState: appState, requestedURL: $browserURL)
+            VideoBrowserView(appState: appState, downloads: downloadManager, requestedURL: $browserURL)
                 .tabItem { Label("浏览", systemImage: "safari") }
                 .tag(0)
 
-            DownloadsView(appState: appState)
+            DownloadsView(appState: appState, manager: downloadManager)
                 .tabItem { Label("下载", systemImage: "arrow.down.circle") }
                 .tag(1)
 

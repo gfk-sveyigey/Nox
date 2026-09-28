@@ -5,7 +5,7 @@ struct VideoBrowserView: View {
     @EnvironmentObject private var appState: AppState
 
     @StateObject private var parser: VideoParser
-    @StateObject private var downloads: DownloadManager
+    @ObservedObject private var downloads: DownloadManager
 
     @Binding private var requestedURL: URL?
 
@@ -15,9 +15,9 @@ struct VideoBrowserView: View {
     @State private var errorMessage: String?
     @State private var showVariants = false
 
-    init(appState: AppState, requestedURL: Binding<URL?>) {
+    init(appState: AppState, downloads: DownloadManager, requestedURL: Binding<URL?>) {
         _parser = StateObject(wrappedValue: VideoParser(appState: appState))
-        _downloads = StateObject(wrappedValue: DownloadManager(appState: appState))
+        _downloads = ObservedObject(wrappedValue: downloads)
         _requestedURL = requestedURL
     }
 

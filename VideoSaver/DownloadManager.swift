@@ -5,6 +5,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     @Published private(set) var activeTasks: [UUID: URLSessionDownloadTask] = [:]
 
     private let appState: AppState
+    private var cancellingIDs = Set<UUID>()
 
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.background(
@@ -22,6 +23,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     init(appState: AppState) {
         self.appState = appState
         super.init()
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        try? FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
         _ = session
     }
 
@@ -60,12 +63,26 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     func cancel(_ record: DownloadRecord) {
-        activeTasks[record.id]?.cancel()
-        activeTasks.removeValue(forKey: record.id)
+        cancellingIDs.insert(record.id)
+
+        if let task = activeTasks[record.id] {
+            // URLSession cancellation is asynchronous. Do not remove the task
+            // from the manager before the session has observed the cancellation.
+            task.cancel()
+        }
 
         var updated = record
         updated.status = .cancelled
+        updated.errorMessage = nil
         appState.updateDownload(updated)
+    }
+
+    func shareableFileURL(for record: DownloadRecord) -> URL? {
+        guard let url = record.fileURL,
+              FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
+        return url
     }
 
     func deleteFile(for record: DownloadRecord) {
@@ -98,6 +115,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         let task = session.downloadTask(with: request)
         task.taskDescription = record.id.uuidString
+        cancellingIDs.remove(record.id)
         activeTasks[record.id] = task
 
         var updated = record
@@ -153,7 +171,18 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func finishDownload(id: UUID, stagedURL: URL) {
-        guard var record = appState.downloads.first(where: { $0.id == id }) else {
+        if cancellingIDs.remove(id) != nil {
+            activeTasks.removeValue(forKey: id)
+            try? FileManager.default.removeItem(at: stagedURL)
+            return
+        }
+
+        guard var record = appState.downloads.first(where: { $0.id == id }),
+              record.status != .cancelled else {
+            try? FileManager.default.removeItem(at: stagedURL)
+            activeTasks.removeValue(forKey: id)
+            return
+        }
             try? FileManager.default.removeItem(at: stagedURL)
             return
         }
@@ -233,7 +262,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             Double(totalBytesExpectedToWrite)
 
         Task { @MainActor in
-            guard var record = self.appState.downloads.first(where: { $0.id == id }) else {
+            guard !self.cancellingIDs.contains(id),
+                  var record = self.appState.downloads.first(where: { $0.id == id }),
+                  record.status != .cancelled else {
                 return
             }
 
@@ -257,10 +288,22 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
 
         Task { @MainActor in
+            if self.cancellingIDs.remove(id) != nil {
+                self.activeTasks.removeValue(forKey: id)
+
+                if var record = self.appState.downloads.first(where: { $0.id == id }) {
+                    record.status = .cancelled
+                    record.errorMessage = nil
+                    self.appState.updateDownload(record)
+                }
+                return
+            }
+
             guard
                 let record = self.appState.downloads.first(where: { $0.id == id }),
                 record.status != .finished
             else {
+                self.activeTasks.removeValue(forKey: id)
                 return
             }
 
