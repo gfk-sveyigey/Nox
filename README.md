@@ -1,45 +1,62 @@
 # VideoSaver iOS
 
-这是根据原 Userscript 的核心逻辑改写的 SwiftUI iOS 示例工程源码。
+一个原生 SwiftUI 视频下载 App。它把原来的 Tampermonkey 用户脚本思路移植成了独立 iOS 应用：在 App 内打开视频页面，读取页面公开的 `flashvars_* / mediaDefinitions` 信息，取得远程视频清单，然后由原生 URLSession 下载。
 
-## 运行环境
+## 功能
 
-- Xcode 16+
-- iOS 16+
-- Swift 5.9+
+- 内置网页浏览器，不需要手工复制视频 URL
+- 从页面运行时数据中寻找 `flashvars_*` 和 `mediaDefinitions`
+- 解析远程视频清单并列出可用清晰度/格式
+- 原生后台下载队列
+- 下载进度、失败状态、取消状态
+- 下载完成后分享到“文件”、AirDrop 等系统分享目标
+- 历史记录
+- 默认清晰度设置
+- 下载文件保存在 App 的 Documents 目录
+- SwiftUI 原生界面
+- GitHub Actions 自动构建
 
-## 创建工程
+## 项目结构
 
-在 Xcode 中：
+```text
+VideoSaver/
+├── .github/workflows/ios.yml
+├── VideoSaver.xcodeproj/
+│   └── project.pbxproj
+├── VideoSaver/
+│   ├── AppState.swift
+│   ├── ContentView.swift
+│   ├── DownloadManager.swift
+│   ├── DownloadsView.swift
+│   ├── HistoryView.swift
+│   ├── Models.swift
+│   ├── SettingsView.swift
+│   ├── VideoBrowserView.swift
+│   ├── VideoParser.swift
+│   └── VideoSaverApp.swift
+└── README.md
+```
 
-1. File -> New -> Project
-2. iOS -> App
-3. Product Name: VideoSaver
-4. Interface: SwiftUI
-5. Language: Swift
-6. 把本目录中的 `.swift` 文件加入 Target。
+## 本地编译
 
-## 工作方式
+要求：
 
-原脚本的核心流程是：
+- macOS
+- Xcode 16.4 或兼容版本
+- iOS 17.0+
 
-flashvars_* 
--> mediaDefinitions
--> 找到 remote == true 的 videoUrl
--> 请求 remote
--> 读取 quality / format / videoUrl
--> 下载视频。
+打开 `VideoSaver.xcodeproj`，把 Bundle Identifier 改成自己的，例如 `com.yourname.VideoSaver`。真机安装时在 Signing & Capabilities 中选择自己的 Team。
 
-本版本使用：
+## GitHub Actions
 
-- WKWebView：读取页面运行时的 `flashvars_*`
-- URLSession：获取视频资源列表
-- URLSessionDownloadTask：下载文件
-- SwiftUI：界面
-- ShareLink：将 App Documents 中的文件分享/保存到“文件”
+工作流会进行无签名 Release 构建并上传 `VideoSaver-iOS-unsigned.zip`。
 
-## 注意
+无签名 `.app` 不能直接作为普通 App 安装到 iPhone。要做 TestFlight / Ad Hoc / App Store 分发，需要配置 Apple Developer 签名证书和 provisioning profile。
 
-此项目只应处理你自己有权访问和下载的内容。它没有实现登录绕过、付费墙绕过、DRM 解密或其他访问控制规避功能。
+## 解析逻辑来源
 
-网站页面结构、接口、请求头和访问策略变化后，解析器可能需要更新。
+原用户脚本通过 `flashvars_*` 查找 `mediaDefinitions`，寻找 `remote` 条目并读取 `videoUrl`，随后请求远程 JSON 清单并从每一项的 `quality / format / videoUrl` 生成下载地址。本项目保留了这条核心数据路径，并将网络请求、下载和文件保存改成原生 iOS 实现。
+
+## 限制
+
+本项目不实现 DRM 解密、付费墙绕过、账号权限绕过或其他访问控制绕过。能否解析取决于目标页面当前提供给浏览器的公开运行时数据和网络访问条件。
