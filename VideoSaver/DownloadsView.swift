@@ -3,15 +3,15 @@ import UIKit
 
 struct DownloadsView: View {
     @ObservedObject var appState: AppState
-    @StateObject private var manager: DownloadManager
+    @ObservedObject private var manager: DownloadManager
 
     @State private var shareURL: URL?
     @State private var showingShare = false
     @State private var showingClearConfirmation = false
 
-    init(appState: AppState) {
+    init(appState: AppState, manager: DownloadManager) {
         self.appState = appState
-        _manager = StateObject(wrappedValue: DownloadManager(appState: appState))
+        _manager = ObservedObject(wrappedValue: manager)
     }
 
     var body: some View {
@@ -28,7 +28,8 @@ struct DownloadsView: View {
                         ForEach(appState.downloads) { record in
                             DownloadRow(
                                 record: record,
-                                onShare: { url in
+                                onShare: { record in
+                                    guard let url = manager.shareableFileURL(for: record) else { return }
                                     shareURL = url
                                     showingShare = true
                                 },
@@ -66,7 +67,9 @@ struct DownloadsView: View {
             } message: {
                 Text("已完成、失败和已取消的任务将从下载列表中移除。")
             }
-            .sheet(isPresented: $showingShare) {
+            .sheet(isPresented: $showingShare, onDismiss: {
+                shareURL = nil
+            }) {
                 if let url = shareURL {
                     ActivityView(activityItems: [url])
                 }
@@ -77,7 +80,7 @@ struct DownloadsView: View {
 
 struct DownloadRow: View {
     let record: DownloadRecord
-    let onShare: (URL) -> Void
+    let onShare: (DownloadRecord) -> Void
     let onRetry: (DownloadRecord) -> Void
     let onCancel: (DownloadRecord) -> Void
 
@@ -127,24 +130,14 @@ struct DownloadRow: View {
                 }
             }
 
-            if record.status == .finished, let url = record.fileURL {
+            if record.status == .finished, record.fileURL != nil {
                 Button {
-                    onShare(url)
+                    onShare(record)
                 } label: {
                     Label("分享", systemImage: "square.and.arrow.up")
                 }
             }
 
-            if record.status != .downloading && record.status != .queued {
-                Button(role: .destructive) {
-                    // The parent list's swipe-to-delete remains available.
-                    // Context menu intentionally only exposes retry/share here.
-                } label: {
-                    EmptyView()
-                }
-                .disabled(true)
-                .hidden()
-            }
         }
     }
 
