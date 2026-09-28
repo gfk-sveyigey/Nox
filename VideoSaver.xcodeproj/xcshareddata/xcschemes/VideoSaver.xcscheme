@@ -68,5 +68,5 @@
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES"
       allowBitcode = "NO"
-      \/>
+      />
 </Scheme>
