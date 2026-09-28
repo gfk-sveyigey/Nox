@@ -55,7 +55,7 @@ struct SettingsView: View {
             .sheet(isPresented: $showFolderPicker) {
                 FolderPicker { url in
                     do {
-                        let bookmark = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+                        let bookmark = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
                         appState.setDownloadFolder(bookmarkData: bookmark, displayName: url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent)
                     } catch {
                         folderError = error.localizedDescription
