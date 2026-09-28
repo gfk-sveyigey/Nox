@@ -19,20 +19,21 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     func enqueue(title: String, variant: VideoVariant, referer: URL?, cookieHeader: String? = nil) {
-        let record = DownloadRecord(title: title, quality: variant.quality, format: variant.format, sourceURL: variant.url)
+        let record = DownloadRecord(title: title, quality: variant.quality, format: variant.format,
+                                    sourceURL: variant.url, refererURL: referer, cookieHeader: cookieHeader)
         appState.addDownload(record)
-        var request = URLRequest(url: variant.url)
-        request.httpMethod = "GET"
-        request.setValue("video/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
-        if let referer { request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer") }
-        if let cookieHeader, !cookieHeader.isEmpty { request.setValue(cookieHeader, forHTTPHeaderField: "Cookie") }
-        let task = session.downloadTask(with: request)
-        task.taskDescription = record.id.uuidString
-        activeTasks[record.id] = task
+        start(record)
+    }
+
+    func retry(_ record: DownloadRecord) {
+        guard record.status == .failed || record.status == .cancelled else { return }
         var updated = record
-        updated.status = .downloading
+        updated.status = .queued
+        updated.progress = 0
+        updated.errorMessage = nil
+        updated.fileURL = nil
         appState.updateDownload(updated)
-        task.resume()
+        start(updated)
     }
 
     func cancel(_ record: DownloadRecord) {
@@ -48,31 +49,90 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.removeDownload(record)
     }
 
+    private func start(_ record: DownloadRecord) {
+        var request = URLRequest(url: record.sourceURL)
+        request.httpMethod = "GET"
+        request.setValue("video/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+        if let refererURL = record.refererURL { request.setValue(refererURL.absoluteString, forHTTPHeaderField: "Referer") }
+        if let cookieHeader = record.cookieHeader, !cookieHeader.isEmpty { request.setValue(cookieHeader, forHTTPHeaderField: "Cookie") }
+
+        let task = session.downloadTask(with: request)
+        task.taskDescription = record.id.uuidString
+        activeTasks[record.id] = task
+
+        var updated = record
+        updated.status = .downloading
+        appState.updateDownload(updated)
+        task.resume()
+    }
+
     nonisolated func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        guard let idString = downloadTask.taskDescription,
-              let id = UUID(uuidString: idString) else { return }
+        guard let idString = downloadTask.taskDescription, let id = UUID(uuidString: idString) else { return }
+
+        // URLSession's temporary file is only guaranteed to exist during this callback.
+        // Stage it synchronously before hopping to MainActor; this fixes the old
+        // "cannot move to Documents" failure caused by waiting too long.
+        let stagingDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DownloadStaging", isDirectory: true)
+        let stagingURL = stagingDirectory.appendingPathComponent(id.uuidString + ".tmp")
+
+        do {
+            try FileManager.default.createDirectory(at: stagingDirectory, withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: stagingURL)
+            try FileManager.default.copyItem(at: location, to: stagingURL)
+        } catch {
+            Task { @MainActor in
+                self.fail(id: id, message: error.localizedDescription)
+            }
+            return
+        }
+
         Task { @MainActor in
-            self.finishDownload(id: id, temporaryURL: location)
+            self.finishDownload(id: id, stagedURL: stagingURL)
         }
     }
 
-    private func finishDownload(id: UUID, temporaryURL location: URL) {
-        guard var record = appState.downloads.first(where: { $0.id == id }) else { return }
-        let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let ext = record.format.isEmpty ? "mp4" : record.format.lowercased()
-        let filename = Self.safeFilename("\(record.title)-\(record.quality).\(ext)")
-        let destination = folder.appendingPathComponent(filename)
-        try? FileManager.default.removeItem(at: destination)
+    private func finishDownload(id: UUID, stagedURL: URL) {
+        guard var record = appState.downloads.first(where: { $0.id == id }) else {
+            try? FileManager.default.removeItem(at: stagedURL)
+            return
+        }
+
+        let folder = appState.downloadFolderURL()
+        var accessingScope = false
+        if appState.customDownloadFolderName != nil {
+            accessingScope = folder.startAccessingSecurityScopedResource()
+        }
+        defer {
+            if accessingScope { folder.stopAccessingSecurityScopedResource() }
+        }
+
         do {
-            try FileManager.default.moveItem(at: location, to: destination)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let ext = record.format.isEmpty ? "mp4" : record.format.lowercased()
+            let filename = Self.safeFilename("\(record.title)-\(record.quality).\(ext)")
+            let destination = folder.appendingPathComponent(filename)
+            try? FileManager.default.removeItem(at: destination)
+            try FileManager.default.copyItem(at: stagedURL, to: destination)
+            try? FileManager.default.removeItem(at: stagedURL)
+
             record.fileURL = destination
             record.status = .finished
             record.progress = 1
             record.errorMessage = nil
         } catch {
             record.status = .failed
-            record.errorMessage = error.localizedDescription
+            record.errorMessage = "保存文件失败：\(error.localizedDescription)"
         }
+
+        activeTasks.removeValue(forKey: id)
+        appState.updateDownload(record)
+    }
+
+    private func fail(id: UUID, message: String) {
+        guard var record = appState.downloads.first(where: { $0.id == id }) else { return }
+        record.status = .failed
+        record.errorMessage = "下载失败：\(message)"
         activeTasks.removeValue(forKey: id)
         appState.updateDownload(record)
     }
@@ -88,25 +148,22 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        guard let downloadTask = task as? URLSessionDownloadTask, let idString = downloadTask.taskDescription, let id = UUID(uuidString: idString), let error else { return }
+        guard let downloadTask = task as? URLSessionDownloadTask,
+              let idString = downloadTask.taskDescription,
+              let id = UUID(uuidString: idString),
+              let error else { return }
         Task { @MainActor in
-            guard var record = self.appState.downloads.first(where: { $0.id == id }) else { return }
-            if record.status != .finished {
-                record.status = .failed
-                record.errorMessage = error.localizedDescription
-                self.activeTasks.removeValue(forKey: id)
-                self.appState.updateDownload(record)
-            }
+            guard let record = self.appState.downloads.first(where: { $0.id == id }), record.status != .finished else { return }
+            self.fail(id: id, message: error.localizedDescription)
         }
     }
 
-    nonisolated func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
-        // The app can reconnect to the background session after relaunch.
-    }
+    nonisolated func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {}
 
     private static func safeFilename(_ name: String) -> String {
         let invalid = CharacterSet(charactersIn: "/\\:?%*|\"<>\n\r\t")
         let cleaned = name.components(separatedBy: invalid).joined(separator: "_")
-        return String(cleaned.prefix(180)).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "video.mp4" : String(cleaned.prefix(180))
+        let value = String(cleaned.prefix(180)).trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? "video.mp4" : value
     }
 }

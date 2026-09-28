@@ -11,7 +11,7 @@ permissions:
 jobs:
   build-and-release:
     if: github.event.pull_request.merged == true
-    runs-on: macos-15
+    runs-on: macos-26
 
     steps:
       - name: Checkout
@@ -20,23 +20,21 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Select Xcode
+      - name: Select Xcode 26
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "16.4"
+          xcode-version: '26.6'
 
       - name: Read version
         id: version
         run: |
           set -e
-
           if [ ! -f VERSION ]; then
             echo "::error::VERSION file not found in repository root"
             exit 1
           fi
 
           RAW=$(tr -d '[:space:]' < VERSION)
-
           if [ -z "$RAW" ]; then
             echo "::error::VERSION file is empty"
             exit 1
@@ -49,17 +47,13 @@ jobs:
 
           echo "raw=$RAW" >> "$GITHUB_OUTPUT"
           echo "tag=v$RAW" >> "$GITHUB_OUTPUT"
-
           echo "Version: $RAW"
-          echo "Tag: v$RAW"
 
       - name: Check existing tag
         id: check
         run: |
           set -e
-
           TAG="${{ steps.version.outputs.tag }}"
-
           if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Tag $TAG already exists; skipping release."
@@ -74,24 +68,17 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -e
-
           mkdir -p build
-
           if [ -z "$PR_BODY" ]; then
             printf '_No description provided._\n' > build/PR_BODY.md
           else
             printf '%s\n' "$PR_BODY" > build/PR_BODY.md
           fi
 
-          echo "----- PR body preview -----"
-          head -n 40 build/PR_BODY.md
-          echo "----------------------------"
-
-      - name: Build iOS app
+      - name: Build unsigned iOS app
         if: steps.check.outputs.exists == 'false'
         run: |
           set -e
-
           rm -rf build/DerivedData
 
           xcodebuild \
@@ -101,88 +88,39 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/DerivedData \
+            MARKETING_VERSION='${{ steps.version.outputs.raw }}' \
+            CURRENT_PROJECT_VERSION='${{ github.run_number }}' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build
-
-      - name: Inspect built app
-        if: steps.check.outputs.exists == 'false'
-        run: |
-          set -e
-
-          APP="build/DerivedData/Build/Products/Release-iphoneos/VideoSaver.app"
-
-          if [ ! -d "$APP" ]; then
-            echo "::error::VideoSaver.app not found"
-            exit 1
-          fi
-
-          echo "===== App ====="
-          file "$APP/VideoSaver"
-          lipo -info "$APP/VideoSaver"
-          echo ""
-
-          echo "===== Bundle ====="
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleIdentifier" \
-            "$APP/Info.plist" || true
-
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleShortVersionString" \
-            "$APP/Info.plist" || true
-
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleVersion" \
-            "$APP/Info.plist" || true
 
       - name: Package unsigned IPA
         if: steps.check.outputs.exists == 'false'
         run: |
           set -e
-
           APP="build/DerivedData/Build/Products/Release-iphoneos/VideoSaver.app"
+          IPA="build/VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa"
 
-          rm -rf build/Payload
-          rm -f "build/VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa"
-
+          test -d "$APP"
+          rm -rf build/Payload "$IPA"
           mkdir -p build/Payload
-
           cp -R "$APP" build/Payload/VideoSaver.app
 
           cd build
-
-          /usr/bin/zip \
-            -qry \
-            "VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa" \
-            Payload
-
+          /usr/bin/zip -qry "$(basename "$IPA")" Payload
           cd ..
-
           rm -rf build/Payload
 
-          IPA="build/VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa"
-
-          if [ ! -f "$IPA" ]; then
-            echo "::error::IPA was not created"
-            exit 1
-          fi
-
-          echo "===== IPA ====="
+          test -f "$IPA"
           ls -lh "$IPA"
-
-          echo "===== IPA contents ====="
-          unzip -l "$IPA" | head -n 30
 
       - name: Calculate SHA256
         if: steps.check.outputs.exists == 'false'
         run: |
           set -e
-
           IPA="build/VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa"
-
           SHA256=$(shasum -a 256 "$IPA" | awk '{print $1}')
-
-          echo "$SHA256" > build/SHA256.txt
+          printf '%s  %s\n' "$SHA256" "$(basename "$IPA")" > build/SHA256.txt
 
           {
             echo ""
@@ -191,13 +129,9 @@ jobs:
             echo "### SHA256"
             echo ""
             echo '```text'
-            printf '%s  %s\n' \
-              "$SHA256" \
-              "$(basename "$IPA")"
+            cat build/SHA256.txt
             echo '```'
           } >> build/PR_BODY.md
-
-          echo "SHA256: $SHA256"
 
       - name: Create Release
         if: steps.check.outputs.exists == 'false'
@@ -206,13 +140,10 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: "VideoSaver ${{ steps.version.outputs.tag }}"
           body_path: build/PR_BODY.md
-
           files: |
             build/VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa
             build/SHA256.txt
-
           draft: false
           prerelease: ${{ contains(steps.version.outputs.raw, '-') }}
-
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

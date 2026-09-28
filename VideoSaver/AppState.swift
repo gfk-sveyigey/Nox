@@ -5,17 +5,23 @@ import SwiftUI
 final class AppState: ObservableObject {
     @Published var history: [HistoryItem] = []
     @Published var downloads: [DownloadRecord] = []
-    @Published var preferredQuality = "Best"
+    @Published var preferredQuality = "Ask Every Time"
     @Published var clearHistoryOnLaunch = false
+    @Published private(set) var customDownloadFolderName: String?
 
     private let historyKey = "VideoSaver.history"
     private let downloadsKey = "VideoSaver.downloads"
     private let qualityKey = "VideoSaver.quality"
     private let clearHistoryKey = "VideoSaver.clearHistory"
+    private let folderBookmarkKey = "VideoSaver.downloadFolderBookmark"
+    private let folderNameKey = "VideoSaver.downloadFolderName"
 
     init() {
         load()
-        if clearHistoryOnLaunch { history.removeAll(); persist() }
+        if clearHistoryOnLaunch {
+            history.removeAll()
+            persist()
+        }
     }
 
     func addHistory(title: String, url: URL) {
@@ -56,6 +62,32 @@ final class AppState: ObservableObject {
         persist()
     }
 
+    func setDownloadFolder(bookmarkData: Data, displayName: String) {
+        UserDefaults.standard.set(bookmarkData, forKey: folderBookmarkKey)
+        UserDefaults.standard.set(displayName, forKey: folderNameKey)
+        customDownloadFolderName = displayName
+    }
+
+    func clearDownloadFolder() {
+        UserDefaults.standard.removeObject(forKey: folderBookmarkKey)
+        UserDefaults.standard.removeObject(forKey: folderNameKey)
+        customDownloadFolderName = nil
+    }
+
+    func downloadFolderURL() -> URL {
+        guard let data = UserDefaults.standard.data(forKey: folderBookmarkKey) else {
+            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        }
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], bookmarkDataIsStale: &stale) else {
+            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        }
+        if stale, let refreshed = try? url.bookmarkData(options: [.withSecurityScope]) {
+            UserDefaults.standard.set(refreshed, forKey: folderBookmarkKey)
+        }
+        return url
+    }
+
     func persist() {
         let defaults = UserDefaults.standard
         if let data = try? JSONEncoder().encode(history) { defaults.set(data, forKey: historyKey) }
@@ -68,7 +100,8 @@ final class AppState: ObservableObject {
         let defaults = UserDefaults.standard
         if let data = defaults.data(forKey: historyKey), let value = try? JSONDecoder().decode([HistoryItem].self, from: data) { history = value }
         if let data = defaults.data(forKey: downloadsKey), let value = try? JSONDecoder().decode([DownloadRecord].self, from: data) { downloads = value }
-        preferredQuality = defaults.string(forKey: qualityKey) ?? "Best"
+        preferredQuality = defaults.string(forKey: qualityKey) ?? "Ask Every Time"
         clearHistoryOnLaunch = defaults.bool(forKey: clearHistoryKey)
+        customDownloadFolderName = defaults.string(forKey: folderNameKey)
     }
 }

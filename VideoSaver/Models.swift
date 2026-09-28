@@ -14,8 +14,8 @@ struct VideoVariant: Identifiable, Codable, Hashable {
     }
 
     var displayName: String {
-        let q = quality.isEmpty ? "Unknown" : quality
-        let f = format.isEmpty ? "video" : format.uppercased()
+        let q = quality.isEmpty ? "未知清晰度" : quality
+        let f = format.isEmpty ? "VIDEO" : format.uppercased()
         return "\(q) · \(f)"
     }
 }
@@ -33,7 +33,7 @@ enum ParserError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "请输入有效的视频页面地址。"
-        case .unsupportedURL: return "仅支持 HTTPS 视频页面。"
+        case .unsupportedURL: return "当前网页不符合视频解析规则。"
         case .pageLoadFailed(let message): return "页面加载失败：\(message)"
         case .noMediaDefinitions: return "页面中没有找到可用的视频信息。"
         case .noRemoteManifest: return "没有找到远程视频清单。"
@@ -58,18 +58,25 @@ struct DownloadRecord: Identifiable, Codable {
     let quality: String
     let format: String
     let sourceURL: URL
+    var refererURL: URL?
+    var cookieHeader: String?
     var fileURL: URL?
     var status: DownloadStatus
     var progress: Double
     var createdAt: Date
     var errorMessage: String?
 
-    init(id: UUID = UUID(), title: String, quality: String, format: String, sourceURL: URL, fileURL: URL? = nil, status: DownloadStatus = .queued, progress: Double = 0, createdAt: Date = .now, errorMessage: String? = nil) {
+    init(id: UUID = UUID(), title: String, quality: String, format: String, sourceURL: URL,
+         refererURL: URL? = nil, cookieHeader: String? = nil, fileURL: URL? = nil,
+         status: DownloadStatus = .queued, progress: Double = 0, createdAt: Date = .now,
+         errorMessage: String? = nil) {
         self.id = id
         self.title = title
         self.quality = quality
         self.format = format
         self.sourceURL = sourceURL
+        self.refererURL = refererURL
+        self.cookieHeader = cookieHeader
         self.fileURL = fileURL
         self.status = status
         self.progress = progress
