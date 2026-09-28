@@ -183,9 +183,6 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             activeTasks.removeValue(forKey: id)
             return
         }
-            try? FileManager.default.removeItem(at: stagedURL)
-            return
-        }
 
         let documentsDirectory = FileManager.default.urls(
             for: .documentDirectory,
