@@ -79,10 +79,10 @@ final class AppState: ObservableObject {
             return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         }
         var stale = false
-        guard let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], bookmarkDataIsStale: &stale) else {
+        guard let url = try? URL(resolvingBookmarkData: data, options: [.withoutUI], bookmarkDataIsStale: &stale) else {
             return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         }
-        if stale, let refreshed = try? url.bookmarkData(options: [.withSecurityScope]) {
+        if stale, let refreshed = try? url.bookmarkData(options: []) {
             UserDefaults.standard.set(refreshed, forKey: folderBookmarkKey)
         }
         return url
