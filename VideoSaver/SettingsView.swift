@@ -52,6 +52,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("设置")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showFolderPicker) {
                 FolderPicker { url in
                     do {
