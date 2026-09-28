@@ -48,8 +48,16 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.removeDownload(record)
     }
 
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        guard let idString = downloadTask.taskDescription, let id = UUID(uuidString: idString), var record = appState.downloads.first(where: { $0.id == id }) else { return }
+    nonisolated func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        guard let idString = downloadTask.taskDescription,
+              let id = UUID(uuidString: idString) else { return }
+        Task { @MainActor in
+            self.finishDownload(id: id, temporaryURL: location)
+        }
+    }
+
+    private func finishDownload(id: UUID, temporaryURL location: URL) {
+        guard var record = appState.downloads.first(where: { $0.id == id }) else { return }
         let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let ext = record.format.isEmpty ? "mp4" : record.format.lowercased()
         let filename = Self.safeFilename("\(record.title)-\(record.quality).\(ext)")

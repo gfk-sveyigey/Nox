@@ -91,7 +91,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
           }
           return {error: 'no_mediaDefinitions'};
         })()
-        """
+        """#
         let value = try await webView.evaluateJavaScript(script)
         guard let dict = value as? [String: Any] else { throw ParserError.noMediaDefinitions }
         if dict["error"] != nil { throw ParserError.noMediaDefinitions }
