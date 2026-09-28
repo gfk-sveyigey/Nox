@@ -1,211 +1,357 @@
 import SwiftUI
-import UIKit
+import WebKit
 
-struct DownloadsView: View {
-    @ObservedObject var appState: AppState
-    @ObservedObject private var manager: DownloadManager
+struct VideoBrowserView: View {
+    @EnvironmentObject private var appState: AppState
 
-    @State private var shareURL: URL?
-    @State private var showingShare = false
-    @State private var showingClearConfirmation = false
+    @StateObject private var parser: VideoParser
+    @ObservedObject private var downloads: DownloadManager
 
-    init(appState: AppState, manager: DownloadManager) {
-        self.appState = appState
-        _manager = ObservedObject(wrappedValue: manager)
+    @Binding private var requestedURL: URL?
+
+    @State private var address = "https://www.pornhub.com/"
+    @State private var parsedVideo: ParsedVideo?
+    @State private var isParsing = false
+    @State private var errorMessage: String?
+    @State private var showVariants = false
+    @State private var bookmarks: [String] = []
+    @State private var showBookmarks = false
+
+    init(appState: AppState, downloads: DownloadManager, requestedURL: Binding<URL?>) {
+        _parser = StateObject(wrappedValue: VideoParser(appState: appState))
+        _downloads = ObservedObject(wrappedValue: downloads)
+        _requestedURL = requestedURL
     }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if appState.downloads.isEmpty {
-                    ContentUnavailableView(
-                        "暂无下载",
-                        systemImage: "arrow.down.circle",
-                        description: Text("在浏览页面解析视频后即可加入下载队列。")
-                    )
-                } else {
-                    List {
-                        ForEach(appState.downloads) { record in
-                            DownloadRow(
-                                record: record,
-                                onShare: { record in
-                                    guard let url = manager.shareableFileURL(for: record) else { return }
-                                    shareURL = url
-                                    showingShare = true
-                                },
-                                onRetry: { manager.retry($0) },
-                                onCancel: { manager.cancel($0) }
-                            )
+            VStack(spacing: 0) {
+                browserToolbar
+
+                WebViewContainer(webView: parser.browserWebView)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                loadRequestedURLIfNeeded()
+                loadBookmarks()
+            }
+            .onChange(of: requestedURL) { _, _ in
+                loadRequestedURLIfNeeded()
+            }
+            .sheet(isPresented: $showVariants) {
+                variantSheet
+            }
+            .sheet(isPresented: $showBookmarks) {
+                bookmarksSheet
+            }
+            .alert(
+                "解析失败",
+                isPresented: Binding(
+                    get: { errorMessage != nil },
+                    set: { if !$0 { errorMessage = nil } }
+                )
+            ) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
+        }
+    }
+
+    private var browserToolbar: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                TextField("输入网页地址", text: $address)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        loadAddress()
+                    }
+
+                Button("打开") {
+                    loadAddress()
+                }
+                .browserGlassButton()
+
+                Button {
+                    addBookmark()
+                } label: {
+                    Image(systemName: "star")
+                }
+                .browserGlassButton()
+
+                Button {
+                    showBookmarks = true
+                } label: {
+                    Image(systemName: "star.fill")
+                }
+                .browserGlassButton()
+            }
+
+            HStack(spacing: 4) {
+                browserControlButton(
+                    "chevron.left",
+                    enabled: parser.browserWebView.canGoBack
+                ) {
+                    parser.browserWebView.goBack()
+                }
+
+                browserControlButton(
+                    "chevron.right",
+                    enabled: parser.browserWebView.canGoForward
+                ) {
+                    parser.browserWebView.goForward()
+                }
+
+                browserControlButton("arrow.clockwise", enabled: true) {
+                    parser.browserWebView.reload()
+                }
+
+                Spacer(minLength: 4)
+
+                Button {
+                    Task {
+                        await parse()
+                    }
+                } label: {
+                    if isParsing {
+                        ProgressView()
+                            .frame(maxWidth: 16)
+                    } else {
+                        Label("解析视频", systemImage: "arrow.down.circle")
+                    }
+                }
+                .browserGlassButton()
+                .disabled(!parser.canParseCurrentPage || isParsing)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+
+    private func browserControlButton(
+        _ systemName: String,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .frame(width: 28, height: 28)
+                .font(.system(size: 14))
+        }
+        .browserGlassButton()
+        .disabled(!enabled)
+    }
+
+    private var variantSheet: some View {
+        NavigationStack {
+            List(parsedVideo?.variants ?? []) { variant in
+                Button {
+                    Task {
+                        await download(variant)
+                    }
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(variant.displayName)
+                            Text(variant.url.host ?? "media")
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
-                        .onDelete { indexSet in
-                            for index in indexSet {
-                                manager.deleteFile(for: appState.downloads[index])
+
+                        Spacer()
+
+                        Image(systemName: "arrow.down.circle.fill")
+                    }
+                }
+            }
+            .navigationTitle(parsedVideo?.title ?? "选择清晰度")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("关闭") {
+                        showVariants = false
+                    }
+                }
+            }
+        }
+    }
+
+    private var bookmarksSheet: some View {
+        NavigationStack {
+            if bookmarks.isEmpty {
+                ContentUnavailableView(
+                    "暂无书签",
+                    systemImage: "star",
+                    description: Text("点击星标按钮保存网址。")
+                )
+                .navigationTitle("书签")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("关闭") {
+                            showBookmarks = false
+                        }
+                    }
+                }
+            } else {
+                List {
+                    ForEach(bookmarks, id: \.self) { bookmark in
+                        Button {
+                            address = bookmark
+                            parser.load(URL(string: bookmark) ?? URL(string: "https://")!)
+                            showBookmarks = false
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(bookmark)
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(2)
+                                Text(URL(string: bookmark)?.host ?? "")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
+                    .onDelete { indexSet in
+                        bookmarks.remove(atOffsets: indexSet)
+                        saveBookmarks()
+                    }
                 }
-            }
-            .navigationTitle("下载")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if appState.downloads.contains(where: {
-                        $0.status == .finished ||
-                        $0.status == .failed ||
-                        $0.status == .cancelled
-                    }) {
-                        Button("清理") {
-                            showingClearConfirmation = true
+                .navigationTitle("书签")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("关闭") {
+                            showBookmarks = false
                         }
                     }
                 }
             }
-            .alert("清理下载记录？", isPresented: $showingClearConfirmation) {
-                Button("取消", role: .cancel) {}
-                Button("清理", role: .destructive) {
-                    appState.clearFinishedDownloads()
-                }
-            } message: {
-                Text("已完成、失败和已取消的任务将从下载列表中移除。")
+        }
+    }
+
+    private func loadRequestedURLIfNeeded() {
+        guard let url = requestedURL else { return }
+
+        requestedURL = nil
+        address = url.absoluteString
+        parser.load(url)
+    }
+
+    private func loadAddress() {
+        var text = address.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !text.contains("://") {
+            text = "https://" + text
+        }
+
+        guard let url = URL(string: text), url.scheme == "https" else {
+            errorMessage = "请输入 HTTPS 地址。"
+            return
+        }
+
+        address = url.absoluteString
+        parser.load(url)
+    }
+
+    private func parse() async {
+        guard parser.canParseCurrentPage else { return }
+
+        isParsing = true
+        defer { isParsing = false }
+
+        do {
+            parsedVideo = try await parser.parseCurrentPage()
+
+            if appState.preferredQuality != "每次询问",
+               let video = parsedVideo,
+               let variant = preferredVariant(
+                    video.variants,
+                    preference: appState.preferredQuality
+               ) {
+                await download(variant)
+            } else {
+                showVariants = true
             }
-            .sheet(isPresented: $showingShare, onDismiss: {
-                shareURL = nil
-            }) {
-                if let url = shareURL {
-                    ActivityView(activityItems: [url])
-                }
-            }
-        }
-    }
-}
-
-struct DownloadRow: View {
-    let record: DownloadRecord
-    let onShare: (DownloadRecord) -> Void
-    let onRetry: (DownloadRecord) -> Void
-    let onCancel: (DownloadRecord) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: iconName)
-                    .foregroundStyle(iconColor)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(record.title)
-                        .lineLimit(2)
-
-                    Text("\(record.quality) · \(record.format.uppercased())")
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                if record.status == .queued || record.status == .downloading {
-                    Button {
-                        onCancel(record)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("取消下载")
-                }
-            }
-
-            // The progress bar is always the last element of each row.
-            ProgressView(value: displayProgress)
-                .progressViewStyle(.linear)
-                .tint(progressColor)
-                .animation(.easeInOut(duration: 0.2), value: displayProgress)
-        }
-        .padding(.vertical, 5)
-        .contentShape(Rectangle())
-        .contextMenu {
-            if record.status == .failed || record.status == .cancelled {
-                Button {
-                    onRetry(record)
-                } label: {
-                    Label("重试", systemImage: "arrow.clockwise")
-                }
-            }
-
-            if record.status == .finished, record.fileURL != nil {
-                Button {
-                    onShare(record)
-                } label: {
-                    Label("分享", systemImage: "square.and.arrow.up")
-                }
-            }
-
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
-    private var displayProgress: Double {
-        switch record.status {
-        case .finished:
-            return 1
-        case .failed:
-            return max(record.progress, 0.05)
-        case .cancelled:
-            return max(record.progress, 0)
-        case .queued, .downloading:
-            return record.progress
+    private func preferredVariant(
+        _ variants: [VideoVariant],
+        preference: String
+    ) -> VideoVariant? {
+        if preference == "最佳" {
+            return variants.max {
+                qualityNumber($0.quality) < qualityNumber($1.quality)
+            } ?? variants.first
         }
+
+        return variants.first {
+            $0.quality.localizedCaseInsensitiveContains(preference)
+        } ?? variants.first
     }
 
-    private var progressColor: Color {
-        switch record.status {
-        case .finished:
-            return .green
-        case .failed:
-            return .red
-        case .cancelled:
-            return .gray
-        case .queued, .downloading:
-            return .accentColor
-        }
+    private func qualityNumber(_ quality: String) -> Int {
+        Int(quality.filter(\.isNumber)) ?? 0
     }
 
-    private var iconColor: Color {
-        switch record.status {
-        case .finished:
-            return .green
-        case .failed:
-            return .red
-        case .cancelled:
-            return .secondary
-        case .queued, .downloading:
-            return .accentColor
-        }
-    }
+    private func download(_ variant: VideoVariant) async {
+        guard let parsedVideo else { return }
 
-    private var iconName: String {
-        switch record.status {
-        case .finished:
-            return "checkmark.circle.fill"
-        case .failed:
-            return "exclamationmark.circle.fill"
-        case .cancelled:
-            return "arrow.clockwise.circle"
-        case .queued, .downloading:
-            return "arrow.down.circle"
-        }
-    }
-}
+        let cookieHeader = await parser.cookieHeaderForCurrentPage()
 
-struct ActivityView: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(
-            activityItems: activityItems,
-            applicationActivities: nil
+        downloads.enqueue(
+            title: parsedVideo.title,
+            variant: variant,
+            referer: parsedVideo.pageURL,
+            cookieHeader: cookieHeader
         )
+
+        showVariants = false
     }
 
-    func updateUIViewController(
-        _ uiViewController: UIActivityViewController,
-        context: Context
-    ) {}
+    private func addBookmark() {
+        let url = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty, !bookmarks.contains(url) else { return }
+        bookmarks.insert(url, at: 0)
+        saveBookmarks()
+    }
+
+    private func loadBookmarks() {
+        if let data = UserDefaults.standard.data(forKey: "VideoBrowserBookmarks"),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            bookmarks = decoded
+        }
+    }
+
+    private func saveBookmarks() {
+        if let encoded = try? JSONEncoder().encode(bookmarks) {
+            UserDefaults.standard.set(encoded, forKey: "VideoBrowserBookmarks")
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func browserGlassButton() -> some View {
+        if #available(iOS 26.0, *) {
+            self.buttonStyle(.glass)
+        } else {
+            self.buttonStyle(.bordered)
+        }
+    }
+}
+
+struct WebViewContainer: UIViewRepresentable {
+    let webView: WKWebView
+
+    func makeUIView(context: Context) -> WKWebView {
+        webView
+    }
+
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
