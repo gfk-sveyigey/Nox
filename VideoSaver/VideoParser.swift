@@ -4,6 +4,8 @@ import WebKit
 @MainActor
 final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     @Published private(set) var isLoading = false
+    @Published private(set) var pageMatchesRule = false
+    @Published private(set) var pageReady = false
 
     private let webView: WKWebView
     private let appState: AppState
@@ -19,17 +21,22 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     }
 
     var browserWebView: WKWebView { webView }
+    var canParseCurrentPage: Bool { pageReady && pageMatchesRule && !isLoading }
 
     func load(_ url: URL) {
         isLoading = true
+        pageReady = false
+        pageMatchesRule = Self.matchesVideoPageRule(url)
         webView.load(URLRequest(url: url))
     }
 
     func parseCurrentPage() async throws -> ParsedVideo {
-        guard let pageURL = webView.url else { throw ParserError.invalidURL }
-        isLoading = true
-        defer { isLoading = false }
+        guard canParseCurrentPage else {
+            if !pageMatchesRule { throw ParserError.unsupportedURL }
+            throw ParserError.pageLoadFailed("页面尚未加载完成。")
+        }
 
+        guard let pageURL = webView.url else { throw ParserError.invalidURL }
         let payload = try await evaluateExtractionScript()
         guard let mediaDefinitions = payload["mediaDefinitions"] as? [[String: Any]] else {
             throw ParserError.noMediaDefinitions
@@ -51,7 +58,8 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         if let userAgent = webView.customUserAgent, !userAgent.isEmpty { request.setValue(userAgent, forHTTPHeaderField: "User-Agent") }
         request.setValue(pageURL.absoluteString, forHTTPHeaderField: "Referer")
 
-        let (data, response): (Data, URLResponse)
+        let data: Data
+        let response: URLResponse
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
@@ -65,9 +73,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         guard let items = object as? [[String: Any]] else { throw ParserError.invalidManifest }
         let variants = items.compactMap { item -> VideoVariant? in
             guard let urlString = item["videoUrl"] as? String, let url = URL(string: urlString) else { return nil }
-            let quality = String(describing: item["quality"] ?? "")
-            let format = String(describing: item["format"] ?? "")
-            return VideoVariant(quality: quality, format: format, url: url)
+            return VideoVariant(quality: String(describing: item["quality"] ?? ""), format: String(describing: item["format"] ?? ""), url: url)
         }
         guard !variants.isEmpty else { throw ParserError.noVideoVariants }
 
@@ -105,8 +111,9 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     func cookieHeaderForCurrentPage() async -> String? {
         await withCheckedContinuation { continuation in
             webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
+                let host = self.webView.url?.host
                 let relevant = cookies.filter { cookie in
-                    guard let host = self.webView.url?.host else { return false }
+                    guard let host else { return false }
                     return host == cookie.domain || host.hasSuffix(cookie.domain)
                 }
                 let value = relevant.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
@@ -115,11 +122,33 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         }
     }
 
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        isLoading = true
+        pageReady = false
+        pageMatchesRule = Self.matchesVideoPageRule(webView.url)
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         isLoading = false
+        pageReady = true
+        pageMatchesRule = Self.matchesVideoPageRule(webView.url)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         isLoading = false
+        pageReady = false
+        pageMatchesRule = Self.matchesVideoPageRule(webView.url)
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        isLoading = false
+        pageReady = false
+        pageMatchesRule = Self.matchesVideoPageRule(webView.url)
+    }
+
+    private static func matchesVideoPageRule(_ url: URL?) -> Bool {
+        guard let url else { return false }
+        let pattern = #"^https://(?:[^./]+\.)?(?:pornhub\.com|pornhubpremium\.com)/view_video\.php\?viewkey=[^&]+(?:&.*)?$"#
+        return url.absoluteString.range(of: pattern, options: .regularExpression) != nil
     }
 }

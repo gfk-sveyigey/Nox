@@ -2,8 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var openURL: URL?
-    @State private var showingBrowser = false
+    let openInBrowser: (URL) -> Void
 
     var body: some View {
         NavigationStack {
@@ -13,14 +12,11 @@ struct HistoryView: View {
                 } else {
                     List {
                         ForEach(appState.history) { item in
-                            Button {
-                                openURL = item.url
-                                showingBrowser = true
-                            } label: {
+                            Button { openInBrowser(item.url) } label: {
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(item.title).foregroundStyle(.primary).lineLimit(2)
-                                    Text(item.url.absoluteString).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                                    Text(item.visitedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(.tertiary)
+                                    Text(item.url.absoluteString).foregroundStyle(.secondary).lineLimit(1)
+                                    Text(item.visitedAt.formatted(date: .abbreviated, time: .shortened)).foregroundStyle(.tertiary)
                                 }
                             }
                             .swipeActions {
@@ -36,16 +32,6 @@ struct HistoryView: View {
                     if !appState.history.isEmpty { Button("清空") { appState.clearHistory() } }
                 }
             }
-            .sheet(isPresented: $showingBrowser) {
-                if let url = openURL { SafariView(url: url) }
-            }
         }
     }
-}
-
-import SafariServices
-struct SafariView: UIViewControllerRepresentable {
-    let url: URL
-    func makeUIViewController(context: Context) -> SFSafariViewController { SFSafariViewController(url: url) }
-    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }

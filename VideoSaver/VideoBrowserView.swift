@@ -7,28 +7,42 @@ struct VideoBrowserView: View {
     @StateObject private var downloads: DownloadManager
     @State private var address = "https://www.pornhub.com/"
     @State private var parsedVideo: ParsedVideo?
-    @State private var selectedVariant: VideoVariant?
     @State private var isParsing = false
     @State private var errorMessage: String?
     @State private var showVariants = false
 
-    init(appState: AppState) {
+    init(appState: AppState, initialURL: URL? = nil) {
         _parser = StateObject(wrappedValue: VideoParser(appState: appState))
         _downloads = StateObject(wrappedValue: DownloadManager(appState: appState))
+        _initialURL = State(initialValue: initialURL)
     }
+
+    @State private var initialURL: URL?
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 browserToolbar
-                Divider()
                 WebViewContainer(webView: parser.browserWebView)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationTitle("浏览器")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showVariants) {
-                variantSheet
+            .task {
+                if let initialURL {
+                    address = initialURL.absoluteString
+                    parser.load(initialURL)
+                    self.initialURL = nil
+                }
             }
+            .onChange(of: initialURL) { _, newURL in
+                guard let newURL else { return }
+                address = newURL.absoluteString
+                parser.load(newURL)
+                initialURL = nil
+            }
+            .sheet(isPresented: $showVariants) { variantSheet }
             .alert("解析失败", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("确定", role: .cancel) {}
             } message: { Text(errorMessage ?? "") }
@@ -56,30 +70,23 @@ struct VideoBrowserView: View {
                     if isParsing { ProgressView() } else { Label("解析视频", systemImage: "arrow.down.circle") }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isParsing)
+                .disabled(!parser.canParseCurrentPage || isParsing)
             }
         }
-        .padding(10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 
     private var variantSheet: some View {
         NavigationStack {
             List(parsedVideo?.variants ?? []) { variant in
                 Button {
-                    selectedVariant = variant
-                    Task {
-                        if let parsedVideo {
-                            let cookieHeader = await parser.cookieHeaderForCurrentPage()
-                            downloads.enqueue(title: parsedVideo.title, variant: variant, referer: parsedVideo.pageURL, cookieHeader: cookieHeader)
-                        }
-                        showVariants = false
-                    }
+                    Task { await download(variant) }
                 } label: {
                     HStack {
                         VStack(alignment: .leading) {
-                            Text(variant.displayName).font(.headline)
+                            Text(variant.displayName)
                             Text(variant.url.host ?? "media")
-                                .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
@@ -105,17 +112,39 @@ struct VideoBrowserView: View {
     }
 
     private func parse() async {
+        guard parser.canParseCurrentPage else { return }
         isParsing = true
         defer { isParsing = false }
         do {
-            let result = try await parser.parseCurrentPage()
-            parsedVideo = result
-            let preferred = result.variants.first(where: { $0.quality.localizedCaseInsensitiveContains(appState.preferredQuality) })
-            selectedVariant = preferred ?? result.variants.first
-            showVariants = true
+            parsedVideo = try await parser.parseCurrentPage()
+            if appState.preferredQuality != "Ask Every Time",
+               let variant = preferredVariant(parsedVideo!.variants, preference: appState.preferredQuality) {
+                await download(variant)
+            } else {
+                showVariants = true
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func preferredVariant(_ variants: [VideoVariant], preference: String) -> VideoVariant? {
+        if preference == "Best" {
+            return variants.max { qualityNumber($0.quality) < qualityNumber($1.quality) } ?? variants.first
+        }
+        return variants.first(where: { $0.quality.localizedCaseInsensitiveContains(preference) }) ?? variants.first
+    }
+
+    private func qualityNumber(_ quality: String) -> Int {
+        let digits = quality.filter(\.isNumber)
+        return Int(digits) ?? 0
+    }
+
+    private func download(_ variant: VideoVariant) async {
+        guard let parsedVideo else { return }
+        let cookieHeader = await parser.cookieHeaderForCurrentPage()
+        downloads.enqueue(title: parsedVideo.title, variant: variant, referer: parsedVideo.pageURL, cookieHeader: cookieHeader)
+        showVariants = false
     }
 }
 
