@@ -93,17 +93,11 @@ struct VideoBrowserView: View {
             }
 
             HStack(spacing: 4) {
-                browserControlButton(
-                    "chevron.left",
-                    enabled: parser.browserWebView.canGoBack
-                ) {
+                browserControlButton("chevron.left", enabled: parser.browserWebView.canGoBack) {
                     parser.browserWebView.goBack()
                 }
 
-                browserControlButton(
-                    "chevron.right",
-                    enabled: parser.browserWebView.canGoForward
-                ) {
+                browserControlButton("chevron.right", enabled: parser.browserWebView.canGoForward) {
                     parser.browserWebView.goForward()
                 }
 
@@ -114,9 +108,7 @@ struct VideoBrowserView: View {
                 Spacer(minLength: 4)
 
                 Button {
-                    Task {
-                        await parse()
-                    }
+                    Task { await parse() }
                 } label: {
                     if isParsing {
                         ProgressView()
@@ -151,9 +143,7 @@ struct VideoBrowserView: View {
         NavigationStack {
             List(parsedVideo?.variants ?? []) { variant in
                 Button {
-                    Task {
-                        await download(variant)
-                    }
+                    Task { await download(variant) }
                 } label: {
                     HStack {
                         VStack(alignment: .leading) {
@@ -191,9 +181,7 @@ struct VideoBrowserView: View {
                 .navigationTitle("书签")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("关闭") {
-                            showBookmarks = false
-                        }
+                        Button("关闭") { showBookmarks = false }
                     }
                 }
             } else {
@@ -223,9 +211,7 @@ struct VideoBrowserView: View {
                 .navigationTitle("书签")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("关闭") {
-                            showBookmarks = false
-                        }
+                        Button("关闭") { showBookmarks = false }
                     }
                 }
             }
@@ -267,10 +253,7 @@ struct VideoBrowserView: View {
 
             if appState.preferredQuality != "每次询问",
                let video = parsedVideo,
-               let variant = preferredVariant(
-                    video.variants,
-                    preference: appState.preferredQuality
-               ) {
+               let variant = preferredVariant(video.variants, preference: appState.preferredQuality) {
                 await download(variant)
             } else {
                 showVariants = true
@@ -355,3 +338,4 @@ struct WebViewContainer: UIViewRepresentable {
 
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
+
