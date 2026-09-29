@@ -115,7 +115,7 @@
             attributes = { LastUpgradeCheck = 2600; TargetAttributes = { F10000010000000000000001 = { CreatedOnToolsVersion = 26.0; }; }; };
             buildConfigurationList = F10000010000000000000006 /* Build configuration list for PBXProject "Nox" */;
             compatibilityVersion = "Xcode 26.0";
-            developmentRegion = en;
+            developmentRegion = "zh-Hans";
             hasScannedForEncodings = 0;
             knownRegions = (en, Base, "zh-Hans", ko, fr, de);
             mainGroup = E10000010000000000000001;
