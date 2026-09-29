@@ -80,6 +80,15 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         await WKWebPageContext(webView: webView).cookieHeader(matching: webView.url)
     }
 
+    /// 让页面里的嗅探脚本立刻重扫一遍（对应原脚本的「重新扫描」按钮）。
+    /// 返回本次新上报的条数。
+    @discardableResult
+    func rescanPage(deep: Bool = true) async -> Int {
+        let script = "window.__MS_SNIFF__ ? window.__MS_SNIFF__(\(deep)) : 0"
+        let value = try? await webView.evaluateJavaScript(script)
+        return (value as? Int) ?? 0
+    }
+
     // MARK: - 站点开关
 
     /// 匹配站点规则 **且** 该站点在设置页处于开启状态

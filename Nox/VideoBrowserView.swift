@@ -7,6 +7,7 @@ struct VideoBrowserView: View {
 
     @StateObject private var parser: VideoParser
     @ObservedObject private var downloads: DownloadManager
+    @ObservedObject private var sniffer = SnifferBridge.shared
 
     @Binding private var requestedURL: URL?
 
@@ -15,6 +16,7 @@ struct VideoBrowserView: View {
     @State private var isParsing = false
     @State private var errorMessage: String?
     @State private var showVariants = false
+    @State private var showSniffer = false
     @FocusState private var addressFocused: Bool
 
     /// 统一控件高度，解决按钮与输入框高低不齐
@@ -36,6 +38,9 @@ struct VideoBrowserView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .bottomTrailing) {
+                snifferBadge
+            }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -131,6 +136,55 @@ struct VideoBrowserView: View {
         .frame(height: controlHeight)
         .browserGlassBar()
     }
+
+    // MARK: - 嗅探面板入口
+
+    /// 悬浮胶囊：显示当前已嗅探到的资源数。
+    ///
+    /// 嗅探是随页面加载被动进行的，这个角标让用户知道「有东西了」，
+    /// 不必先点「解析视频」。没有结果时整体隐藏，且不接收点击，
+    /// 免得挡住 WebView 右下角的原生控件。
+    ///
+    /// `.sheet` 刻意挂在这个徽标上，而不是外层 `VStack`：
+    /// `VStack` 已经挂了 `variantSheet`，同一视图上叠两个 `.sheet` 会互相干扰。
+    private var snifferBadge: some View {
+        Button {
+            showSniffer = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+
+                Text(String(sniffer.items.count))
+                    .monospacedDigit()
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(.plain)
+        .browserGlassBar(cornerRadius: nil)
+        .opacity(sniffer.items.isEmpty ? 0 : 1)
+        .allowsHitTesting(!sniffer.items.isEmpty)
+        .animation(.easeInOut(duration: 0.2), value: sniffer.items.isEmpty)
+        .padding(.trailing, 16)
+        .padding(.bottom, 16)
+        .accessibilityLabel(L("已嗅探"))
+        .sheet(isPresented: $showSniffer) {
+            SnifferSheet(
+                onRescan: {
+                    await parser.rescanPage()
+                },
+                onDownload: { item in
+                    download(item)
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    // MARK: - 清晰度选择
 
     private var variantSheet: some View {
         NavigationStack {
@@ -248,6 +302,7 @@ struct VideoBrowserView: View {
         Int(quality.filter(\.isNumber)) ?? 0
     }
 
+    /// 「解析视频」路径：标题来自页面标题
     private func download(_ variant: VideoVariant) async {
         guard let parsedVideo else { return }
 
@@ -261,6 +316,27 @@ struct VideoBrowserView: View {
         )
 
         showVariants = false
+    }
+
+    /// 嗅探面板路径：标题来自脚本上报的标题（退回文件名 / 域名），
+    /// Referer 用 WebView 当前地址。
+    private func download(_ item: SnifferBridge.Item) {
+        showSniffer = false
+
+        Task {
+            let cookieHeader = await parser.cookieHeaderForCurrentPage()
+
+            downloads.enqueue(
+                title: item.displayTitle,
+                variant: VideoVariant(
+                    quality: item.qualityLabel,
+                    format: item.format,
+                    url: item.url
+                ),
+                referer: parser.browserWebView.url,
+                cookieHeader: cookieHeader
+            )
+        }
     }
 }
 
