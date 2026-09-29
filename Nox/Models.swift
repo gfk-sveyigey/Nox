@@ -175,56 +175,84 @@ struct TransferStats: Equatable {
 
     /// "12.4 MB / 58.7 MB"，总大小未知时只有已下载部分
     var sizeText: String {
-        let received = Self.size(bytesReceived)
+        let received = Self.formattedSize(bytesReceived)
         guard totalBytes > 0 else { return received }
-        return "\(received) / \(Self.size(totalBytes))"
+        return "\(received) / \(Self.formattedSize(totalBytes))"
     }
 
     var speedText: String {
         let value = max(bytesPerSecond, 0)
 
         let scaled: Double
-        let unit: String
+        let unitKey: String
 
-        if value >= 1_000_000 {
+        if value >= 1_000_000_000 {
+            scaled = value / 1_000_000_000
+            unitKey = "GB"
+        } else if value >= 1_000_000 {
             scaled = value / 1_000_000
-            unit = "MB"
+            unitKey = "MB"
         } else if value >= 1_000 {
             scaled = value / 1_000
-            unit = "KB"
+            unitKey = "KB"
         } else {
             scaled = value
-            unit = "B"
+            unitKey = "B"
         }
 
-        let number = scaled >= 100
-            ? String(format: "%.0f", scaled)
-            : String(format: "%.1f", scaled)
-
-        return String(format: String(localized: "%@/s"), "\(number) \(unit)")
+        let number = Self.decimal(scaled, maximumFractionDigits: scaled >= 100 ? 0 : 1)
+        return String(format: String(localized: "%@ %@/s"), number, Self.unitLabel(unitKey))
     }
 
     var displayText: String {
         "\(sizeText) · \(speedText)"
     }
 
-    /// 供其它视图复用的大小格式化（例如「已下载 12.4 MB」）。
+    /// 供其它视图复用的大小格式化（例如「已下载 12.4 MB」）
     static func formattedSize(_ bytes: Int64) -> String {
-        size(bytes)
+        let value = max(bytes, 0)
+
+        let scaled: Double
+        let unitKey: String
+
+        if value >= 1_000_000_000 {
+            scaled = Double(value) / 1_000_000_000
+            unitKey = "GB"
+        } else if value >= 1_000_000 {
+            scaled = Double(value) / 1_000_000
+            unitKey = "MB"
+        } else if value >= 1_000 {
+            scaled = Double(value) / 1_000
+            unitKey = "KB"
+        } else {
+            scaled = Double(value)
+            unitKey = "B"
+        }
+
+        let number = decimal(scaled, maximumFractionDigits: scaled >= 100 ? 0 : 1)
+        return "\(number) \(unitLabel(unitKey))"
     }
 
-    private static func size(_ bytes: Int64) -> String {
-        guard bytes > 0 else { return String(localized: "0 KB") }
-        return byteFormatter.string(fromByteCount: bytes)
+    /// 按 App 语言格式化数字，保证小数点/千分位符合该语言习惯（fr 用 "1,5"）
+    private static func decimal(_ value: Double, maximumFractionDigits: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = AppLocale.current
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = maximumFractionDigits
+        return formatter.string(from: NSNumber(value: value))
+            ?? String(format: "%.\(maximumFractionDigits)f", value)
     }
 
-    private static let byteFormatter: ByteCountFormatter = {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        formatter.allowedUnits = [.useKB, .useMB, .useGB]
-        formatter.isAdaptive = false
-        return formatter
-    }()
+    /// 用 switch 而不是动态拼 key，避免依赖不稳定的 API
+    private static func unitLabel(_ key: String) -> String {
+        switch key {
+        case "GB": return String(localized: "GB")
+        case "MB": return String(localized: "MB")
+        case "KB": return String(localized: "KB")
+        default: return String(localized: "B")
+        }
+    }
 }
 
 struct HistoryItem: Identifiable, Codable {

@@ -152,6 +152,20 @@ final class AppState: ObservableObject {
     }
 }
 
+/// App 当前生效的区域设置。
+/// 不依赖 MainActor，方便 `TransferStats`、日期格式化等纯计算逻辑复用。
+enum AppLocale {
+    static let languageKey = "Nox.appLanguage"
+
+    static var current: Locale {
+        let stored = UserDefaults.standard.string(forKey: languageKey)
+        guard let stored, !stored.isEmpty, stored != "system" else {
+            return .autoupdatingCurrent
+        }
+        return Locale(identifier: stored)
+    }
+}
+
 // MARK: - App 语言
 
 /// App 内可选的显示语言。
@@ -199,7 +213,7 @@ final class LocalizationManager: ObservableObject {
         }
     }
 
-    private let storageKey = "Nox.appLanguage"
+    private let storageKey = AppLocale.languageKe
 
     private init() {
         let stored = UserDefaults.standard.string(forKey: storageKey)
@@ -211,8 +225,7 @@ final class LocalizationManager: ObservableObject {
 
     /// 交给 `\.locale`，让日期、数字格式跟随所选语言
     var locale: Locale {
-        guard let code = language.resolvedCode else { return .autoupdatingCurrent }
-        return Locale(identifier: code)
+        AppLocale.current
     }
 
     private func apply() {

@@ -26,7 +26,7 @@ struct HistoryView: View {
                                 Text(item.url.absoluteString)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
-                                Text(item.visitedAt.formatted(date: .abbreviated, time: .shortened))
+                                Text(item.visitedAt, format: .dateTime.year().month().day().hour().minute())
                                     .foregroundStyle(.tertiary)
                             }
                             .contentShape(Rectangle())

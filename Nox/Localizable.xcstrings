@@ -1,20 +1,52 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
-    "0 KB" : {
+    "B" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "0 KB" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "0 KB" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "0 Ko" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "0 KB" } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "B" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "B" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "o" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "B" } }
       }
     },
-    "%@/s" : {
+    "KB" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@/s" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@/s" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@/s" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@/s" } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "KB" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "KB" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ko" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "KB" } }
+      }
+    },
+    "MB" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "MB" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "MB" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mo" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "MB" } }
+      }
+    },
+    "GB" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "GB" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "GB" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Go" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "GB" } }
+      }
+    },
+    "%@ %@/s" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ %@/s" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ %@/s" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ %@/s" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@ %@/s" } }
+      }
+    },
+    "媒体" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Medium" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Media" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Média" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "미디어" } }
       }
     },
     "下载" : {
