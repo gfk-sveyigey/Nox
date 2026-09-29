@@ -291,7 +291,119 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         Task { await begin(record) }
     }
 
+    // MARK: - HLS（m3u8）
+
+    private func beginHLS(_ record: DownloadRecord) async {
+        let id = record.id
+        cancellingIDs.remove(id)
+
+        var updated = record
+        updated.status = .downloading
+        updated.errorMessage = nil
+        appState.updateDownload(updated)
+
+        transfers[id] = TransferStats()
+        speedSamples[id] = (0, Date(), 0)
+        startProgressTimerIfNeeded()
+
+        do {
+            let merged = try await HLSDownloader(concurrency: 4).download(
+                recordID: id,
+                playlistURL: record.sourceURL,
+                referer: record.refererURL,
+                cookieHeader: record.cookieHeader,
+                userAgent: nil,
+                quality: appState.preferredQuality
+            ) { [weak self] progress in
+                Task { @MainActor in
+                    self?.applyHLSProgress(recordID: id, progress: progress)
+                }
+            }
+
+            guard !cancellingIDs.contains(id) else { return }
+            finishHLS(recordID: id, mergedFile: merged)
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !cancellingIDs.contains(id) else { return }
+            abort(id: id, message: error.localizedDescription)
+        }
+    }
+
+    private func applyHLSProgress(recordID: UUID, progress: HLSDownloader.Progress) {
+        let now = Date()
+        var speed: Double = 0
+
+        if let previous = speedSamples[recordID] {
+            let interval = now.timeIntervalSince(previous.date)
+
+            if interval > 0 {
+                let delta = progress.bytes - previous.bytes
+
+                if delta >= 0 {
+                    let instantaneous = Double(delta) / interval
+                    speed = previous.speed > 0
+                        ? previous.speed * 0.6 + instantaneous * 0.4
+                        : instantaneous
+                }
+            }
+        }
+
+        speedSamples[recordID] = (progress.bytes, now, speed)
+        transfers[recordID] = TransferStats(
+            bytesReceived: progress.bytes,
+            totalBytes: 0,
+            bytesPerSecond: speed
+        )
+
+        guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
+
+        record.receivedBytes = progress.bytes
+        if progress.total > 0 {
+            record.progress = min(Double(progress.completed) / Double(progress.total), 1)
+        }
+
+        appState.updateDownload(record, persist: false)
+    }
+
+    private func finishHLS(recordID: UUID, mergedFile: URL) {
+        guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
+
+        do {
+            let directory = DownloadStorage.documentsDirectory
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+            let filename = Self.safeFilename("\(record.title)-\(record.quality).mp4")
+            let destination = directory.appendingPathComponent(filename)
+
+            try? FileManager.default.removeItem(at: destination)
+            try FileManager.default.moveItem(at: mergedFile, to: destination)
+
+            record.fileName = filename
+            record.fileURL = destination
+            record.status = .finished
+            record.progress = 1
+            record.errorMessage = nil
+            record.receivedBytes = DownloadStorage.fileSize(at: destination)
+        } catch {
+            record.status = .failed
+            record.errorMessage = String(format: L("保存文件失败：%@"), error.localizedDescription)
+        }
+
+        try? FileManager.default.removeItem(at: DownloadStorage.partsDirectory(for: recordID))
+        try? FileManager.default.removeItem(at: DownloadStorage.stagingDirectory(for: recordID))
+
+        clearTransferStats(for: recordID)
+        appState.updateDownload(record)
+    }
+
     private func begin(_ record: DownloadRecord) async {
+        // m3u8 走独立管线：清单 → 分片 → AES-128 → 合并
+        if record.format.lowercased() == "m3u8" {
+            await beginHLS(record)
+            return
+        }
+
         let id = record.id
         cancellingIDs.remove(id)
 

@@ -21,6 +21,11 @@
         A10000010000000000000013 /* PornhubParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000013 /* PornhubParser.swift */; };
         A10000010000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000014 /* Assets.xcassets */; };
         A10000010000000000000015 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000015 /* Localizable.xcstrings */; };
+        A10000010000000000000016 /* GenericSnifferParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000016 /* GenericSnifferParser.swift */; };
+        A10000010000000000000017 /* HLSDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000017 /* HLSDownloader.swift */; };
+        A10000010000000000000018 /* SnifferBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000018 /* SnifferBridge.swift */; };
+        A10000010000000000000019 /* SnifferScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000019 /* SnifferScript.swift */; };
+        A10000010000000000000020 /* MediaSniffer.js in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000020 /* MediaSniffer.js */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +44,11 @@
         B10000010000000000000013 /* PornhubParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PornhubParser.swift; sourceTree = "<group>"; };
         B10000010000000000000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
         B10000010000000000000015 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+        B10000010000000000000016 /* GenericSnifferParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericSnifferParser.swift; sourceTree = "<group>"; };
+        B10000010000000000000017 /* HLSDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HLSDownloader.swift; sourceTree = "<group>"; };
+        B10000010000000000000018 /* SnifferBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnifferBridge.swift; sourceTree = "<group>"; };
+        B10000010000000000000019 /* SnifferScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnifferScript.swift; sourceTree = "<group>"; };
+        B10000010000000000000020 /* MediaSniffer.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = MediaSniffer.js; sourceTree = "<group>"; };
         C10000010000000000000001 /* Nox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -71,10 +81,17 @@
                 B10000010000000000000009,
                 B10000010000000000000010,
                 E10000010000000000000004,
+                E10000010000000000000005,
                 B10000010000000000000014,
                 B10000010000000000000015,
             );
             path = Nox;
+            sourceTree = "<group>";
+        };
+        E10000010000000000000003 /* Products */ = {
+            isa = PBXGroup;
+            children = (C10000010000000000000001);
+            name = Products;
             sourceTree = "<group>";
         };
         E10000010000000000000004 /* Parsers */ = {
@@ -83,14 +100,20 @@
                 B10000010000000000000011,
                 B10000010000000000000012,
                 B10000010000000000000013,
+                B10000010000000000000016,
+                B10000010000000000000017,
             );
             path = Parsers;
             sourceTree = "<group>";
         };
-        E10000010000000000000003 /* Products */ = {
+        E10000010000000000000005 /* Sniffer */ = {
             isa = PBXGroup;
-            children = (C10000010000000000000001);
-            name = Products;
+            children = (
+                B10000010000000000000018,
+                B10000010000000000000019,
+                B10000010000000000000020,
+            );
+            path = Sniffer;
             sourceTree = "<group>";
         };
 /* End PBXGroup section */
@@ -133,6 +156,7 @@
             files = (
                 A10000010000000000000014,
                 A10000010000000000000015,
+                A10000010000000000000020,
             );
             runOnlyForDeploymentPostprocessing = 0;
         };
@@ -155,7 +179,13 @@
                 A10000010000000000000010,
                 A10000010000000000000011,
                 A10000010000000000000012,
-                A10000010000000000000013,
+                A10000010000000000000016,
+                A10000010000000000000017,
+                A10000010000000000000018,
+                A10000010000000000000019,
+                B10000010000000000000013,
+                B10000010000000000000016,
+                B10000010000000000000017,
             );
             runOnlyForDeploymentPostprocessing = 0;
         };

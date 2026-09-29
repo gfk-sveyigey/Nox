@@ -544,6 +544,70 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'écriture du segment" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "조각 파일 쓰기 실패" } }
       }
+    },
+    "通用嗅探" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Universeller Sniffer" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Generic Sniffer" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Analyseur générique" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "범용 스니퍼" } }
+      }
+    },
+    "页面嗅探" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Seiten-Sniffer" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Page" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Page" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "페이지" } }
+      }
+    },
+    "网络嗅探" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Netzwerk-Sniffer" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Network" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réseau" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "네트워크" } }
+      }
+    },
+    "播放器提取" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aus Player" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Player" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lecteur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플레이어" } }
+      }
+    },
+    "HLS 密钥长度错误：%d" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ungültige HLS-Schlüssellänge: %d" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid HLS key length: %d" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Longueur de clé HLS invalide : %d" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "HLS 키 길이 오류: %d" } }
+      }
+    },
+    "HLS 解密失败（%d）" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "HLS-Entschlüsselung fehlgeschlagen (%d)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "HLS decryption failed (%d)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec du déchiffrement HLS (%d)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "HLS 복호화 실패 (%d)" } }
+      }
+    },
+    "不支持的加密方式：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht unterstützte Verschlüsselung: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unsupported encryption: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chiffrement non pris en charge : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "지원하지 않는 암호화: %@" } }
+      }
+    },
+    "这是直播流（没有结束标记），无法合并为文件。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dies ist ein Livestream (ohne End-Markierung) und kann nicht zu einer Datei zusammengefügt werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This is a live stream (no end marker) and cannot be merged into a file." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Il s'agit d'un flux en direct (sans marqueur de fin), impossible à fusionner en un fichier." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "종료 표시가 없는 라이브 스트림이라 파일로 병합할 수 없습니다." } }
+      }
     }
   },
   "version" : "1.0"
