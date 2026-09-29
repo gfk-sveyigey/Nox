@@ -712,6 +712,75 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.updateDownload(record)
     }
 
+    // MARK: - 探测（Range 支持 / 总大小）
+
+    private struct ProbeResult {
+        var supportsRanges: Bool
+        var totalBytes: Int64?
+    }
+
+    /// 用 `Range: bytes=0-0` 探一次：拿到 206 + Content-Range 就说明支持续传，
+    /// 顺便取得文件总大小；返回 200 说明服务器忽略了 Range，只能整文件重下。
+    private static func probe(
+        url: URL,
+        referer: URL?,
+        cookieHeader: String?
+    ) async -> ProbeResult {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+        request.setValue("video/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+
+        if let referer {
+            request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer")
+        }
+        if let cookieHeader, !cookieHeader.isEmpty {
+            request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+        }
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            guard let http = response as? HTTPURLResponse else {
+                return ProbeResult(supportsRanges: false, totalBytes: nil)
+            }
+
+            if http.statusCode == 206,
+               let contentRange = http.value(forHTTPHeaderField: "Content-Range"),
+               let total = totalBytes(fromContentRange: contentRange) {
+                return ProbeResult(supportsRanges: true, totalBytes: total)
+            }
+
+            let length = http.value(forHTTPHeaderField: "Content-Length").flatMap { Int64($0) }
+            return ProbeResult(supportsRanges: false, totalBytes: length)
+        } catch {
+            return ProbeResult(supportsRanges: false, totalBytes: nil)
+        }
+    }
+
+    /// 解析 `Content-Range: bytes 0-0/123456`
+    private static func totalBytes(fromContentRange value: String) -> Int64? {
+        guard let slash = value.lastIndex(of: "/") else { return nil }
+        let total = value[value.index(after: slash)...].trimmingCharacters(in: .whitespaces)
+        guard total != "*" else { return nil }
+        return Int64(total)
+    }
+
+    // MARK: - 文件名
+
+    private static func safeFilename(_ name: String) -> String {
+        let invalid = CharacterSet(charactersIn: "/\\:?%*|\"<>\n\r\t")
+
+        let cleaned = name
+            .components(separatedBy: invalid)
+            .joined(separator: "_")
+
+        let value = String(cleaned.prefix(180))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return value.isEmpty ? "video.mp4" : value
+    }
+
     private func abort(id: UUID, message: String) {
         // 一个分片失败即整体失败；其余分片取消，但分片文件保留，方便重试续传
         let identifiers = contexts
@@ -746,7 +815,6 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         guard let error else { return }
 
         let identifier = task.taskIdentifier
-        let recordID = task.taskDescription.flatMap(UUID.init(uuidString:))
 
         Task { @MainActor in
             guard let context = self.contexts.removeValue(forKey: identifier) else { return }
@@ -766,14 +834,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
             self.abort(
                 id: id,
-                message: error.localizedDescription,
-                expectedRecordID: recordID
+                message: error.localizedDescription
             )
         }
-    }
-
-    private func abort(id: UUID, message: String, expectedRecordID: UUID?) {
-        abort(id: id, message: message)
     }
 
     nonisolated func urlSessionDidFinishEvents(
