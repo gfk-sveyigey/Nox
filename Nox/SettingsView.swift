@@ -7,25 +7,23 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            // 头部放在 Form 之外：不使用 safeAreaInset / .bar 材质，
-            // 既不会出现色带，也不会让滚动条贯穿头部区域。
-            VStack(spacing: 0) {
+            Form {
+                // 图标与名称现在是列表里的第一行，随内容一起滚动。
+                // 用 listRowInsets/Background/Separator 把它伪装成"表头"。
                 appHeader
 
-                Form {
-                    qualitySection
-                    sitesLinkSection
-                    experimentalSection
-                    languageSection
-                    aboutSection
-                }
+                qualitySection
+                sitesLinkSection
+                languageSection
+                experimentalSection
+                aboutSection
             }
             .navigationTitle(String(localized: "设置"))
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 
-    // MARK: - 顶部 App 图标 + 名称（固定）
+    // MARK: - App 图标 + 名称（可滚动）
 
     private var appHeader: some View {
         VStack(spacing: 10) {
@@ -37,8 +35,11 @@ struct SettingsView: View {
                 .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 16)
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     @ViewBuilder
