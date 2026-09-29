@@ -3,6 +3,8 @@ import UIKit
 
 struct HistoryView: View {
     @EnvironmentObject private var appState: AppState
+    @State private var showingClearConfirmation = false
+
     let openInBrowser: (URL) -> Void
 
     var body: some View {
@@ -58,10 +60,18 @@ struct HistoryView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !appState.history.isEmpty {
                         Button("清空") {
-                            appState.clearHistory()
+                            showingClearConfirmation = true
                         }
                     }
                 }
+            }
+            .alert("清空历史记录？", isPresented: $showingClearConfirmation) {
+                Button("取消", role: .cancel) {}
+                Button("清空", role: .destructive) {
+                    appState.clearHistory()
+                }
+            } message: {
+                Text("所有浏览历史将被删除，此操作无法撤销。")
             }
         }
     }

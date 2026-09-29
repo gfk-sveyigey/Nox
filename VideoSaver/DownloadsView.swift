@@ -52,19 +52,19 @@ struct DownloadsView: View {
                         $0.status == .failed ||
                         $0.status == .cancelled
                     }) {
-                        Button("清理") {
+                        Button("清空") {
                             showingClearConfirmation = true
                         }
                     }
                 }
             }
-            .alert("清理下载记录？", isPresented: $showingClearConfirmation) {
+            .alert("清空下载？", isPresented: $showingClearConfirmation) {
                 Button("取消", role: .cancel) {}
-                Button("清理", role: .destructive) {
-                    appState.clearFinishedDownloads()
+                Button("清空", role: .destructive) {
+                    manager.clearFinished()
                 }
             } message: {
-                Text("已完成、失败和已取消的任务将从下载列表中移除。")
+                Text("已完成、失败和已取消的任务将被移除，同时删除对应的本地文件与未完成的分片。此操作无法撤销。")
             }
             .alert("分享失败", isPresented: $showShareFailureAlert) {
                 Button("确定", role: .cancel) {}
@@ -133,14 +133,7 @@ struct DownloadRow: View {
                 .tint(progressColor)
                 .animation(.easeInOut(duration: 0.2), value: displayProgress)
 
-            // 已下载大小 / 总大小 / 速度
-            if record.status == .downloading, let stats {
-                Text(stats.displayText)
-                    .font(.footnote)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            statusLine
         }
         .padding(.vertical, 5)
         .contentShape(Rectangle())
@@ -149,7 +142,7 @@ struct DownloadRow: View {
                 Button {
                     onRetry(record)
                 } label: {
-                    Label("重试", systemImage: "arrow.clockwise")
+                    Label(retryTitle, systemImage: "arrow.clockwise")
                 }
             }
 
@@ -160,6 +153,32 @@ struct DownloadRow: View {
                     Label("分享", systemImage: "square.and.arrow.up")
                 }
             }
+        }
+    }
+
+    /// 暂停过就写「继续」，否则写「重试」
+    private var retryTitle: String {
+        (record.receivedBytes ?? 0) > 0 ? "继续下载" : "重试"
+    }
+
+    @ViewBuilder
+    private var statusLine: some View {
+        if record.status == .downloading, let stats {
+            Text(stats.displayText)
+                .font(.footnote)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else if record.status == .failed, let message = record.errorMessage {
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.red)
+                .lineLimit(2)
+        } else if record.status == .cancelled, let received = record.receivedBytes, received > 0 {
+            Text("已暂停 · 已下载 \(TransferStats.formattedSize(received))，重试可继续")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
     }
 

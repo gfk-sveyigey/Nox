@@ -20,7 +20,12 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         configuration.allowsInlineMediaPlayback = true
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
+
         webView.navigationDelegate = self
+        // 边缘左右滑动 = 后退 / 前进（替代原先的三个按钮）
+        webView.allowsBackForwardNavigationGestures = true
+        // 拖动页面即收起键盘
+        webView.scrollView.keyboardDismissMode = .onDrag
     }
 
     var browserWebView: WKWebView { webView }

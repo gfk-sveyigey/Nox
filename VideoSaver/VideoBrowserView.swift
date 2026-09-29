@@ -14,6 +14,10 @@ struct VideoBrowserView: View {
     @State private var isParsing = false
     @State private var errorMessage: String?
     @State private var showVariants = false
+    @FocusState private var addressFocused: Bool
+
+    /// 统一控件高度，解决按钮与输入框高低不齐
+    private let controlHeight: CGFloat = 40
 
     init(appState: AppState, downloads: DownloadManager, requestedURL: Binding<URL?>) {
         _parser = StateObject(wrappedValue: VideoParser(appState: appState))
@@ -26,6 +30,7 @@ struct VideoBrowserView: View {
             VStack(spacing: 0) {
                 browserToolbar
 
+                // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
                 WebViewContainer(webView: parser.browserWebView)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -41,6 +46,15 @@ struct VideoBrowserView: View {
             .sheet(isPresented: $showVariants) {
                 variantSheet
             }
+            .toolbar {
+                // 输入时可随时收起键盘
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("完成") {
+                        addressFocused = false
+                    }
+                }
+            }
             .alert(
                 "解析失败",
                 isPresented: Binding(
@@ -55,43 +69,22 @@ struct VideoBrowserView: View {
         }
     }
 
+    // MARK: - 顶部工具栏
+
     private var browserToolbar: some View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
-                TextField("输入网页地址", text: $address)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit {
-                        loadAddress()
-                    }
+                addressBar
 
                 Button("打开") {
-                    loadAddress()
+                    openAddress()
                 }
                 .browserGlassButton()
+                .frame(height: controlHeight)
             }
 
             HStack(spacing: 8) {
-                browserControlButton(
-                    "chevron.left",
-                    enabled: parser.browserWebView.canGoBack
-                ) {
-                    parser.browserWebView.goBack()
-                }
-
-                browserControlButton(
-                    "chevron.right",
-                    enabled: parser.browserWebView.canGoForward
-                ) {
-                    parser.browserWebView.goForward()
-                }
-
-                browserControlButton("arrow.clockwise", enabled: true) {
-                    parser.browserWebView.reload()
-                }
-
-                Spacer(minLength: 4)
+                Spacer(minLength: 0)
 
                 Button {
                     Task {
@@ -100,8 +93,10 @@ struct VideoBrowserView: View {
                 } label: {
                     if isParsing {
                         ProgressView()
+                            .frame(height: controlHeight)
                     } else {
                         Label("解析视频", systemImage: "arrow.down.circle")
+                            .frame(height: controlHeight)
                     }
                 }
                 .browserGlassButton()
@@ -112,17 +107,35 @@ struct VideoBrowserView: View {
         .padding(.vertical, 8)
     }
 
-    private func browserControlButton(
-        _ systemName: String,
-        enabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .frame(minWidth: 32, minHeight: 32)
+    private var addressBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "globe")
+                .foregroundStyle(.secondary)
+
+            TextField("输入网页地址", text: $address)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+                .submitLabel(.go)
+                .focused($addressFocused)
+                .onSubmit {
+                    openAddress()
+                }
+
+            if !address.isEmpty {
+                Button {
+                    address = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("清空地址栏")
+            }
         }
-        .browserGlassButton()
-        .disabled(!enabled)
+        .padding(.horizontal, 12)
+        .frame(height: controlHeight)
+        .browserGlassBar()
     }
 
     private var variantSheet: some View {
@@ -158,6 +171,8 @@ struct VideoBrowserView: View {
         }
     }
 
+    // MARK: - 行为
+
     private func loadRequestedURLIfNeeded() {
         guard let url = requestedURL else { return }
 
@@ -166,7 +181,10 @@ struct VideoBrowserView: View {
         parser.load(url)
     }
 
-    private func loadAddress() {
+    private func openAddress() {
+        // 点击「打开」后收起键盘
+        addressFocused = false
+
         var text = address.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if !text.contains("://") {
@@ -184,6 +202,8 @@ struct VideoBrowserView: View {
 
     private func parse() async {
         guard parser.canParseCurrentPage else { return }
+
+        addressFocused = false
 
         isParsing = true
         defer { isParsing = false }
@@ -241,6 +261,8 @@ struct VideoBrowserView: View {
     }
 }
 
+// MARK: - 玻璃样式
+
 private extension View {
     @ViewBuilder
     func browserGlassButton() -> some View {
@@ -250,14 +272,63 @@ private extension View {
             self.buttonStyle(.bordered)
         }
     }
+
+    /// 液态玻璃"容器"样式（地址栏）
+    @ViewBuilder
+    func browserGlassBar(cornerRadius: CGFloat = 12) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+        } else {
+            self.background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+        }
+    }
 }
+
+// MARK: - WKWebView 容器（含下拉刷新）
 
 struct WebViewContainer: UIViewRepresentable {
     let webView: WKWebView
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator(webView: webView)
+    }
+
     func makeUIView(context: Context) -> WKWebView {
-        webView
+        // 下拉刷新（替代原来的「刷新」按钮）
+        if webView.scrollView.refreshControl == nil {
+            let control = UIRefreshControl()
+            control.addTarget(
+                context.coordinator,
+                action: #selector(Coordinator.refresh),
+                for: .valueChanged
+            )
+            webView.scrollView.refreshControl = control
+        }
+
+        return webView
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {}
+
+    final class Coordinator {
+        private weak var webView: WKWebView?
+        private var observation: NSKeyValueObservation?
+
+        init(webView: WKWebView) {
+            self.webView = webView
+
+            // 加载结束后收起刷新指示器，否则会一直转
+            observation = webView.observe(\.isLoading, options: [.new]) { webView, _ in
+                guard !webView.isLoading else { return }
+                webView.scrollView.refreshControl?.endRefreshing()
+            }
+        }
+
+        @objc func refresh() {
+            webView?.reload()
+        }
+    }
 }

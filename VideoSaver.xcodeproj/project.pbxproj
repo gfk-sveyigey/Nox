@@ -6,193 +6,205 @@
   objects = {
 
 /* Begin PBXBuildFile section */
-		A10000010000000000000001 /* VideoSaverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000001 /* VideoSaverApp.swift */; };
-		A10000010000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000002 /* ContentView.swift */; };
-		A10000010000000000000003 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000003 /* Models.swift */; };
-		A10000010000000000000004 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000004 /* AppState.swift */; };
-		A10000010000000000000005 /* VideoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000005 /* VideoParser.swift */; };
-		A10000010000000000000006 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000006 /* DownloadManager.swift */; };
-		A10000010000000000000007 /* VideoBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000007 /* VideoBrowserView.swift */; };
-		A10000010000000000000008 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000008 /* DownloadsView.swift */; };
-		A10000010000000000000009 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000009 /* HistoryView.swift */; };
-		A10000010000000000000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000010 /* SettingsView.swift */; };
-		A10000010000000000000011 /* VideoSiteParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000011 /* VideoSiteParser.swift */; };
-		A10000010000000000000012 /* VideoSiteParserRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000012 /* VideoSiteParserRegistry.swift */; };
-		A10000010000000000000013 /* PornhubParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000013 /* PornhubParser.swift */; };
+        A10000010000000000000001 /* VideoSaverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000001 /* VideoSaverApp.swift */; };
+        A10000010000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000002 /* ContentView.swift */; };
+        A10000010000000000000003 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000003 /* Models.swift */; };
+        A10000010000000000000004 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000004 /* AppState.swift */; };
+        A10000010000000000000005 /* VideoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000005 /* VideoParser.swift */; };
+        A10000010000000000000006 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000006 /* DownloadManager.swift */; };
+        A10000010000000000000007 /* VideoBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000007 /* VideoBrowserView.swift */; };
+        A10000010000000000000008 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000008 /* DownloadsView.swift */; };
+        A10000010000000000000009 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000009 /* HistoryView.swift */; };
+        A10000010000000000000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000010 /* SettingsView.swift */; };
+        A10000010000000000000011 /* VideoSiteParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000011 /* VideoSiteParser.swift */; };
+        A10000010000000000000012 /* VideoSiteParserRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000012 /* VideoSiteParserRegistry.swift */; };
+        A10000010000000000000013 /* PornhubParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000013 /* PornhubParser.swift */; };
+        A10000010000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000014 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		B10000010000000000000001 /* VideoSaverApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSaverApp.swift; sourceTree = "<group>"; };
-		B10000010000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		B10000010000000000000003 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		B10000010000000000000004 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
-		B10000010000000000000005 /* VideoParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoParser.swift; sourceTree = "<group>"; };
-		B10000010000000000000006 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
-		B10000010000000000000007 /* VideoBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoBrowserView.swift; sourceTree = "<group>"; };
-		B10000010000000000000008 /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
-		B10000010000000000000009 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
-		B10000010000000000000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		B10000010000000000000011 /* VideoSiteParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSiteParser.swift; sourceTree = "<group>"; };
-		B10000010000000000000012 /* VideoSiteParserRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSiteParserRegistry.swift; sourceTree = "<group>"; };
-		B10000010000000000000013 /* PornhubParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PornhubParser.swift; sourceTree = "<group>"; };
-		C10000010000000000000001 /* VideoSaver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VideoSaver.app; sourceTree = BUILT_PRODUCTS_DIR; };
+        B10000010000000000000001 /* VideoSaverApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSaverApp.swift; sourceTree = "<group>"; };
+        B10000010000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+        B10000010000000000000003 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+        B10000010000000000000004 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+        B10000010000000000000005 /* VideoParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoParser.swift; sourceTree = "<group>"; };
+        B10000010000000000000006 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
+        B10000010000000000000007 /* VideoBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoBrowserView.swift; sourceTree = "<group>"; };
+        B10000010000000000000008 /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
+        B10000010000000000000009 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+        B10000010000000000000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+        B10000010000000000000011 /* VideoSiteParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSiteParser.swift; sourceTree = "<group>"; };
+        B10000010000000000000012 /* VideoSiteParserRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSiteParserRegistry.swift; sourceTree = "<group>"; };
+        B10000010000000000000013 /* PornhubParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PornhubParser.swift; sourceTree = "<group>"; };
+        B10000010000000000000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+        C10000010000000000000001 /* VideoSaver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VideoSaver.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		D10000010000000000000001 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = ();
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+        D10000010000000000000001 /* Frameworks */ = {
+            isa = PBXFrameworksBuildPhase;
+            buildActionMask = 2147483647;
+            files = ();
+            runOnlyForDeploymentPostprocessing = 0;
+        };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		E10000010000000000000001 = {
-			isa = PBXGroup;
-			children = (E10000010000000000000002, E10000010000000000000003);
-			sourceTree = "<group>";
-		};
-		E10000010000000000000002 /* VideoSaver */ = {
-			isa = PBXGroup;
-			children = (
-				B10000010000000000000001,
-				B10000010000000000000002,
-				B10000010000000000000003,
-				B10000010000000000000004,
-				B10000010000000000000005,
-				B10000010000000000000006,
-				B10000010000000000000007,
-				B10000010000000000000008,
-				B10000010000000000000009,
-				B10000010000000000000010,
-				E10000010000000000000004,
-			);
-			path = VideoSaver;
-			sourceTree = "<group>";
-		};
-		E10000010000000000000004 /* Parsers */ = {
-			isa = PBXGroup;
-			children = (
-				B10000010000000000000011,
-				B10000010000000000000012,
-				B10000010000000000000013,
-			);
-			path = Parsers;
-			sourceTree = "<group>";
-		};
-		E10000010000000000000003 /* Products */ = {
-			isa = PBXGroup;
-			children = (C10000010000000000000001);
-			name = Products;
-			sourceTree = "<group>";
-		};
+        E10000010000000000000001 = {
+            isa = PBXGroup;
+            children = (E10000010000000000000002, E10000010000000000000003);
+            sourceTree = "<group>";
+        };
+        E10000010000000000000002 /* VideoSaver */ = {
+            isa = PBXGroup;
+            children = (
+                B10000010000000000000001,
+                B10000010000000000000002,
+                B10000010000000000000003,
+                B10000010000000000000004,
+                B10000010000000000000005,
+                B10000010000000000000006,
+                B10000010000000000000007,
+                B10000010000000000000008,
+                B10000010000000000000009,
+                B10000010000000000000010,
+                E10000010000000000000004,
+                B10000010000000000000014,
+            );
+            path = VideoSaver;
+            sourceTree = "<group>";
+        };
+        E10000010000000000000004 /* Parsers */ = {
+            isa = PBXGroup;
+            children = (
+                B10000010000000000000011,
+                B10000010000000000000012,
+                B10000010000000000000013,
+            );
+            path = Parsers;
+            sourceTree = "<group>";
+        };
+        E10000010000000000000003 /* Products */ = {
+            isa = PBXGroup;
+            children = (C10000010000000000000001);
+            name = Products;
+            sourceTree = "<group>";
+        };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		F10000010000000000000001 /* VideoSaver */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F10000010000000000000003 /* Build configuration list for PBXNativeTarget "VideoSaver" */;
-			buildPhases = (F10000010000000000000004 /* Sources */, D10000010000000000000001 /* Frameworks */, F10000010000000000000005 /* Resources */);
-			buildRules = ();
-			dependencies = ();
-			name = VideoSaver;
-			productName = VideoSaver;
-			productReference = C10000010000000000000001 /* VideoSaver.app */;
-			productType = "com.apple.product-type.application";
-		};
+        F10000010000000000000001 /* VideoSaver */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = F10000010000000000000003 /* Build configuration list for PBXNativeTarget "VideoSaver" */;
+            buildPhases = (F10000010000000000000004 /* Sources */, D10000010000000000000001 /* Frameworks */, F10000010000000000000005 /* Resources */);
+            buildRules = ();
+            dependencies = ();
+            name = VideoSaver;
+            productName = VideoSaver;
+            productReference = C10000010000000000000001 /* VideoSaver.app */;
+            productType = "com.apple.product-type.application";
+        };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		F10000010000000000000002 /* Project object */ = {
-			isa = PBXProject;
-			attributes = { LastUpgradeCheck = 2600; TargetAttributes = { F10000010000000000000001 = { CreatedOnToolsVersion = 26.0; }; }; };
-			buildConfigurationList = F10000010000000000000006 /* Build configuration list for PBXProject "VideoSaver" */;
-			compatibilityVersion = "Xcode 26.0";
-			developmentRegion = en;
-			hasScannedForEncodings = 0;
-			knownRegions = (en, Base);
-			mainGroup = E10000010000000000000001;
-			productRefGroup = E10000010000000000000003 /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (F10000010000000000000001);
-		};
+        F10000010000000000000002 /* Project object */ = {
+            isa = PBXProject;
+            attributes = { LastUpgradeCheck = 2600; TargetAttributes = { F10000010000000000000001 = { CreatedOnToolsVersion = 26.0; }; }; };
+            buildConfigurationList = F10000010000000000000006 /* Build configuration list for PBXProject "VideoSaver" */;
+            compatibilityVersion = "Xcode 26.0";
+            developmentRegion = en;
+            hasScannedForEncodings = 0;
+            knownRegions = (en, Base);
+            mainGroup = E10000010000000000000001;
+            productRefGroup = E10000010000000000000003 /* Products */;
+            projectDirPath = "";
+            projectRoot = "";
+            targets = (F10000010000000000000001);
+        };
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		F10000010000000000000005 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+        F10000010000000000000005 /* Resources */ = {
+            isa = PBXResourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = (
+                A10000010000000000000014,
+            );
+            runOnlyForDeploymentPostprocessing = 0;
+        };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		F10000010000000000000004 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A10000010000000000000001,
-				A10000010000000000000002,
-				A10000010000000000000003,
-				A10000010000000000000004,
-				A10000010000000000000005,
-				A10000010000000000000006,
-				A10000010000000000000007,
-				A10000010000000000000008,
-				A10000010000000000000009,
-				A10000010000000000000010,
-				A10000010000000000000011,
-				A10000010000000000000012,
-				A10000010000000000000013,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+        F10000010000000000000004 /* Sources */ = {
+            isa = PBXSourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = (
+                A10000010000000000000001,
+                A10000010000000000000002,
+                A10000010000000000000003,
+                A10000010000000000000004,
+                A10000010000000000000005,
+                A10000010000000000000006,
+                A10000010000000000000007,
+                A10000010000000000000008,
+                A10000010000000000000009,
+                A10000010000000000000010,
+                A10000010000000000000011,
+                A10000010000000000000012,
+                A10000010000000000000013,
+            );
+            runOnlyForDeploymentPostprocessing = 0;
+        };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		G10000010000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
-			ALWAYS_SEARCH_USER_PATHS = NO;
-			CLANG_ENABLE_MODULES = YES;
-			CODE_SIGN_STYLE = Automatic;
-			CURRENT_PROJECT_VERSION = 1;
-			DEVELOPMENT_TEAM = "";
-			GENERATE_INFOPLIST_FILE = NO;
-			INFOPLIST_FILE = Info.plist;
-			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-			MARKETING_VERSION = 1.0.0;
-			PRODUCT_BUNDLE_IDENTIFIER = com.example.VideoSaver;
-			PRODUCT_NAME = "$(TARGET_NAME)";
-			SDKROOT = iphoneos;
-			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-			TARGETED_DEVICE_FAMILY = 1;
-			SUPPORTS_MACCATALYST = NO;
-			SWIFT_EMIT_LOC_STRINGS = YES;
-			SWIFT_VERSION = 5.0;
-		}; name = Debug; };
-		G10000010000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
-			ALWAYS_SEARCH_USER_PATHS = NO;
-			CLANG_ENABLE_MODULES = YES;
-			CODE_SIGN_STYLE = Automatic;
-			CURRENT_PROJECT_VERSION = 1;
-			DEVELOPMENT_TEAM = "";
-			GENERATE_INFOPLIST_FILE = NO;
-			INFOPLIST_FILE = Info.plist;
-			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-			MARKETING_VERSION = 1.0.0;
-			PRODUCT_BUNDLE_IDENTIFIER = com.example.VideoSaver;
-			PRODUCT_NAME = "$(TARGET_NAME)";
-			SDKROOT = iphoneos;
-			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-			TARGETED_DEVICE_FAMILY = 1;
-			SUPPORTS_MACCATALYST = NO;
-			SWIFT_EMIT_LOC_STRINGS = YES;
-			SWIFT_VERSION = 5.0;
-		}; name = Release; };
-		G10000010000000000000003 /* Project Debug */ = {isa = XCBuildConfiguration; buildSettings = { SWIFT_VERSION = 5.0; }; name = Debug; };
-		G10000010000000000000004 /* Project Release */ = {isa = XCBuildConfiguration; buildSettings = { SWIFT_VERSION = 5.0; }; name = Release; };
+        G10000010000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+            ALWAYS_SEARCH_USER_PATHS = NO;
+            ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+            CLANG_ENABLE_MODULES = YES;
+            CODE_SIGN_STYLE = Automatic;
+            CURRENT_PROJECT_VERSION = 1;
+            DEVELOPMENT_TEAM = "";
+            GENERATE_INFOPLIST_FILE = NO;
+            INFOPLIST_FILE = Info.plist;
+            IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+            MARKETING_VERSION = 1.0.0;
+            PRODUCT_BUNDLE_IDENTIFIER = com.example.VideoSaver;
+            PRODUCT_NAME = "$(TARGET_NAME)";
+            SDKROOT = iphoneos;
+            SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+            TARGETED_DEVICE_FAMILY = 1;
+            SUPPORTS_MACCATALYST = NO;
+            SWIFT_EMIT_LOC_STRINGS = YES;
+            SWIFT_VERSION = 5.0;
+        }; name = Debug; };
+        G10000010000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+            ALWAYS_SEARCH_USER_PATHS = NO;
+            ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+            CLANG_ENABLE_MODULES = YES;
+            CODE_SIGN_STYLE = Automatic;
+            CURRENT_PROJECT_VERSION = 1;
+            DEVELOPMENT_TEAM = "";
+            GENERATE_INFOPLIST_FILE = NO;
+            INFOPLIST_FILE = Info.plist;
+            IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+            MARKETING_VERSION = 1.0.0;
+            PRODUCT_BUNDLE_IDENTIFIER = com.example.VideoSaver;
+            PRODUCT_NAME = "$(TARGET_NAME)";
+            SDKROOT = iphoneos;
+            SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+            TARGETED_DEVICE_FAMILY = 1;
+            SUPPORTS_MACCATALYST = NO;
+            SWIFT_EMIT_LOC_STRINGS = YES;
+            SWIFT_VERSION = 5.0;
+        }; name = Release; };
+        G10000010000000000000003 /* Project Debug */ = {isa = XCBuildConfiguration; buildSettings = { SWIFT_VERSION = 5.0; }; name = Debug; };
+        G10000010000000000000004 /* Project Release */ = {isa = XCBuildConfiguration; buildSettings = { SWIFT_VERSION = 5.0; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F10000010000000000000003 /* Build configuration list for PBXNativeTarget "VideoSaver" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000001, G10000010000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		F10000010000000000000006 /* Build configuration list for PBXProject "VideoSaver" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000003, G10000010000000000000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+        F10000010000000000000003 /* Build configuration list for PBXNativeTarget "VideoSaver" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000001, G10000010000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+        F10000010000000000000006 /* Build configuration list for PBXProject "VideoSaver" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000003, G10000010000000000000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
   };
   rootObject = F10000010000000000000002 /* Project object */;
