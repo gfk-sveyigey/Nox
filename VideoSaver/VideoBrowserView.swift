@@ -46,15 +46,6 @@ struct VideoBrowserView: View {
             .sheet(isPresented: $showVariants) {
                 variantSheet
             }
-            .toolbar {
-                // 输入时可随时收起键盘
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("完成") {
-                        addressFocused = false
-                    }
-                }
-            }
             .alert(
                 "解析失败",
                 isPresented: Binding(

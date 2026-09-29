@@ -7,34 +7,21 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("下载") {
-                    Picker("下载清晰度", selection: $appState.preferredQuality) {
-                        ForEach(PreferredQuality.allCases) { quality in
-                            Text(quality.title).tag(quality)
-                        }
-                    }
-                    .onChange(of: appState.preferredQuality) { _, _ in
-                        appState.persist()
-                    }
-                }
-
-                sitesSection
-
-                experimentalSection
-
-                languageSection
-
-                Section("关于") {
-                    LabeledContent("版本", value: Self.appVersion)
-                }
-            }
-            .navigationTitle("设置")
-            .navigationBarTitleDisplayMode(.inline)
-            // 固定在顶部：表单内容从头部下方滚过，头部不会被遮挡
-            .safeAreaInset(edge: .top, spacing: 0) {
+            // 头部放在 Form 之外：不使用 safeAreaInset / .bar 材质，
+            // 既不会出现色带，也不会让滚动条贯穿头部区域。
+            VStack(spacing: 0) {
                 appHeader
+
+                Form {
+                    qualitySection
+                    sitesLinkSection
+                    experimentalSection
+                    languageSection
+                    aboutSection
+                }
             }
+            .navigationTitle(String(localized: "设置"))
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
@@ -50,9 +37,8 @@ struct SettingsView: View {
                 .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 14)
-        .padding(.bottom, 14)
-        .background(.bar)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
     }
 
     @ViewBuilder
@@ -80,11 +66,45 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - 下载
+
+    private var qualitySection: some View {
+        Section {
+            Picker(String(localized: "下载清晰度"), selection: $appState.preferredQuality) {
+                ForEach(PreferredQuality.allCases) { quality in
+                    Text(quality.title).tag(quality)
+                }
+            }
+            .onChange(of: appState.preferredQuality) { _, _ in
+                appState.persist()
+            }
+        }
+    }
+
+    // MARK: - 视频站点（二级页入口）
+
+    private var sitesLinkSection: some View {
+        Section {
+            NavigationLink {
+                SiteSettingsView()
+            } label: {
+                LabeledContent(
+                    String(localized: "视频站点"),
+                    value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
+                )
+            }
+        }
+    }
+
+    private var enabledSiteCount: Int {
+        VideoSiteParserRegistry.all.filter { appState.isSiteEnabled($0.identifier) }.count
+    }
+
     // MARK: - 语言
 
     private var languageSection: some View {
         Section {
-            Picker("语言", selection: $localization.language) {
+            Picker(String(localized: "语言"), selection: $localization.language) {
                 ForEach(AppLanguage.allCases) { language in
                     Text(language.title).tag(language)
                 }
@@ -96,52 +116,39 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 站点开关
-
-    private var sitesSection: some View {
-        Section {
-            ForEach(siteToggles) { site in
-                Toggle(site.title, isOn: siteBinding(for: site.id))
-            }
-        } header: {
-            Text("视频站点")
-        } footer: {
-            Text("关闭后，对应网站的页面将无法解析，「解析视频」按钮也会置灰。")
-        }
-    }
-
-    private func siteBinding(for identifier: String) -> Binding<Bool> {
-        Binding(
-            get: { appState.isSiteEnabled(identifier) },
-            set: { appState.setSite(identifier, enabled: $0) }
-        )
-    }
-
-    /// 把解析器列表转成可 `ForEach` 的简单结构，
-    /// 避免对 `any VideoSiteParser` 取 key path。
-    private var siteToggles: [SiteToggle] {
-        VideoSiteParserRegistry.all.map {
-            SiteToggle(id: $0.identifier, title: $0.displayName)
-        }
-    }
-
-    private struct SiteToggle: Identifiable {
-        let id: String
-        let title: String
-    }
-
     // MARK: - 实验性功能
 
     private var experimentalSection: some View {
         Section {
-            Toggle("多线程下载", isOn: $appState.experimentalMultiThreadDownload)
+            Toggle(String(localized: "多线程下载"), isOn: $appState.experimentalMultiThreadDownload)
                 .onChange(of: appState.experimentalMultiThreadDownload) { _, _ in
                     appState.persist()
                 }
+
+            if appState.experimentalMultiThreadDownload {
+                Picker(String(localized: "下载线程数"), selection: $appState.multiThreadSegmentCount) {
+                    ForEach(Array(AppState.segmentCountRange), id: \.self) { count in
+                        Text(String(count)).tag(count)
+                    }
+                }
+                .onChange(of: appState.multiThreadSegmentCount) { _, _ in
+                    appState.persist()
+                }
+            }
         } header: {
             Text("实验性功能")
         } footer: {
-            Text("把文件分成 4 段并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。")
+            Text("把文件分成多个分片并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。")
+        }
+    }
+
+    // MARK: - 关于
+
+    private var aboutSection: some View {
+        Section {
+            LabeledContent(String(localized: "版本"), value: Self.appVersion)
+        } header: {
+            Text("关于")
         }
     }
 
@@ -171,5 +178,46 @@ struct SettingsView: View {
         }
 
         return UIImage(named: "AppIcon")
+    }
+}
+
+/// 视频站点开关的二级页。
+///
+/// 站点数量增长后，这里会自动变长，不用改设置主页的结构。
+struct SiteSettingsView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(siteToggles) { site in
+                    Toggle(site.title, isOn: siteBinding(for: site.id))
+                }
+            } footer: {
+                Text("关闭后，对应网站的页面将无法解析，「解析视频」按钮也会置灰。")
+            }
+        }
+        .navigationTitle(String(localized: "视频站点"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func siteBinding(for identifier: String) -> Binding<Bool> {
+        Binding(
+            get: { appState.isSiteEnabled(identifier) },
+            set: { appState.setSite(identifier, enabled: $0) }
+        )
+    }
+
+    /// 把解析器列表转成可 `ForEach` 的简单结构，
+    /// 避免对 `any VideoSiteParser` 取 key path。
+    private var siteToggles: [SiteToggle] {
+        VideoSiteParserRegistry.all.map {
+            SiteToggle(id: $0.identifier, title: $0.displayName)
+        }
+    }
+
+    private struct SiteToggle: Identifiable {
+        let id: String
+        let title: String
     }
 }

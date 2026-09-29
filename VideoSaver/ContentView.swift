@@ -15,22 +15,22 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             VideoBrowserView(appState: appState, downloads: downloadManager, requestedURL: $browserURL)
-                .tabItem { Label("浏览", systemImage: "safari") }
+                .tabItem { Label(String(localized: "浏览"), systemImage: "safari") }
                 .tag(0)
 
             DownloadsView(appState: appState, manager: downloadManager)
-                .tabItem { Label("下载", systemImage: "arrow.down.circle") }
+                .tabItem { Label(String(localized: "下载"), systemImage: "arrow.down.circle") }
                 .tag(1)
 
             HistoryView { url in
                 browserURL = url
                 selectedTab = 0
             }
-            .tabItem { Label("历史", systemImage: "clock") }
+            .tabItem { Label(String(localized: "历史"), systemImage: "clock") }
             .tag(2)
 
             SettingsView()
-                .tabItem { Label("设置", systemImage: "gearshape") }
+                .tabItem { Label(String(localized: "设置"), systemImage: "gearshape") }
                 .tag(3)
         }
         .environmentObject(appState)
