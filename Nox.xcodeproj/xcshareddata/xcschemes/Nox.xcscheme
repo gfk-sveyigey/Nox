@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F10000010000000000000001"
-               BuildableName = "VideoSaver.app"
-               BlueprintName = "VideoSaver"
-               ReferencedContainer = "container:VideoSaver.xcodeproj">
+               BuildableName = "Nox.app"
+               BlueprintName = "Nox"
+               ReferencedContainer = "container:Nox.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -38,9 +38,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F10000010000000000000001"
-            BuildableName = "VideoSaver.app"
-            BlueprintName = "VideoSaver"
-            ReferencedContainer = "container:VideoSaver.xcodeproj">
+            BuildableName = "Nox.app"
+            BlueprintName = "Nox"
+            ReferencedContainer = "container:Nox.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F10000010000000000000001"
-            BuildableName = "VideoSaver.app"
-            BlueprintName = "VideoSaver"
-            ReferencedContainer = "container:VideoSaver.xcodeproj">
+            BuildableName = "Nox.app"
+            BlueprintName = "Nox"
+            ReferencedContainer = "container:Nox.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
