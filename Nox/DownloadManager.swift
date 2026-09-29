@@ -638,7 +638,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         try? FileManager.default.removeItem(at: stagingURL)
 
         guard appended else {
-            abort(id: recordID, message: String(localized: "写入分片文件失败"))
+            abort(id: recordID, message: L("写入分片文件失败"))
             return
         }
 
@@ -714,7 +714,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             }
         } catch {
             record.status = .failed
-            record.errorMessage = String(localized: "保存文件失败：\(error.localizedDescription)")
+            record.errorMessage = String(format: L("保存文件失败：%@"), error.localizedDescription)
         }
 
         try? FileManager.default.removeItem(at: partsDirectory)
@@ -811,7 +811,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         guard record.status == .downloading else { return }
 
         record.status = .failed
-        record.errorMessage = String(localized: "下载失败：\(message)")
+        record.errorMessage = String(format: L("下载失败：%@"), message)
 
         if let stats = transfers[id], stats.bytesReceived > 0 {
             record.receivedBytes = stats.bytesReceived

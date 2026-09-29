@@ -44,7 +44,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     func parseCurrentPage() async throws -> ParsedVideo {
         guard canParseCurrentPage else {
             if !pageMatchesRule { throw ParserError.unsupportedURL }
-            throw ParserError.pageLoadFailed(String(localized: "页面尚未加载完成。"))
+            throw ParserError.pageLoadFailed(L("页面尚未加载完成。"))
         }
 
         guard let pageURL = webView.url else { throw ParserError.invalidURL }

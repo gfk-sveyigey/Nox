@@ -8,7 +8,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // 图标与名称现在是列表里的第一行，随内容一起滚动。
+                // 图标与名称是列表第一行，随内容一起滚动。
                 // 用 listRowInsets/Background/Separator 把它伪装成"表头"。
                 appHeader
 
@@ -18,7 +18,7 @@ struct SettingsView: View {
                 experimentalSection
                 aboutSection
             }
-            .navigationTitle(String(localized: "设置"))
+            .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -71,7 +71,7 @@ struct SettingsView: View {
 
     private var qualitySection: some View {
         Section {
-            Picker(String(localized: "下载清晰度"), selection: $appState.preferredQuality) {
+            Picker(L("下载清晰度"), selection: $appState.preferredQuality) {
                 ForEach(PreferredQuality.allCases) { quality in
                     Text(quality.title).tag(quality)
                 }
@@ -90,7 +90,7 @@ struct SettingsView: View {
                 SiteSettingsView()
             } label: {
                 LabeledContent(
-                    String(localized: "视频站点"),
+                    L("视频站点"),
                     value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
                 )
             }
@@ -105,15 +105,15 @@ struct SettingsView: View {
 
     private var languageSection: some View {
         Section {
-            Picker(String(localized: "语言"), selection: $localization.language) {
+            Picker(L("语言"), selection: $localization.language) {
                 ForEach(AppLanguage.allCases) { language in
                     Text(language.title).tag(language)
                 }
             }
         } header: {
-            Text("语言")
+            Text(L("语言"))
         } footer: {
-            Text("选择 App 的显示语言。选择「跟随系统」时，App 会与系统语言保持一致。")
+            Text(L("选择 App 的显示语言。选择「跟随系统」时，App 会与系统语言保持一致。"))
         }
     }
 
@@ -121,13 +121,13 @@ struct SettingsView: View {
 
     private var experimentalSection: some View {
         Section {
-            Toggle(String(localized: "多线程下载"), isOn: $appState.experimentalMultiThreadDownload)
+            Toggle(L("多线程下载"), isOn: $appState.experimentalMultiThreadDownload)
                 .onChange(of: appState.experimentalMultiThreadDownload) { _, _ in
                     appState.persist()
                 }
 
             if appState.experimentalMultiThreadDownload {
-                Picker(String(localized: "下载线程数"), selection: $appState.multiThreadSegmentCount) {
+                Picker(L("下载线程数"), selection: $appState.multiThreadSegmentCount) {
                     ForEach(Array(AppState.segmentCountRange), id: \.self) { count in
                         Text(String(count)).tag(count)
                     }
@@ -137,9 +137,9 @@ struct SettingsView: View {
                 }
             }
         } header: {
-            Text("实验性功能")
+            Text(L("实验性功能"))
         } footer: {
-            Text("把文件分成多个分片并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。")
+            Text(L("把文件分成多个分片并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。"))
         }
     }
 
@@ -147,9 +147,9 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            LabeledContent(String(localized: "版本"), value: Self.appVersion)
+            LabeledContent(L("版本"), value: Self.appVersion)
         } header: {
-            Text("关于")
+            Text(L("关于"))
         }
     }
 
@@ -187,6 +187,7 @@ struct SettingsView: View {
 /// 站点数量增长后，这里会自动变长，不用改设置主页的结构。
 struct SiteSettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var localization = LocalizationManager.shared
 
     var body: some View {
         Form {
@@ -195,10 +196,10 @@ struct SiteSettingsView: View {
                     Toggle(site.title, isOn: siteBinding(for: site.id))
                 }
             } footer: {
-                Text("关闭后，对应网站的页面将无法解析，「解析视频」按钮也会置灰。")
+                Text(L("关闭后，对应网站的页面将无法解析，「解析视频」按钮也会置灰。"))
             }
         }
-        .navigationTitle(String(localized: "视频站点"))
+        .navigationTitle(L("视频站点"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
