@@ -55,7 +55,7 @@ struct HistoryView: View {
                     }
                 }
             }
-            .navigationTitle("历史")
+            .navigationTitle(String(localized: "历史"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

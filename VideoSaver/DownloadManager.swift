@@ -114,8 +114,6 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     /// 下载中的实时统计（已下载 / 总大小 / 速度），仅内存。
     @Published private(set) var transfers: [UUID: TransferStats] = [:]
 
-    /// 多线程下载的分片数
-    static let multiThreadSegmentCount = 4
     /// 小于该体积不分片，避免为小文件发起多次请求
     private static let minimumSegmentLength: Int64 = 2 * 1024 * 1024
 
@@ -141,11 +139,12 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.background(
-            withIdentifier: "com.aholic.nox"
+            withIdentifier: "com.example.nox.downloads"
         )
         configuration.isDiscretionary = false
         configuration.sessionSendsLaunchEvents = true
-        configuration.httpMaximumConnectionsPerHost = 8
+        // 允许多线程设置最大到 32 条并发连接
+        configuration.httpMaximumConnectionsPerHost = AppState.segmentCountRange.upperBound
         return URLSession(
             configuration: configuration,
             delegate: self,
@@ -342,7 +341,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         // 续传的关键：沿用上次的分片数量，保证边界与磁盘上的分片一一对应
         let desiredCount = appState.experimentalMultiThreadDownload
-            ? Self.multiThreadSegmentCount
+            ? appState.multiThreadSegmentCount
             : 1
 
         let count: Int

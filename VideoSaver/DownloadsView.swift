@@ -44,7 +44,7 @@ struct DownloadsView: View {
                     }
                 }
             }
-            .navigationTitle("下载")
+            .navigationTitle(String(localized: "下载"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

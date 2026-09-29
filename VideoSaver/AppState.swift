@@ -3,13 +3,21 @@ import SwiftUI
 
 @MainActor
 final class AppState: ObservableObject {
+    /// 可选的下载线程数范围
+    static let segmentCountRange = 1...32
+    /// 多线程下载的默认线程数
+    static let defaultSegmentCount = 4
+
     @Published var history: [HistoryItem] = []
     @Published var downloads: [DownloadRecord] = []
     @Published var preferredQuality: PreferredQuality = .ask
     /// 实验性：多线程（分片）下载
     @Published var experimentalMultiThreadDownload = false
+    /// 下载线程数（1...32），仅在多线程下载开启时生效
+    @Published var multiThreadSegmentCount: Int = AppState.defaultSegmentCount
     /// 被用户关闭的站点标识（未列入即视为开启）
     @Published private var disabledSiteIDs: Set<String> = []
+
 
     private let historyKey = "VideoSaver.history"
     private let downloadsKey = "VideoSaver.downloads"
@@ -107,6 +115,7 @@ final class AppState: ObservableObject {
 
         defaults.set(preferredQuality.rawValue, forKey: qualityKey)
         defaults.set(experimentalMultiThreadDownload, forKey: multiThreadKey)
+        defaults.set(multiThreadSegmentCount, forKey: segmentCountKey)
         defaults.set(Array(disabledSiteIDs).sorted(), forKey: disabledSitesKey)
     }
 
@@ -133,6 +142,12 @@ final class AppState: ObservableObject {
 
         preferredQuality = PreferredQuality.migrated(from: defaults.string(forKey: qualityKey))
         experimentalMultiThreadDownload = defaults.bool(forKey: multiThreadKey)
+
+        let storedSegments = defaults.integer(forKey: segmentCountKey)
+        multiThreadSegmentCount = Self.segmentCountRange.contains(storedSegments)
+            ? storedSegments
+            : Self.defaultSegmentCount
+
         disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
     }
 }
