@@ -18,12 +18,12 @@ final class AppState: ObservableObject {
     /// 被用户关闭的站点标识（未列入即视为开启）
     @Published private var disabledSiteIDs: Set<String> = []
 
-
-    private let historyKey = "VideoSaver.history"
-    private let downloadsKey = "VideoSaver.downloads"
-    private let qualityKey = "VideoSaver.quality"
-    private let multiThreadKey = "VideoSaver.multiThreadDownload"
-    private let disabledSitesKey = "VideoSaver.disabledSites"
+    private let historyKey = "Nox.history"
+    private let downloadsKey = "Nox.downloads"
+    private let qualityKey = "Nox.quality"
+    private let multiThreadKey = "Nox.multiThreadDownload"
+    private let segmentCountKey = "Nox.multiThreadSegmentCount"
+    private let disabledSitesKey = "Nox.disabledSites"
 
     init() {
         load()
