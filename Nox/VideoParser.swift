@@ -46,6 +46,24 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     /// 当前页面命中的站点名（仅当该站点开关为开启时）
     var currentSiteName: String? { activeParser(for: webView.url)?.displayName }
 
+    /// 当前页面实际生效的解析器标识。
+    ///
+    /// 视图层用它区分「这条页面是被具名站点接管的，还是靠通用嗅探兜底」——
+    /// 具名站点命中时，嗅探入口没有存在意义（解析结果更准，且会重复）。
+    var currentParserIdentifier: String? { activeParser(for: webView.url)?.identifier }
+
+    /// 当前页面地址。
+    ///
+    /// 从嗅探面板加入下载时，历史记的是**页面**地址而不是媒体地址：
+    /// 这样历史页的「跳转网页」能回到原页面，同一页面上的多条资源也不会各占一条记录。
+    var currentPageURL: URL? { webView.url }
+
+    /// 当前页面标题。WKWebView 加载完成后会自动维护，取用无需再执行 JS。
+    var currentPageTitle: String? {
+        guard let title = webView.title, !title.isEmpty else { return nil }
+        return title
+    }
+
     func load(_ url: URL) {
         SnifferBridge.shared.reset()
         isLoading = true

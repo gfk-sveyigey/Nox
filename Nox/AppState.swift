@@ -51,8 +51,16 @@ final class AppState: ObservableObject {
 
     // MARK: - 历史
 
+    /// 追加一条历史。
+    ///
+    /// 同一页面只保留最新一条：用 `URL.pageIdentity` 而不是原样比较 ——
+    /// 同一个页面常带不同的跟踪参数（`utm_*`、`spm_id_from`…），
+    /// 逐字比较会让它反复堆出新记录，历史页很快被同一页刷满。
     func addHistory(title: String, url: URL) {
-        history.removeAll { $0.url == url }
+        let identity = url.pageIdentity
+
+        history.removeAll { $0.url.pageIdentity == identity }
+
         history.insert(
             HistoryItem(id: UUID(), title: title, url: url, visitedAt: .now),
             at: 0
@@ -63,6 +71,14 @@ final class AppState: ObservableObject {
 
     func removeHistory(_ item: HistoryItem) {
         history.removeAll { $0.id == item.id }
+        persist()
+    }
+
+    /// 批量删除（历史页多选时用）
+    func removeHistory(ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+
+        history.removeAll { ids.contains($0.id) }
         persist()
     }
 

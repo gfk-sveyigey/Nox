@@ -6,8 +6,8 @@ import Foundation
 /// 因此对「解析视频」按钮而言，任何一个 https 页面都变为可解析。
 @MainActor
 final class GenericSnifferParser: VideoSiteParser {
-    /// 稳定标识。`identifier` 是协议要求，这里暴露成静态量，
-    /// 方便视图层在不构造实例的情况下查询「通用嗅探」是否被关闭。
+    /// 稳定标识。`identifier` 是协议要求，这里再暴露成静态量，
+    /// 方便视图层在不持有实例的情况下判断「当前页是不是靠嗅探兜底」。
     static let siteIdentifier = "generic"
 
     let identifier = GenericSnifferParser.siteIdentifier

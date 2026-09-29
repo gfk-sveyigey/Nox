@@ -17,10 +17,23 @@ struct VideoBrowserView: View {
     @State private var errorMessage: String?
     @State private var showVariants = false
     @State private var showSniffer = false
+    @State private var pendingRequest: DownloadRequest?
+    @State private var filenameInput = ""
     @FocusState private var addressFocused: Bool
 
     /// 统一控件高度，解决按钮与输入框高低不齐
     private let controlHeight: CGFloat = 40
+
+    /// 待确认文件名的下载请求。用户点「保存」前的全部信息先攒在这里，
+    /// 这样嗅探 / 解析两条路径都能复用同一个弹窗。
+    private struct DownloadRequest: Identifiable {
+        let id = UUID()
+        let title: String
+        let variant: VideoVariant
+        let referer: URL?
+        let cookieHeader: String?
+        let defaultFilename: String
+    }
 
     init(appState: AppState, downloads: DownloadManager, requestedURL: Binding<URL?>) {
         _parser = StateObject(wrappedValue: VideoParser(appState: appState))
@@ -34,7 +47,7 @@ struct VideoBrowserView: View {
                 browserToolbar
 
                 // 用 ZStack 而不是 .overlay：让徽标与 WebView 处于同一层级的显式上下关系，
-                // 命中测试时徽标在上；`.overlay` 在 UIViewRepresentable 之上
+                // 命中测试时徽标在上；`.overlay` 盖在 UIViewRepresentable 之上
                 // 有时会被 WKWebView 的图层抢先，导致点击穿透。
                 ZStack(alignment: .bottomTrailing) {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
@@ -72,6 +85,30 @@ struct VideoBrowserView: View {
                 Button(L("确定"), role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "")
+            }
+            .alert(
+                L("保存文件"),
+                isPresented: Binding(
+                    get: { pendingRequest != nil },
+                    set: { if !$0 { pendingRequest = nil } }
+                ),
+                presenting: pendingRequest
+            ) { request in
+                TextField(L("文件名"), text: $filenameInput)
+
+                Button(L("使用默认文件名")) {
+                    commit(request, useCustom: false)
+                }
+
+                Button(L("保存")) {
+                    commit(request, useCustom: true)
+                }
+
+                Button(L("取消"), role: .cancel) {
+                    pendingRequest = nil
+                }
+            } message: { request in
+                Text(String(format: L("默认文件名：%@"), request.defaultFilename))
             }
         }
     }
@@ -149,14 +186,20 @@ struct VideoBrowserView: View {
 
     // MARK: - 嗅探面板入口
 
-    /// 「通用嗅探」在设置页是否开启。
-    /// 关闭后即便脚本还在上报，也不显示入口 —— 与「解析视频」按钮的判定保持一致。
+    /// 「通用嗅探」在设置页是否开启
     private var isSnifferEnabled: Bool {
         appState.isSiteEnabled(GenericSnifferParser.siteIdentifier)
     }
 
+    /// 只有当前页面**确实靠通用嗅探兜底**时才显示入口。
+    ///
+    /// 页面被具名站点解析器（如 Pornhub）命中时，「解析视频」已经能给出更准确的
+    /// 清晰度清单，再摆一个嗅探入口只会得到重复且标注更差的结果。
+    /// 反过来，把某个站点的开关关掉，该站点页面就会自动回落到嗅探 —— 语义自洽。
     private var isSnifferBadgeVisible: Bool {
-        isSnifferEnabled && !sniffer.items.isEmpty
+        isSnifferEnabled
+            && parser.currentParserIdentifier == GenericSnifferParser.siteIdentifier
+            && !sniffer.items.isEmpty
     }
 
     /// 悬浮胶囊：显示当前已嗅探到的资源数。
@@ -317,46 +360,78 @@ struct VideoBrowserView: View {
         Int(quality.filter(\.isNumber)) ?? 0
     }
 
-    /// 「解析视频」路径：标题来自页面标题；历史已由 `parseCurrentPage()` 记录
+    /// 「解析视频」路径。历史已由 `parseCurrentPage()` 记过，这里不重复记。
     private func download(_ variant: VideoVariant) async {
         guard let parsedVideo else { return }
-
-        let cookieHeader = await parser.cookieHeaderForCurrentPage()
-
-        downloads.enqueue(
-            title: parsedVideo.title,
-            variant: variant,
-            referer: parsedVideo.pageURL,
-            cookieHeader: cookieHeader
-        )
-
-        showVariants = false
+        prepareDownload(title: parsedVideo.title, variant: variant, referer: parsedVideo.pageURL)
     }
 
-    /// 嗅探面板路径：标题来自脚本上报的标题（退回文件名 / 域名），
-    /// Referer 用 WebView 当前地址。
+    /// 嗅探面板路径。
     ///
-    /// 这条路径不经过 `VideoParser.parseCurrentPage()`，所以历史要在这里补记
-    /// —— 否则「从嗅探面板下载」在历史页里查不到。
+    /// - 历史记的是**页面**地址与页面标题，而不是媒体地址：
+    ///   历史页的「跳转网页」要能回到原页面，且同一页面上的多条资源不会各占一条记录。
+    /// - Referer 用 WebView 当前地址。
     private func download(_ item: SnifferBridge.Item) {
         showSniffer = false
 
-        appState.addHistory(title: item.displayTitle, url: item.url)
+        appState.addHistory(
+            title: parser.currentPageTitle ?? item.displayTitle,
+            url: parser.currentPageURL ?? item.url
+        )
+
+        prepareDownload(
+            title: item.displayTitle,
+            variant: VideoVariant(
+                quality: item.qualityLabel,
+                format: item.format,
+                url: item.url
+            ),
+            referer: parser.currentPageURL
+        )
+    }
+
+    /// 统一的入队前准备：收起所有 sheet、取 Cookie、生成默认文件名、弹「选择文件名」。
+    private func prepareDownload(title: String, variant: VideoVariant, referer: URL?) {
+        showVariants = false
+        showSniffer = false
 
         Task {
             let cookieHeader = await parser.cookieHeaderForCurrentPage()
 
-            downloads.enqueue(
-                title: item.displayTitle,
-                variant: VideoVariant(
-                    quality: item.qualityLabel,
-                    format: item.format,
-                    url: item.url
-                ),
-                referer: parser.browserWebView.url,
-                cookieHeader: cookieHeader
+            let suggested = downloads.suggestedFilename(
+                title: title,
+                quality: variant.quality,
+                format: variant.format
+            )
+
+            // 等 sheet 退场动画走完再弹 alert：动画期间同步 present 会被系统静默丢弃
+            try? await Task.sleep(nanoseconds: 350_000_000)
+
+            filenameInput = suggested
+
+            pendingRequest = DownloadRequest(
+                title: title,
+                variant: variant,
+                referer: referer,
+                cookieHeader: cookieHeader,
+                defaultFilename: suggested
             )
         }
+    }
+
+    private func commit(_ request: DownloadRequest, useCustom: Bool) {
+        let typed = filenameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filename = (useCustom && !typed.isEmpty) ? typed : request.defaultFilename
+
+        downloads.enqueue(
+            title: request.title,
+            variant: request.variant,
+            referer: request.referer,
+            cookieHeader: request.cookieHeader,
+            filename: filename
+        )
+
+        pendingRequest = nil
     }
 }
 

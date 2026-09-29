@@ -1,7 +1,7 @@
 import Foundation
 
-/// 一个分片在远端文件中的位置。分片边界是 (总大小, 分片数) 的纯函数结果，
-/// 因此只要这两个值不变，重启后算出的边界必然一致，可以安全续传。
+/// 一个分片在远端文件中的位置。分片边界是 (总大小, 固定分片长度) 的纯函数结果，
+/// 与线程数无关，因此改动线程数不会让已下载的分片作废，可以安全续传。
 struct DownloadSegment: Codable, Equatable {
     var index: Int
     var start: Int64
@@ -38,7 +38,7 @@ enum DownloadStorage {
     }
 
     static func partName(_ index: Int) -> String {
-        "segment-\(index).part"
+        String(format: "segment-%06d.part", index)
     }
 
     static func partURL(in directory: URL, index: Int) -> URL {
@@ -114,8 +114,12 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     /// 下载中的实时统计（已下载 / 总大小 / 速度），仅内存。
     @Published private(set) var transfers: [UUID: TransferStats] = [:]
 
-    /// 小于该体积不分片，避免为小文件发起多次请求
-    private static let minimumSegmentLength: Int64 = 2 * 1024 * 1024
+    /// 每个分片的目标大小。
+    ///
+    /// 必须是**固定值**：分片边界只由 (总大小, 本值) 决定，与线程数无关。
+    /// 之前按「线程数」切分，导致关闭多线程时整个文件只有 1 个分片 ——
+    /// 分片未下完前不会落盘，于是取消/失败等于进度全丢。
+    private static let segmentLength: Int64 = 4 * 1024 * 1024
 
     private let appState: AppState
     private var cancellingIDs = Set<UUID>()
@@ -126,9 +130,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
     /// 同时进行的**任务**数上限。
     ///
-    /// 注意这是任务数而不是连接数：每个任务内部还会开
-    /// `multiThreadSegmentCount`（普通下载）或 m3u8 并发（HLS）条连接，
-    /// 实际连接总数 ≈ 本值 × 单任务分片数。
+    /// 这是任务数而不是连接数：每个任务内部还会开若干分片连接，
+    /// 实际连接总数 ≈ 本值 × 单任务并发。
     private var maxConcurrentTasks: Int {
         max(1, min(appState.maxConcurrentDownloads, 4))
     }
@@ -139,6 +142,18 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     private var pendingQueue: [UUID] = []
     /// 每个任务的调度句柄；取消它会一路中止其内部的 async 工作
     private var slotTasks: [UUID: Task<Void, Never>] = [:]
+
+    // MARK: - 单任务内的分片调度
+
+    /// 待下载的分片下标（FIFO）。用显式队列而不是一次性起全部 task，
+    /// 才能让「并发数」真正生效。
+    private var pendingSegments: [UUID: [Int]] = [:]
+    /// 当前在飞的分片数
+    private var inFlightSegments: [UUID: Int] = [:]
+    /// 该任务启动时快照下来的并发上限
+    private var recordConcurrency: [UUID: Int] = [:]
+    /// HLS 最近一次上报的进度；速度统一由 1 秒定时器计算，避免分片成批完成时抖动
+    private var hlsProgress: [UUID: HLSDownloader.Progress] = [:]
 
     /// key = task.taskIdentifier
     private var contexts: [Int: SegmentContext] = [:]
@@ -194,7 +209,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         title: String,
         variant: VideoVariant,
         referer: URL?,
-        cookieHeader: String? = nil
+        cookieHeader: String? = nil,
+        filename: String? = nil
     ) {
         let record = DownloadRecord(
             title: title,
@@ -202,11 +218,18 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             format: variant.format,
             sourceURL: variant.url,
             refererURL: referer,
-            cookieHeader: cookieHeader
+            cookieHeader: cookieHeader,
+            desiredFilename: filename
         )
 
         appState.addDownload(record)
         start(record)
+    }
+
+    /// 供「选择文件名」弹窗预填：按 `title-quality.ext` 生成，并避开 Documents 里的同名文件。
+    func suggestedFilename(title: String, quality: String, format: String) -> String {
+        let ext = Self.fileExtension(for: format)
+        return Self.uniqueFilename("\(title)-\(quality).\(ext)")
     }
 
     /// 重试即「继续」：已下载的分片会保留，从断点开始。
@@ -224,6 +247,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         appState.updateDownload(updated)
         start(updated)
+    }
+
+    /// 批量重试（多选时用）
+    func retryAll(ids: Set<UUID>) {
+        for record in appState.downloads where ids.contains(record.id) {
+            retry(record)
+        }
     }
 
     func cancel(_ record: DownloadRecord) {
@@ -260,6 +290,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             }
         }
 
+        resetScheduling(for: record.id)
         clearTransferStats(for: record.id)
         appState.updateDownload(updated)
         releaseSlot(record.id)
@@ -298,6 +329,15 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.removeDownload(record)
     }
 
+    /// 批量删除（多选时用）。先快照再删，避免边遍历边修改 downloads。
+    func deleteFiles(ids: Set<UUID>) {
+        let targets = appState.downloads.filter { ids.contains($0.id) }
+
+        for record in targets {
+            deleteFile(for: record)
+        }
+    }
+
     private func deleteLocalArtifacts(for record: DownloadRecord) {
         // 先停掉可能还在跑的调度任务与网络请求，再删文件，
         // 否则删完文件后请求回调仍会往分片目录写。
@@ -312,8 +352,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         try? FileManager.default.removeItem(at: DownloadStorage.partsDirectory(for: record.id))
         try? FileManager.default.removeItem(at: DownloadStorage.stagingDirectory(for: record.id))
 
-        plannedSegments.removeValue(forKey: record.id)
-        completedSegments.removeValue(forKey: record.id)
+        resetScheduling(for: record.id)
         clearTransferStats(for: record.id)
         releaseSlot(record.id)
     }
@@ -389,9 +428,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
     }
 
-    // MARK: - 启动流程
+    // MARK: - 任务级调度
 
-    /// 入队入口：不再直接开跑，交给 `drainQueue` 按槽位调度。
     private func start(_ record: DownloadRecord) {
         guard !activeIDs.contains(record.id), !pendingQueue.contains(record.id) else { return }
 
@@ -399,7 +437,6 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         drainQueue()
     }
 
-    /// 有空闲槽位就启动下一个排队任务。
     private func drainQueue() {
         while activeIDs.count < maxConcurrentTasks, !pendingQueue.isEmpty {
             let id = pendingQueue.removeFirst()
@@ -411,14 +448,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             slotTasks[id] = Task { [weak self] in
                 await self?.begin(record)
 
-                // begin 返回 ≠ 下载结束：普通下载此时字节还在流，
+                // begin 返回 ≠ 下载结束：普通下载此时分片还在飞，
                 // 要等 assemble / abort 把它推进终态才释放槽位。
                 self?.releaseSlotIfSettled(id)
             }
         }
     }
 
-    /// 任务已经落到终态（完成 / 失败 / 取消）才真正释放槽位。
     private func releaseSlotIfSettled(_ id: UUID) {
         guard let status = appState.downloads.first(where: { $0.id == id })?.status else {
             releaseSlot(id)
@@ -437,13 +473,15 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         drainQueue()
     }
 
+    // MARK: - 启动流程
+
     private func begin(_ record: DownloadRecord) async {
         // 排队期间被取消：调度句柄已被 cancel，直接退出。
-        // 必须在清除 cancellingIDs 之前判断，否则会把取消标记抹掉。
+        // 必须在清除 cancellingIDs 之前判断，否则会把这个取消标记抹掉。
         if Task.isCancelled { return }
 
         // m3u8 走独立管线：清单 → 分片 → AES-128 解密 → 合并。
-        // 它的总大小事先未知、分片数量由清单决定，套用下面的字节分片逻辑没有意义。
+        // 它的总大小事先未知、分片数量由清单决定，套用字节分片逻辑没有意义。
         if record.format.lowercased() == "m3u8" {
             await beginHLS(record)
             return
@@ -475,92 +513,89 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         guard !cancellingIDs.contains(id) else { return }
 
+        // 探测本身失败（网络抖动 / 超时）时**不要**动分片目录：
+        // 已经下好的分片仍然是有效的，清掉就等于让用户白白重下。
+        if probe.failed {
+            abort(id: id, message: L("无法获取文件信息，请稍后重试。"))
+            return
+        }
+
         let partsDirectory = DownloadStorage.partsDirectory(for: id)
 
-        // 服务器不支持 Range（返回 200）→ 只能单流重下，无法续传
+        // 服务器不支持 Range（返回 200）→ 只能整文件重下，无法续传
         guard probe.supportsRanges, let totalBytes = probe.totalBytes, totalBytes > 0 else {
             try? FileManager.default.removeItem(at: partsDirectory)
             try? FileManager.default.createDirectory(at: partsDirectory, withIntermediateDirectories: true)
 
-            let single = DownloadSegment(index: 0, start: 0, length: 0)
-            plannedSegments[id] = [single]
-            completedSegments[id] = []
-
-            enqueue(
+            schedule(
                 record: updated,
-                segments: [single],
-                partsDirectory: partsDirectory,
+                segments: [DownloadSegment(index: 0, start: 0, length: 0)],
                 totalBytes: 0,
-                useRangeHeader: false
+                concurrency: 1
             )
             return
         }
 
-        // 续传的关键：沿用上次的分片数量，保证边界与磁盘上的分片一一对应
-        let desiredCount = appState.experimentalMultiThreadDownload
-            ? appState.multiThreadSegmentCount
-            : 1
+        let segments = Self.makeSegments(totalBytes: totalBytes)
 
-        let count: Int
-        if record.totalBytes == totalBytes, let previous = record.segmentCount, previous > 0 {
-            count = previous
-        } else {
-            count = desiredCount
-        }
-
-        let segments = Self.makeSegments(totalBytes: totalBytes, count: count)
-
+        // 续传判据：远端大小一致、分片布局一致、分片目录还在。
+        // 任何一条不满足就整批作废，避免把不对齐的分片拼成损坏文件。
         let resumable = record.totalBytes == totalBytes
             && record.segmentCount == segments.count
             && FileManager.default.fileExists(atPath: partsDirectory.path)
 
         if !resumable {
-            // 远端文件变了或沿用不了旧分片 → 清空重来，避免拼出损坏文件
             try? FileManager.default.removeItem(at: partsDirectory)
         }
 
         try? FileManager.default.createDirectory(at: partsDirectory, withIntermediateDirectories: true)
 
-        plannedSegments[id] = segments
-        completedSegments[id] = []
+        let concurrency = appState.experimentalMultiThreadDownload
+            ? max(1, min(appState.multiThreadSegmentCount, AppState.segmentCountRange.upperBound))
+            : 1
 
-        enqueue(
+        schedule(
             record: updated,
             segments: segments,
-            partsDirectory: partsDirectory,
             totalBytes: totalBytes,
-            useRangeHeader: true
+            concurrency: concurrency
         )
     }
 
-    /// 按字节范围均分。分片数会被总大小限制，避免小文件被切成一堆极短请求。
-    private static func makeSegments(totalBytes: Int64, count: Int) -> [DownloadSegment] {
-        let maximumCount = Int(max(1, totalBytes / minimumSegmentLength))
-        let safeCount = max(1, min(count, maximumCount))
+    /// 按固定长度均分。数量只取决于总大小，因此线程数变化不会让旧分片失效。
+    private static func makeSegments(totalBytes: Int64) -> [DownloadSegment] {
+        guard totalBytes > 0 else {
+            return [DownloadSegment(index: 0, start: 0, length: 0)]
+        }
 
-        let base = totalBytes / Int64(safeCount)
+        let count = Int((totalBytes + segmentLength - 1) / segmentLength)
 
         var segments: [DownloadSegment] = []
+        segments.reserveCapacity(count)
+
         var start: Int64 = 0
 
-        for index in 0..<safeCount {
-            let length = index == safeCount - 1 ? totalBytes - start : base
-            segments.append(DownloadSegment(index: index, start: start, length: length))
-            start += length
+        for index in 0..<count {
+            let end = min(start + segmentLength, totalBytes)
+            segments.append(DownloadSegment(index: index, start: start, length: end - start))
+            start = end
         }
 
         return segments
     }
 
-    private func enqueue(
+    /// 登记分片计划并启动第一批下载。
+    private func schedule(
         record: DownloadRecord,
         segments: [DownloadSegment],
-        partsDirectory: URL,
         totalBytes: Int64,
-        useRangeHeader: Bool
+        concurrency: Int
     ) {
+        let id = record.id
+        let partsDirectory = DownloadStorage.partsDirectory(for: id)
+
         var onDisk: Int64 = 0
-        var startedCount = 0
+        var pending: [Int] = []
 
         for segment in segments {
             let partURL = DownloadStorage.partURL(in: partsDirectory, index: segment.index)
@@ -570,50 +605,22 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
             onDisk += existing
 
-            // 该分片已完整
             if segment.length > 0, existing >= segment.length {
-                completedSegments[record.id, default: []].insert(segment.index)
-                continue
+                completedSegments[id, default: []].insert(segment.index)
+            } else {
+                pending.append(segment.index)
             }
-
-            var request = URLRequest(url: record.sourceURL)
-            request.httpMethod = "GET"
-            request.setValue("video/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
-
-            if let referer = record.refererURL {
-                request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer")
-            }
-
-            if let cookie = record.cookieHeader, !cookie.isEmpty {
-                request.setValue(cookie, forHTTPHeaderField: "Cookie")
-            }
-
-            if useRangeHeader, segment.length > 0 {
-                let end = segment.start + segment.length - 1
-                request.setValue("bytes=\(segment.start + existing)-\(end)", forHTTPHeaderField: "Range")
-            }
-
-            let task = session.downloadTask(with: request)
-            task.taskDescription = record.id.uuidString
-
-            contexts[task.taskIdentifier] = SegmentContext(
-                recordID: record.id,
-                segmentIndex: segment.index,
-                partURL: partURL,
-                alreadyWritten: existing,
-                task: task
-            )
-
-            startedCount += 1
-            task.resume()
         }
+
+        plannedSegments[id] = segments
+        pendingSegments[id] = pending
+        inFlightSegments[id] = 0
+        recordConcurrency[id] = max(1, concurrency)
 
         var updated = record
         updated.totalBytes = totalBytes > 0 ? totalBytes : nil
         updated.segmentCount = segments.count
-        // 普通下载的并发就是分片数：这些请求是一次性全部发出去的
-        // （不支持 Range 时只剩 1 条单流）。仅用于列表展示。
-        updated.threadCount = segments.count
+        updated.threadCount = max(1, concurrency)
         updated.receivedBytes = onDisk
         if totalBytes > 0 {
             updated.progress = min(Double(onDisk) / Double(totalBytes), 1)
@@ -621,19 +628,87 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         updated.status = .downloading
         appState.updateDownload(updated)
 
-        transfers[record.id] = TransferStats(
+        transfers[id] = TransferStats(
             bytesReceived: onDisk,
             totalBytes: max(totalBytes, 0)
         )
-        speedSamples[record.id] = (onDisk, Date(), 0)
+        speedSamples[id] = (onDisk, Date(), 0)
 
-        // 所有分片在磁盘上已齐（例如上次刚好下完就被杀）→ 直接合成
-        if startedCount == 0 {
-            Task { await finishIfComplete(recordID: record.id) }
+        pumpSegments(recordID: id)
+        startProgressTimerIfNeeded()
+    }
+
+    /// 在并发上限内继续取分片开工；全部完成时收尾。
+    private func pumpSegments(recordID: UUID) {
+        guard !cancellingIDs.contains(recordID) else { return }
+        guard let segments = plannedSegments[recordID] else { return }
+
+        let limit = recordConcurrency[recordID] ?? 1
+
+        while (inFlightSegments[recordID] ?? 0) < limit {
+            guard var queue = pendingSegments[recordID], !queue.isEmpty else { break }
+
+            let index = queue.removeFirst()
+            pendingSegments[recordID] = queue
+
+            guard index < segments.count else { continue }
+            startSegment(recordID: recordID, segment: segments[index], index: index)
         }
 
-        // 任务已创建，确保计时器在跑（begin() 里那次可能已被提前停掉）
-        startProgressTimerIfNeeded()
+        if (pendingSegments[recordID] ?? []).isEmpty, (inFlightSegments[recordID] ?? 0) == 0 {
+            Task { await finishIfComplete(recordID: recordID) }
+        }
+    }
+
+    private func startSegment(recordID: UUID, segment: DownloadSegment, index: Int) {
+        guard let record = appState.downloads.first(where: { $0.id == recordID }) else { return }
+
+        let partsDirectory = DownloadStorage.partsDirectory(for: recordID)
+        let partURL = DownloadStorage.partURL(in: partsDirectory, index: index)
+        let existing = segment.length > 0
+            ? min(DownloadStorage.fileSize(at: partURL), segment.length)
+            : 0
+
+        var request = URLRequest(url: record.sourceURL)
+        request.httpMethod = "GET"
+        request.setValue("video/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+
+        if let referer = record.refererURL {
+            request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer")
+        }
+
+        if let cookie = record.cookieHeader, !cookie.isEmpty {
+            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        }
+
+        // length == 0 表示「整文件单流」（服务器不支持 Range），此时不加 Range 头
+        if segment.length > 0 {
+            let end = segment.start + segment.length - 1
+            request.setValue("bytes=\(segment.start + existing)-\(end)", forHTTPHeaderField: "Range")
+        }
+
+        let task = session.downloadTask(with: request)
+        task.taskDescription = recordID.uuidString
+
+        contexts[task.taskIdentifier] = SegmentContext(
+            recordID: recordID,
+            segmentIndex: index,
+            partURL: partURL,
+            alreadyWritten: existing,
+            task: task
+        )
+
+        inFlightSegments[recordID, default: 0] += 1
+        task.resume()
+    }
+
+    private func resetScheduling(for id: UUID) {
+        pendingSegments.removeValue(forKey: id)
+        inFlightSegments.removeValue(forKey: id)
+        recordConcurrency.removeValue(forKey: id)
+        hlsProgress.removeValue(forKey: id)
+        plannedSegments.removeValue(forKey: id)
+        completedSegments.removeValue(forKey: id)
     }
 
     // MARK: - 进度 / 速度
@@ -681,20 +756,30 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
             guard !cancellingIDs.contains(id) else { continue }
 
-            // m3u8 的进度由 HLSDownloader 按分片回调上报；这里的分片统计对它不适用，
-            // 不跳过的话每秒都会被覆盖成 0，进度条会一直空着。
-            if record.format.lowercased() == "m3u8" { continue }
+            let isHLS = record.format.lowercased() == "m3u8"
 
-            let inFlight = inFlightBytes[id] ?? 0
-            let segments = plannedSegments[id] ?? []
-            let onDisk = DownloadStorage.totalPartSize(
-                segments: segments,
-                in: DownloadStorage.partsDirectory(for: id)
-            )
+            let received: Int64
+            let total: Int64
 
-            let total = record.totalBytes ?? 0
-            let received = onDisk + inFlight
+            if isHLS {
+                // m3u8 的字节数来自解密后的分片累计，总大小未知
+                guard let snapshot = hlsProgress[id] else { continue }
+                received = snapshot.bytes
+                total = 0
+            } else {
+                let inFlight = inFlightBytes[id] ?? 0
+                let segments = plannedSegments[id] ?? []
+                let onDisk = DownloadStorage.totalPartSize(
+                    segments: segments,
+                    in: DownloadStorage.partsDirectory(for: id)
+                )
+                received = onDisk + inFlight
+                total = record.totalBytes ?? 0
+            }
 
+            // 速度统一在 1 秒节拍上算，而不是每次分片回调都算：
+            // m3u8 的分片会在同一秒内成批完成，按回调时间戳算会得到一串
+            // 极短的采样区间，速度因此剧烈抖动（表现为数字乱跳、明显偏大）。
             var speed: Double = 0
             if let previous = speedSamples[id] {
                 let interval = now.timeIntervalSince(previous.date)
@@ -721,7 +806,15 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
             var updated = record
             updated.receivedBytes = received
-            if total > 0 {
+
+            if isHLS {
+                if let snapshot = hlsProgress[id], snapshot.total > 0 {
+                    updated.progress = min(
+                        Double(snapshot.completed) / Double(snapshot.total),
+                        1
+                    )
+                }
+            } else if total > 0 {
                 updated.progress = min(Double(received) / Double(total), 1)
             }
 
@@ -791,6 +884,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             return
         }
 
+        inFlightSegments[recordID] = max(0, (inFlightSegments[recordID] ?? 1) - 1)
+
         let partURL = context.partURL
         let segmentIndex = context.segmentIndex
 
@@ -810,7 +905,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         guard !cancellingIDs.contains(recordID) else { return }
 
-        await finishIfComplete(recordID: recordID)
+        pumpSegments(recordID: recordID)
     }
 
     private func finishIfComplete(recordID: UUID) async {
@@ -838,7 +933,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         segments: [DownloadSegment],
         partsDirectory: URL
     ) async {
-        defer { releaseSlot(recordID) }
+        defer {
+            resetScheduling(for: recordID)
+            releaseSlot(recordID)
+        }
 
         guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
         guard record.status != .cancelled else { return }
@@ -851,13 +949,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                 withIntermediateDirectories: true
             )
 
-            let ext = record.format.isEmpty
-                ? "mp4"
-                : record.format.lowercased()
-
-            let filename = Self.safeFilename(
-                "\(record.title)-\(record.quality).\(ext)"
-            )
+            let fallback = "\(record.title)-\(record.quality).\(Self.fileExtension(for: record.format))"
+            let filename = Self.uniqueFilename(record.desiredFilename ?? fallback)
 
             let destination = documentsDirectory
                 .appendingPathComponent(filename)
@@ -886,17 +979,12 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         try? FileManager.default.removeItem(at: partsDirectory)
         try? FileManager.default.removeItem(at: DownloadStorage.stagingDirectory(for: recordID))
 
-        plannedSegments.removeValue(forKey: recordID)
-        completedSegments.removeValue(forKey: recordID)
         clearTransferStats(for: recordID)
-
         appState.updateDownload(record)
     }
 
     // MARK: - HLS（m3u8）
 
-    /// m3u8 下载进度由 `HLSDownloader` 按「已完成分片数」上报，
-    /// 因此这里不写 `totalBytes`，进度条走 `record.progress` 那条分支。
     private func beginHLS(_ record: DownloadRecord) async {
         let id = record.id
         cancellingIDs.remove(id)
@@ -904,11 +992,6 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         var updated = record
         updated.status = .downloading
         updated.errorMessage = nil
-        appState.updateDownload(updated)
-
-        transfers[id] = TransferStats()
-        speedSamples[id] = (0, Date(), 0)
-        startProgressTimerIfNeeded()
 
         // 复用「实验性功能 → 多线程下载」：用户只需要理解一个并发旋钮。
         // m3u8 分片远小于字节分片（通常 2–10 秒一片、总数可达数百），
@@ -926,9 +1009,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         let concurrency = min(max(desired, 1), AppState.maxHLSConcurrency)
 
-        // 如实记录这个任务实际使用的并发，供下载列表展示
         updated.threadCount = concurrency
         appState.updateDownload(updated)
+
+        transfers[id] = TransferStats()
+        speedSamples[id] = (0, Date(), 0)
+        hlsProgress.removeValue(forKey: id)
+        startProgressTimerIfNeeded()
 
         do {
             let merged = try await HLSDownloader(concurrency: concurrency).download(
@@ -939,8 +1026,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                 userAgent: nil,
                 quality: appState.preferredQuality
             ) { [weak self] progress in
+                // 只记录，不在回调里算速度：分片常成批完成，
+                // 由 1 秒定时器统一计算，速度才稳。
                 Task { @MainActor in
-                    self?.applyHLSProgress(recordID: id, progress: progress)
+                    self?.hlsProgress[id] = progress
                 }
             }
 
@@ -956,48 +1045,11 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
     }
 
-    private func applyHLSProgress(recordID: UUID, progress: HLSDownloader.Progress) {
-        let now = Date()
-        var speed: Double = 0
-
-        if let previous = speedSamples[recordID] {
-            let interval = now.timeIntervalSince(previous.date)
-
-            if interval > 0 {
-                let delta = progress.bytes - previous.bytes
-
-                if delta >= 0 {
-                    let instantaneous = Double(delta) / interval
-                    speed = previous.speed > 0
-                        ? previous.speed * 0.6 + instantaneous * 0.4
-                        : instantaneous
-                }
-            }
-        }
-
-        speedSamples[recordID] = (progress.bytes, now, speed)
-
-        // totalBytes 传 0：界面显示「已下载 X」而不是「X / Y」
-        transfers[recordID] = TransferStats(
-            bytesReceived: progress.bytes,
-            totalBytes: 0,
-            bytesPerSecond: speed
-        )
-
-        guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
-        guard record.status == .downloading else { return }
-
-        record.receivedBytes = progress.bytes
-        if progress.total > 0 {
-            record.progress = min(Double(progress.completed) / Double(progress.total), 1)
-        }
-
-        // 高频刷新只改内存，不写 UserDefaults
-        appState.updateDownload(record, persist: false)
-    }
-
     private func finishHLS(recordID: UUID, mergedFile: URL) {
-        defer { releaseSlot(recordID) }
+        defer {
+            resetScheduling(for: recordID)
+            releaseSlot(recordID)
+        }
 
         guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
         guard record.status != .cancelled else { return }
@@ -1011,7 +1063,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             )
 
             // 合并结果统一是 MP4 容器（TS / fMP4 分片拼接后由系统播放器识别）
-            let filename = Self.safeFilename("\(record.title)-\(record.quality).mp4")
+            let fallback = "\(record.title)-\(record.quality).mp4"
+            let filename = Self.uniqueFilename(record.desiredFilename ?? fallback)
             let destination = directory.appendingPathComponent(filename)
 
             try? FileManager.default.removeItem(at: destination)
@@ -1040,6 +1093,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     private struct ProbeResult {
         var supportsRanges: Bool
         var totalBytes: Int64?
+        /// 探测本身失败（网络错误 / 超时 / 非 HTTP 响应），与「服务器不支持 Range」是两回事
+        var failed: Bool
     }
 
     /// 用 `Range: bytes=0-0` 探一次：拿到 206 + Content-Range 就说明支持续传，
@@ -1053,6 +1108,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         request.httpMethod = "GET"
         request.setValue("bytes=0-0", forHTTPHeaderField: "Range")
         request.setValue("video/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+        // URLSession.shared 带本地缓存，命中旧响应会让探测结论失真
+        request.cachePolicy = .reloadIgnoringLocalCacheData
 
         if let referer {
             request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer")
@@ -1065,19 +1122,19 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             let (_, response) = try await URLSession.shared.data(for: request)
 
             guard let http = response as? HTTPURLResponse else {
-                return ProbeResult(supportsRanges: false, totalBytes: nil)
+                return ProbeResult(supportsRanges: false, totalBytes: nil, failed: true)
             }
 
             if http.statusCode == 206,
                let contentRange = http.value(forHTTPHeaderField: "Content-Range"),
                let total = totalBytes(fromContentRange: contentRange) {
-                return ProbeResult(supportsRanges: true, totalBytes: total)
+                return ProbeResult(supportsRanges: true, totalBytes: total, failed: false)
             }
 
             let length = http.value(forHTTPHeaderField: "Content-Length").flatMap { Int64($0) }
-            return ProbeResult(supportsRanges: false, totalBytes: length)
+            return ProbeResult(supportsRanges: false, totalBytes: length, failed: false)
         } catch {
-            return ProbeResult(supportsRanges: false, totalBytes: nil)
+            return ProbeResult(supportsRanges: false, totalBytes: nil, failed: true)
         }
     }
 
@@ -1090,6 +1147,42 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     // MARK: - 文件名
+
+    /// m3u8 合并后是 MP4 容器；其余按上报的格式
+    private static func fileExtension(for format: String) -> String {
+        let lowered = format.lowercased()
+        if lowered.isEmpty || lowered == "m3u8" { return "mp4" }
+        return lowered
+    }
+
+    /// 避开 Documents 里已存在的同名文件（追加 " (2)"、" (3)"…），
+    /// 否则会静默覆盖用户已有的视频。
+    private static func uniqueFilename(_ proposed: String) -> String {
+        let directory = DownloadStorage.documentsDirectory
+        let base = safeFilename(proposed)
+
+        guard FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent(base).path
+        ) else {
+            return base
+        }
+
+        let url = URL(fileURLWithPath: base)
+        let stem = url.deletingPathExtension().lastPathComponent
+        let ext = url.pathExtension
+
+        for index in 2...999 {
+            let candidate = ext.isEmpty ? "\(stem) (\(index))" : "\(stem) (\(index)).\(ext)"
+
+            if !FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent(candidate).path
+            ) {
+                return candidate
+            }
+        }
+
+        return base
+    }
 
     private static func safeFilename(_ name: String) -> String {
         let invalid = CharacterSet(charactersIn: "/\\:?%*|\"<>\n\r\t")
@@ -1105,7 +1198,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func abort(id: UUID, message: String) {
-        defer { releaseSlot(id) }
+        defer {
+            resetScheduling(for: id)
+            releaseSlot(id)
+        }
 
         // 一个分片失败即整体失败；其余分片取消，但分片文件保留，方便重试续传
         let identifiers = contexts
@@ -1123,8 +1219,16 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         record.status = .failed
         record.errorMessage = String(format: L("下载失败：%@"), message)
 
-        if let stats = transfers[id], stats.bytesReceived > 0 {
-            record.receivedBytes = stats.bytesReceived
+        // 用磁盘上的分片数，而不是含「在飞字节」的统计值 ——
+        // 后者会把还没落盘的字节算进去，重试时进度会先涨后跌。
+        let segments = plannedSegments[id] ?? []
+        let onDisk = DownloadStorage.totalPartSize(
+            segments: segments,
+            in: DownloadStorage.partsDirectory(for: id)
+        )
+
+        if onDisk > 0 {
+            record.receivedBytes = onDisk
         }
 
         clearTransferStats(for: id)
@@ -1154,6 +1258,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                     record.errorMessage = nil
                     self.appState.updateDownload(record)
                 }
+                self.resetScheduling(for: id)
                 self.releaseSlot(id)
                 return
             }

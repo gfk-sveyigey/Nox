@@ -633,6 +633,150 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "네트워크 요청 실패" } }
       }
     },
+    "保存文件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Datei speichern" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save File" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer le fichier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 저장" } }
+      }
+    },
+    "文件名" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dateiname" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File Name" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom du fichier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 이름" } }
+      }
+    },
+    "使用默认文件名" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Standardnamen verwenden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use Default Name" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utiliser le nom par défaut" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기본 이름 사용" } }
+      }
+    },
+    "保存" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Speichern" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장" } }
+      }
+    },
+    "默认文件名：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Standardname: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Default name: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom par défaut : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기본 이름: %@" } }
+      }
+    },
+    "选择" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswählen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sélectionner" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택" } }
+      }
+    },
+    "已选 %d 项" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%d ausgewählt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%d selected" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%d sélectionné(s)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%d개 선택됨" } }
+      }
+    },
+    "重试所选" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswahl wiederholen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry Selected" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réessayer la sélection" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택 항목 재시도" } }
+      }
+    },
+    "删除所选" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswahl löschen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete Selected" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer la sélection" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택 항목 삭제" } }
+      }
+    },
+    "删除" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Löschen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "삭제" } }
+      }
+    },
+    "删除所选？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswahl löschen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete selected items?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer la sélection ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택 항목을 삭제할까요?" } }
+      }
+    },
+    "将删除选中的 %d 项，同时删除对应的本地文件与未完成的分片。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%d ausgewählte Einträge werden gelöscht, zusammen mit den zugehörigen lokalen Dateien und unvollständigen Segmenten." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%d selected items will be deleted, along with their local files and unfinished segments." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les %d éléments sélectionnés seront supprimés, ainsi que leurs fichiers locaux et segments inachevés." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택한 %d개 항목과 해당 로컬 파일 및 미완료 조각이 삭제됩니다." } }
+      }
+    },
+    "将删除选中的 %d 条记录。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%d ausgewählte Einträge werden gelöscht." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%d selected entries will be deleted." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les %d entrées sélectionnées seront supprimées." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택한 %d개 기록이 삭제됩니다." } }
+      }
+    },
+    "无法获取文件信息，请稍后重试。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dateiinformationen konnten nicht abgerufen werden. Bitte später erneut versuchen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not read file information. Please try again later." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de lire les informations du fichier. Veuillez réessayer plus tard." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 정보를 가져오지 못했습니다. 잠시 후 다시 시도하세요." } }
+      }
+    },
+    "同时下载任务数" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gleichzeitige Downloads" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Concurrent Downloads" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargements simultanés" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동시 다운로드 수" } }
+      }
+    },
+    "m3u8 分片并发" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "m3u8-Segmentparallelität" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "m3u8 Segment Concurrency" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Parallélisme des segments m3u8" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "m3u8 조각 동시성" } }
+      }
+    },
+    "跟随多线程设置" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mehrthread-Einstellung folgen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow Multi-threaded Setting" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre le réglage multithread" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "멀티스레드 설정 따르기" } }
+      }
+    },
+    "网络请求失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Netzwerkanfrage fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Network Request Failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de la requête réseau" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "네트워크 요청 실패" } }
+      }
+    },
     "资源类型" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Ressourcentyp" } },

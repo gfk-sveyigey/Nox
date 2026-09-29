@@ -117,6 +117,9 @@ struct DownloadRecord: Identifiable, Codable {
     let sourceURL: URL
     var refererURL: URL?
     var cookieHeader: String?
+    /// 用户选定的文件名（含扩展名）。nil = 用 title-quality.ext 自动生成。
+    /// 便于把用户的选择带进 `assemble` / `finishHLS`，避免在列表里再查一遍。
+    var desiredFilename: String?
     /// 仅文件名（相对 Documents）。沙盒容器路径会随重装/更新变化，不能持久化绝对路径。
     var fileName: String?
     /// 兼容旧数据：新写入仅作参考，读取时一律以 Documents + 文件名为准。
@@ -132,16 +135,17 @@ struct DownloadRecord: Identifiable, Codable {
     var totalBytes: Int64?
     /// 已写入磁盘（分片文件）的字节数，用于暂停后展示进度。
     var receivedBytes: Int64?
-    /// 上次使用的分片数量。续传时必须沿用同一数量，否则分片边界会错位。
+    /// 分片数量。分片边界 = f(总大小, 固定分片长度)，与线程数无关，
+    /// 因此这个值同时充当「分片布局是否变化」的校验位：对不上就整批作废重来。
     var segmentCount: Int?
-    /// 实际使用的并发数（普通下载 = 分片数，m3u8 = 分片并发）。
+    /// 实际使用的并发数（普通下载 = 同时在飞的分片数，m3u8 = 分片并发）。
     /// 仅用于在下载列表里如实展示「这个任务开了几条连接」，不参与续传计算。
     var threadCount: Int?
 
     init(id: UUID = UUID(), title: String, quality: String, format: String, sourceURL: URL,
-         refererURL: URL? = nil, cookieHeader: String? = nil, fileName: String? = nil,
-         fileURL: URL? = nil, status: DownloadStatus = .queued, progress: Double = 0,
-         createdAt: Date = .now, errorMessage: String? = nil,
+         refererURL: URL? = nil, cookieHeader: String? = nil, desiredFilename: String? = nil,
+         fileName: String? = nil, fileURL: URL? = nil, status: DownloadStatus = .queued,
+         progress: Double = 0, createdAt: Date = .now, errorMessage: String? = nil,
          totalBytes: Int64? = nil, receivedBytes: Int64? = nil, segmentCount: Int? = nil,
          threadCount: Int? = nil) {
         self.id = id
@@ -151,6 +155,7 @@ struct DownloadRecord: Identifiable, Codable {
         self.sourceURL = sourceURL
         self.refererURL = refererURL
         self.cookieHeader = cookieHeader
+        self.desiredFilename = desiredFilename
         self.fileName = fileName
         self.fileURL = fileURL
         self.status = status
@@ -265,6 +270,49 @@ struct HistoryItem: Identifiable, Codable {
     let title: String
     let url: URL
     let visitedAt: Date
+}
+
+extension URL {
+    /// 常见的跟踪参数：同一个页面往往带不同的一串，用来做「是否同一条」会误判成不同页。
+    private static let trackingParameterNames: Set<String> = [
+        "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+        "fbclid", "gclid", "msclkid", "igshid", "spm_id_from", "vd_source",
+        "from_spmid", "share_source", "share_medium", "share_plat", "share_tag",
+        "timestamp", "unique_k", "buvid"
+    ]
+
+    /// 「是否同一个页面」的归一化判定键。
+    ///
+    /// 大小写统一、去掉结尾斜杠与 fragment、剔除跟踪参数、参数名排序 ——
+    /// 让 `https://a.com/v/` 与 `https://A.com/v?utm_source=x` 归为同一条。
+    var pageIdentity: String {
+        guard var components = URLComponents(url: self, resolvingAgainstBaseURL: false) else {
+            return absoluteString
+        }
+
+        components.fragment = nil
+        components.scheme = components.scheme?.lowercased()
+        components.host = components.host?.lowercased()
+
+        if var path = components.path, path.count > 1, path.hasSuffix("/") {
+            path.removeLast()
+            components.path = path
+        }
+
+        if let items = components.queryItems {
+            let kept = items
+                .filter { !Self.trackingParameterNames.contains($0.name.lowercased()) }
+                .sorted {
+                    $0.name == $1.name
+                        ? ($0.value ?? "") < ($1.value ?? "")
+                        : $0.name < $1.name
+                }
+
+            components.queryItems = kept.isEmpty ? nil : kept
+        }
+
+        return components.string ?? absoluteString
+    }
 }
 
 struct ParsedVideo: Identifiable {
