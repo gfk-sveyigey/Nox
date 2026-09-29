@@ -301,6 +301,14 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         updated.errorMessage = nil
         appState.updateDownload(updated)
 
+        // 先把统计挂上，探测期间列表不会空着
+        let resumeBytes = record.receivedBytes ?? 0
+        transfers[id] = TransferStats(
+            bytesReceived: resumeBytes,
+            totalBytes: record.totalBytes ?? 0
+        )
+        speedSamples[id] = (resumeBytes, Date(), 0)
+
         startProgressTimerIfNeeded()
 
         let probe = await Self.probe(
@@ -464,6 +472,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         if startedCount == 0 {
             Task { await finishIfComplete(recordID: record.id) }
         }
+
+        // 任务已创建，确保计时器在跑（begin() 里那次可能已被提前停掉）
+        startProgressTimerIfNeeded()
     }
 
     // MARK: - 进度 / 速度
@@ -488,7 +499,12 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func tickProgress() {
-        guard !contexts.isEmpty else {
+        // 以「记录状态」而不是 contexts 判断是否还有任务。
+        // begin() 里要等 probe 返回才会创建 task，若用 contexts 判断，
+        // 探测超过 1 秒时第一次 tick 就会把计时器停掉，此后进度与速度再也不更新。
+        let activeRecords = appState.downloads.filter { $0.status == .downloading }
+
+        guard !activeRecords.isEmpty else {
             stopProgressTimer()
             return
         }
@@ -501,13 +517,12 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             inFlightBytes[context.recordID, default: 0] += max(context.task.countOfBytesReceived, 0)
         }
 
-        for (id, inFlight) in inFlightBytes {
-            guard !cancellingIDs.contains(id),
-                  var record = appState.downloads.first(where: { $0.id == id }),
-                  record.status == .downloading else {
-                continue
-            }
+        for record in activeRecords {
+            let id = record.id
 
+            guard !cancellingIDs.contains(id) else { continue }
+
+            let inFlight = inFlightBytes[id] ?? 0
             let segments = plannedSegments[id] ?? []
             let onDisk = DownloadStorage.totalPartSize(
                 segments: segments,
@@ -541,13 +556,14 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                 bytesPerSecond: speed
             )
 
-            record.receivedBytes = received
+            var updated = record
+            updated.receivedBytes = received
             if total > 0 {
-                record.progress = min(Double(received) / Double(total), 1)
+                updated.progress = min(Double(received) / Double(total), 1)
             }
 
             // 高频刷新只改内存，不写 UserDefaults
-            appState.updateDownload(record, persist: false)
+            appState.updateDownload(updated, persist: false)
         }
     }
 
@@ -623,7 +639,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         try? FileManager.default.removeItem(at: stagingURL)
 
         guard appended else {
-            abort(id: recordID, message: "写入分片文件失败")
+            abort(id: recordID, message: String(localized: "写入分片文件失败"))
             return
         }
 
@@ -699,7 +715,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             }
         } catch {
             record.status = .failed
-            record.errorMessage = "保存文件失败：\(error.localizedDescription)"
+            record.errorMessage = String(localized: "保存文件失败：\(error.localizedDescription)")
         }
 
         try? FileManager.default.removeItem(at: partsDirectory)
@@ -796,7 +812,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         guard record.status == .downloading else { return }
 
         record.status = .failed
-        record.errorMessage = "下载失败：\(message)"
+        record.errorMessage = String(localized: "下载失败：\(message)")
 
         if let stats = transfers[id], stats.bytesReceived > 0 {
             record.receivedBytes = stats.bytesReceived

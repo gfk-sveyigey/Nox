@@ -1,0 +1,486 @@
+{
+  "sourceLanguage" : "zh-Hans",
+  "strings" : {
+    "0 KB" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "0 KB" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "0 KB" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "0 Ko" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "0 KB" } }
+      }
+    },
+    "%@/s" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@/s" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@/s" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@/s" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@/s" } }
+      }
+    },
+    "下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Downloads" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloads" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargements" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드" } }
+      }
+    },
+    "下载失败：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download fehlgeschlagen: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download failed: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec du téléchargement : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 실패: %@" } }
+      }
+    },
+    "下载清晰度" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Qualität" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download Quality" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Qualité de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 화질" } }
+      }
+    },
+    "写入分片文件失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Segmentdatei konnte nicht geschrieben werden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to write segment file" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'écriture du segment" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "조각 파일 쓰기 실패" } }
+      }
+    },
+    "分享" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Teilen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Partager" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공유" } }
+      }
+    },
+    "分享失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Teilen fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share Failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec du partage" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공유 실패" } }
+      }
+    },
+    "关闭" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Schließen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Close" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fermer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "닫기" } }
+      }
+    },
+    "关于" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Über" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "About" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "À propos" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정보" } }
+      }
+    },
+    "删除记录" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Löschen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록 삭제" } }
+      }
+    },
+    "包含未完成的分片。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unfertige Teile eingeschlossen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Including unfinished parts." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Y compris les segments inachevés." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "미완료 조각 포함." } }
+      }
+    },
+    "历史" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verlauf" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "History" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Historique" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록" } }
+      }
+    },
+    "取消" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abbrechen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "취소" } }
+      }
+    },
+    "取消下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download abbrechen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel download" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler le téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 취소" } }
+      }
+    },
+    "已完成、失败和已取消的任务将被移除，同时删除对应的本地文件与未完成的分片。此操作无法撤销。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abgeschlossene, fehlgeschlagene und abgebrochene Einträge werden entfernt, ebenso die zugehörigen lokalen Dateien und unfertigen Teile. Dies kann nicht rückgängig gemacht werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed, failed, and cancelled items will be removed, along with their local files and unfinished parts. This can't be undone." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les éléments terminés, échoués et annulés seront supprimés, ainsi que les fichiers locaux et les segments inachevés. Action irréversible." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료, 실패 및 취소된 항목이 제거되고 해당 로컬 파일과 미완료 조각도 삭제됩니다. 이 작업은 되돌릴 수 없습니다." } }
+      }
+    },
+    "已暂停 · 已下载 %@，重试可继续" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Pausiert · %@ geladen, zum Fortsetzen erneut versuchen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Paused · %@ downloaded, retry to continue" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En pause · %@ téléchargés, réessayez pour continuer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일시정지 · %@ 다운로드됨, 재시도하면 계속됩니다" } }
+      }
+    },
+    "最佳" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beste" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Meilleure" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최고 화질" } }
+      }
+    },
+    "暂无下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Downloads" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No Downloads" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 없음" } }
+      }
+    },
+    "暂无历史" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein Verlauf" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No History" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun historique" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록 없음" } }
+      }
+    },
+    "无法分享此文件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Diese Datei kann nicht geteilt werden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This file can't be shared" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de partager ce fichier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 파일을 공유할 수 없습니다" } }
+      }
+    },
+    "文件不存在或已删除" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Datei existiert nicht oder wurde gelöscht" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The file doesn't exist or was deleted" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le fichier n'existe pas ou a été supprimé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일이 없거나 삭제되었습니다" } }
+      }
+    },
+    "未知清晰度" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbekannte Qualität" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown Quality" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Qualité inconnue" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알 수 없는 화질" } }
+      }
+    },
+    "每次询问" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Jedes Mal fragen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ask Every Time" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Demander à chaque fois" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "매번 묻기" } }
+      }
+    },
+    "清空" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Leeren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "지우기" } }
+      }
+    },
+    "清空下载？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Downloads leeren?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear downloads?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer les téléchargements ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드를 지울까요?" } }
+      }
+    },
+    "清空历史记录？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verlauf leeren?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear history?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer l'historique ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록을 지울까요?" } }
+      }
+    },
+    "清空地址栏" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Adressfeld löschen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear address field" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer le champ d'adresse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "주소 지우기" } }
+      }
+    },
+    "版本" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Version" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Version" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Version" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "버전" } }
+      }
+    },
+    "确定" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "확인" } }
+      }
+    },
+    "视频站点" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Videoseiten" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video Sites" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sites vidéo" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 사이트" } }
+      }
+    },
+    "视频清单格式无法识别。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbekanntes Video-Manifest-Format." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unrecognized video manifest format." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Format de manifeste vidéo non reconnu." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 목록 형식을 인식할 수 없습니다." } }
+      }
+    },
+    "视频清单请求失败：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Video-Manifest-Anfrage fehlgeschlagen: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video manifest request failed: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de la requête du manifeste vidéo : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 목록 요청 실패: %@" } }
+      }
+    },
+    "设置" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einstellungen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "설정" } }
+      }
+    },
+    "请输入 HTTPS 地址。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bitte eine HTTPS-Adresse eingeben." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please enter an HTTPS address." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Saisissez une adresse HTTPS." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "HTTPS 주소를 입력하세요." } }
+      }
+    },
+    "请输入有效的视频页面地址。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bitte eine gültige Videoseiten-Adresse eingeben." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please enter a valid video page address." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Saisissez une adresse de page vidéo valide." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "올바른 동영상 페이지 주소를 입력하세요." } }
+      }
+    },
+    "输入网页地址" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Webadresse eingeben" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter a web address" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Saisir une adresse web" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "웹 주소 입력" } }
+      }
+    },
+    "跳转网页" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Im Browser öffnen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open in Browser" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrir dans le navigateur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "브라우저에서 열기" } }
+      }
+    },
+    "选择清晰度" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Qualität wählen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select Quality" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisir la qualité" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화질 선택" } }
+      }
+    },
+    "重试" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wiederholen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réessayer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다시 시도" } }
+      }
+    },
+    "页面中没有找到可用的视频信息。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine verwertbaren Videoinformationen auf der Seite gefunden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No usable video information found on the page." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune information vidéo exploitable sur la page." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "페이지에서 사용 가능한 동영상 정보를 찾지 못했습니다." } }
+      }
+    },
+    "页面加载失败：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Seite konnte nicht geladen werden: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to load page: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec du chargement de la page : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "페이지 로드 실패: %@" } }
+      }
+    },
+    "页面尚未加载完成。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Seite ist noch nicht vollständig geladen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The page hasn't finished loading." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La page n'a pas fini de charger." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "페이지가 아직 로드되지 않았습니다." } }
+      }
+    },
+    "页面脚本执行失败：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Seitenskript fehlgeschlagen: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Page script failed: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec du script de la page : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "페이지 스크립트 실패: %@" } }
+      }
+    },
+    "打开" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Öffnen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrir" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "열기" } }
+      }
+    },
+    "打开过的视频页面会显示在这里。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Geöffnete Videoseiten erscheinen hier." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video pages you open will appear here." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les pages vidéo ouvertes apparaîtront ici." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "열었던 동영상 페이지가 여기에 표시됩니다." } }
+      }
+    },
+    "复制链接" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Link kopieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Link" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Copier le lien" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "링크 복사" } }
+      }
+    },
+    "继续下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fortsetzen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Reprendre" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이어받기" } }
+      }
+    },
+    "保存文件失败：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Datei konnte nicht gespeichert werden: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to save file: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'enregistrement du fichier : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 저장 실패: %@" } }
+      }
+    },
+    "当前网页不符合视频解析规则。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Diese Seite entspricht keiner Analyse-Regel." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This page doesn't match any parsing rule." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cette page ne correspond à aucune règle d'analyse." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "현재 페이지는 동영상 분석 규칙에 맞지 않습니다." } }
+      }
+    },
+    "在浏览页面解析视频后即可加入下载队列。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Analysiere ein Video im Browser, um es der Download-Warteschlange hinzuzufügen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parse a video in the browser to add it to the download queue." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Analysez une vidéo dans le navigateur pour l'ajouter à la file de téléchargement." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "브라우저에서 동영상을 분석하면 다운로드 대기열에 추가됩니다." } }
+      }
+    },
+    "多线程下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mehrthread-Download" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Multi-threaded Download" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement multithread" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "멀티스레드 다운로드" } }
+      }
+    },
+    "实验性功能" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Experimentell" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Experimental" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Expérimental" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실험적 기능" } }
+      }
+    },
+    "把文件分成 4 段并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Datei wird zum parallelen Download in 4 Teile zerlegt, was schneller sein kann. Manche Server begrenzen oder verweigern mehrere Verbindungen; schalte dies bei Fehlern ab. Laufende Aufgaben werden erst nach einem erneuten Versuch neu aufgeteilt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Splits the file into 4 parts downloaded in parallel, which may be faster. Some servers rate-limit or refuse multiple connections; turn this off if downloads fail. Running tasks are re-segmented only after a retry." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Divise le fichier en 4 parties téléchargées en parallèle, ce qui peut être plus rapide. Certains serveurs limitent ou refusent les connexions multiples ; désactivez cette option en cas d'échec. Les tâches en cours ne sont re-segmentées qu'après un nouvel essai." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일을 4개 조각으로 나누어 병렬로 다운로드합니다. 속도가 빨라질 수 있지만, 일부 서버는 다중 연결을 제한하거나 거부하므로 실패 시 끄세요. 진행 중인 작업은 재시도해야 새 설정으로 다시 분할됩니다." } }
+      }
+    },
+    "所有浏览历史将被删除，此操作无法撤销。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der gesamte Verlauf wird gelöscht. Dies kann nicht rückgängig gemacht werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All browsing history will be deleted. This can't be undone." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout l'historique sera supprimé. Action irréversible." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모든 기록이 삭제됩니다. 이 작업은 되돌릴 수 없습니다." } }
+      }
+    },
+    "解析失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Analyse fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing Failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 실패" } }
+      }
+    },
+    "解析视频" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Video analysieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parse Video" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Analyser la vidéo" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 분석" } }
+      }
+    },
+    "没有找到可下载的视频清晰度。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine herunterladbare Videoqualität gefunden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No downloadable video quality found." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune qualité de vidéo téléchargeable trouvée." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 가능한 화질을 찾지 못했습니다." } }
+      }
+    },
+    "没有找到远程视频清单。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein entferntes Video-Manifest gefunden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No remote video manifest found." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun manifeste vidéo distant trouvé." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "원격 동영상 목록을 찾지 못했습니다." } }
+      }
+    },
+    "关闭后，对应网站的页面将无法解析，「解析视频」按钮也会置灰。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach dem Deaktivieren können Seiten der Website nicht mehr analysiert werden; die Schaltfläche „Video analysieren“ ist dann ausgegraut." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When off, pages from this site can't be parsed and the Parse Video button stays disabled." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une fois désactivé, les pages de ce site ne peuvent plus être analysées et le bouton « Analyser la vidéo » reste grisé." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "끄면 해당 사이트의 페이지를 분석할 수 없고 '동영상 분석' 버튼도 비활성화됩니다." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

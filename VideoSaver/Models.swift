@@ -14,9 +14,55 @@ struct VideoVariant: Identifiable, Codable, Hashable {
     }
 
     var displayName: String {
-        let q = quality.isEmpty ? "未知清晰度" : quality
+        let q = quality.isEmpty ? String(localized: "未知清晰度") : quality
         let f = format.isEmpty ? "VIDEO" : format.uppercased()
         return "\(q) · \(f)"
+    }
+}
+
+/// 下载清晰度偏好。
+/// 用稳定代码（rawValue）持久化，而不是本地化后的标题，
+/// 这样切换系统语言后已保存的设置不会失效。
+enum PreferredQuality: String, CaseIterable, Identifiable {
+    case ask
+    case best
+    case p1080
+    case p720
+    case p480
+    case p360
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .ask: return String(localized: "每次询问")
+        case .best: return String(localized: "最佳")
+        case .p1080: return "1080P"
+        case .p720: return "720P"
+        case .p480: return "480P"
+        case .p360: return "360P"
+        }
+    }
+
+    /// 期望的清晰度数值；`.ask` / `.best` 返回 0
+    var qualityNumber: Int {
+        Int(rawValue.filter(\.isNumber)) ?? 0
+    }
+
+    /// 兼容旧版本（直接存了中文/英文标题）的已保存值
+    static func migrated(from raw: String?) -> PreferredQuality {
+        guard let raw, !raw.isEmpty else { return .ask }
+        if let value = PreferredQuality(rawValue: raw) { return value }
+
+        switch raw {
+        case "每次询问", "Ask Every Time": return .ask
+        case "最佳", "Best": return .best
+        case "1080": return .p1080
+        case "720": return .p720
+        case "480": return .p480
+        case "360": return .p360
+        default: return .ask
+        }
     }
 }
 
@@ -33,15 +79,24 @@ enum ParserError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: return "请输入有效的视频页面地址。"
-        case .unsupportedURL: return "当前网页不符合视频解析规则。"
-        case .pageLoadFailed(let message): return "页面加载失败：\(message)"
-        case .noMediaDefinitions: return "页面中没有找到可用的视频信息。"
-        case .noRemoteManifest: return "没有找到远程视频清单。"
-        case .manifestRequestFailed(let message): return "视频清单请求失败：\(message)"
-        case .invalidManifest: return "视频清单格式无法识别。"
-        case .noVideoVariants: return "没有找到可下载的视频清晰度。"
-        case .scriptFailed(let message): return "页面脚本执行失败：\(message)"
+        case .invalidURL:
+            return String(localized: "请输入有效的视频页面地址。")
+        case .unsupportedURL:
+            return String(localized: "当前网页不符合视频解析规则。")
+        case .pageLoadFailed(let message):
+            return String(localized: "页面加载失败：\(message)")
+        case .noMediaDefinitions:
+            return String(localized: "页面中没有找到可用的视频信息。")
+        case .noRemoteManifest:
+            return String(localized: "没有找到远程视频清单。")
+        case .manifestRequestFailed(let message):
+            return String(localized: "视频清单请求失败：\(message)")
+        case .invalidManifest:
+            return String(localized: "视频清单格式无法识别。")
+        case .noVideoVariants:
+            return String(localized: "没有找到可下载的视频清晰度。")
+        case .scriptFailed(let message):
+            return String(localized: "页面脚本执行失败：\(message)")
         }
     }
 }
@@ -127,13 +182,26 @@ struct TransferStats: Equatable {
 
     var speedText: String {
         let value = max(bytesPerSecond, 0)
+
+        let scaled: Double
+        let unit: String
+
         if value >= 1_000_000 {
-            return String(format: "%.1f MB/s", value / 1_000_000)
+            scaled = value / 1_000_000
+            unit = "MB"
+        } else if value >= 1_000 {
+            scaled = value / 1_000
+            unit = "KB"
+        } else {
+            scaled = value
+            unit = "B"
         }
-        if value >= 1_000 {
-            return String(format: "%.0f KB/s", value / 1_000)
-        }
-        return String(format: "%.0f B/s", value)
+
+        let number = scaled >= 100
+            ? String(format: "%.0f", scaled)
+            : String(format: "%.1f", scaled)
+
+        return String(format: String(localized: "%@/s"), "\(number) \(unit)")
     }
 
     var displayText: String {
@@ -146,7 +214,7 @@ struct TransferStats: Equatable {
     }
 
     private static func size(_ bytes: Int64) -> String {
-        guard bytes > 0 else { return "0 KB" }
+        guard bytes > 0 else { return String(localized: "0 KB") }
         return byteFormatter.string(fromByteCount: bytes)
     }
 

@@ -3,11 +3,15 @@ import WebKit
 
 /// 单个视频站点的解析规则。
 ///
-/// 新增站点：实现本协议 → 在 `VideoSiteParserRegistry.default` 里注册一行即可。
+/// 新增站点：实现本协议 → 在 `VideoSiteParserRegistry.all` 里注册一行即可。
 /// 不需要改动 `VideoParser`、`VideoBrowserView` 等任何调用方。
 @MainActor
 protocol VideoSiteParser: AnyObject {
-    /// 站点名，用于提示与调试
+    /// 稳定标识，用于持久化「站点开关」。
+    /// 一经发布就不要改，否则用户已保存的开关状态会失效。
+    var identifier: String { get }
+
+    /// 站点展示名，用于设置页与调试提示
     var displayName: String { get }
 
     /// 是否由本解析器处理该地址（同时决定「解析视频」按钮是否可用）

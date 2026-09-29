@@ -5,25 +5,23 @@ import SwiftUI
 final class AppState: ObservableObject {
     @Published var history: [HistoryItem] = []
     @Published var downloads: [DownloadRecord] = []
-    @Published var preferredQuality = "每次询问"
-    @Published var clearHistoryOnLaunch = false
+    @Published var preferredQuality: PreferredQuality = .ask
     /// 实验性：多线程（分片）下载
     @Published var experimentalMultiThreadDownload = false
+    /// 被用户关闭的站点标识（未列入即视为开启）
+    @Published private var disabledSiteIDs: Set<String> = []
 
     private let historyKey = "VideoSaver.history"
     private let downloadsKey = "VideoSaver.downloads"
     private let qualityKey = "VideoSaver.quality"
-    private let clearHistoryKey = "VideoSaver.clearHistory"
     private let multiThreadKey = "VideoSaver.multiThreadDownload"
+    private let disabledSitesKey = "VideoSaver.disabledSites"
 
     init() {
         load()
-
-        if clearHistoryOnLaunch {
-            history.removeAll()
-            persist()
-        }
     }
+
+    // MARK: - 历史
 
     func addHistory(title: String, url: URL) {
         history.removeAll { $0.url == url }
@@ -44,6 +42,8 @@ final class AppState: ObservableObject {
         history.removeAll()
         persist()
     }
+
+    // MARK: - 下载
 
     func addDownload(_ record: DownloadRecord) {
         downloads.insert(record, at: 0)
@@ -77,6 +77,23 @@ final class AppState: ObservableObject {
         persist()
     }
 
+    // MARK: - 站点开关
+
+    func isSiteEnabled(_ identifier: String) -> Bool {
+        !disabledSiteIDs.contains(identifier)
+    }
+
+    func setSite(_ identifier: String, enabled: Bool) {
+        if enabled {
+            disabledSiteIDs.remove(identifier)
+        } else {
+            disabledSiteIDs.insert(identifier)
+        }
+        persist()
+    }
+
+    // MARK: - 持久化
+
     func persist() {
         let defaults = UserDefaults.standard
 
@@ -88,9 +105,9 @@ final class AppState: ObservableObject {
             defaults.set(data, forKey: downloadsKey)
         }
 
-        defaults.set(preferredQuality, forKey: qualityKey)
-        defaults.set(clearHistoryOnLaunch, forKey: clearHistoryKey)
+        defaults.set(preferredQuality.rawValue, forKey: qualityKey)
         defaults.set(experimentalMultiThreadDownload, forKey: multiThreadKey)
+        defaults.set(Array(disabledSiteIDs).sorted(), forKey: disabledSitesKey)
     }
 
     private func load() {
@@ -114,22 +131,8 @@ final class AppState: ObservableObject {
             }
         }
 
-        let savedQuality = defaults.string(forKey: qualityKey) ?? "每次询问"
-
-        switch savedQuality {
-        case "Ask Every Time":
-            preferredQuality = "每次询问"
-        case "Best":
-            preferredQuality = "最佳"
-        default:
-            preferredQuality = savedQuality
-        }
-
-        if !["每次询问", "最佳", "1080", "720", "480", "360"].contains(preferredQuality) {
-            preferredQuality = "每次询问"
-        }
-
-        clearHistoryOnLaunch = defaults.bool(forKey: clearHistoryKey)
+        preferredQuality = PreferredQuality.migrated(from: defaults.string(forKey: qualityKey))
         experimentalMultiThreadDownload = defaults.bool(forKey: multiThreadKey)
+        disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
     }
 }

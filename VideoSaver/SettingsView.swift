@@ -4,8 +4,6 @@ import UIKit
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
 
-    private let qualities = ["每次询问", "最佳", "1080", "720", "480", "360"]
-
     var body: some View {
         NavigationStack {
             Form {
@@ -13,8 +11,8 @@ struct SettingsView: View {
 
                 Section("下载") {
                     Picker("下载清晰度", selection: $appState.preferredQuality) {
-                        ForEach(qualities, id: \.self) {
-                            Text($0).tag($0)
+                        ForEach(PreferredQuality.allCases) { quality in
+                            Text(quality.title).tag(quality)
                         }
                     }
                     .onChange(of: appState.preferredQuality) { _, _ in
@@ -22,23 +20,9 @@ struct SettingsView: View {
                     }
                 }
 
-                Section {
-                    Toggle("多线程下载", isOn: $appState.experimentalMultiThreadDownload)
-                        .onChange(of: appState.experimentalMultiThreadDownload) { _, _ in
-                            appState.persist()
-                        }
-                } header: {
-                    Text("实验性功能")
-                } footer: {
-                    Text("把文件分成 4 段并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。")
-                }
+                sitesSection
 
-                Section("历史") {
-                    Toggle("启动时清空历史", isOn: $appState.clearHistoryOnLaunch)
-                        .onChange(of: appState.clearHistoryOnLaunch) { _, _ in
-                            appState.persist()
-                        }
-                }
+                experimentalSection
 
                 Section("关于") {
                     LabeledContent("版本", value: Self.appVersion)
@@ -52,15 +36,15 @@ struct SettingsView: View {
     // MARK: - 顶部 App 图标 + 名称
 
     private var appHeader: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             appIconView
 
             Text(Self.appName)
-                .font(.title3.weight(.semibold))
+                .font(.title2.weight(.semibold))
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 12)
-        .padding(.bottom, 4)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         .listRowInsets(EdgeInsets())
@@ -72,22 +56,71 @@ struct SettingsView: View {
             Image(uiImage: icon)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 84, height: 84)
-                .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+                .frame(width: 132, height: 132)
+                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 19, style: .continuous)
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
                         .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
                 }
         } else {
             // 还没有配置 AppIcon 时的占位
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(Color.accentColor.opacity(0.15))
-                .frame(width: 84, height: 84)
+                .frame(width: 132, height: 132)
                 .overlay {
                     Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 40))
+                        .font(.system(size: 62))
                         .foregroundStyle(Color.accentColor)
                 }
+        }
+    }
+
+    // MARK: - 站点开关
+
+    private var sitesSection: some View {
+        Section {
+            ForEach(siteToggles) { site in
+                Toggle(site.title, isOn: siteBinding(for: site.id))
+            }
+        } header: {
+            Text("视频站点")
+        } footer: {
+            Text("关闭后，对应网站的页面将无法解析，「解析视频」按钮也会置灰。")
+        }
+    }
+
+    private func siteBinding(for identifier: String) -> Binding<Bool> {
+        Binding(
+            get: { appState.isSiteEnabled(identifier) },
+            set: { appState.setSite(identifier, enabled: $0) }
+        )
+    }
+
+    /// 把解析器列表转成可 `ForEach` 的简单结构，
+    /// 避免对 `any VideoSiteParser` 取 key path。
+    private var siteToggles: [SiteToggle] {
+        VideoSiteParserRegistry.all.map {
+            SiteToggle(id: $0.identifier, title: $0.displayName)
+        }
+    }
+
+    private struct SiteToggle: Identifiable {
+        let id: String
+        let title: String
+    }
+
+    // MARK: - 实验性功能
+
+    private var experimentalSection: some View {
+        Section {
+            Toggle("多线程下载", isOn: $appState.experimentalMultiThreadDownload)
+                .onChange(of: appState.experimentalMultiThreadDownload) { _, _ in
+                    appState.persist()
+                }
+        } header: {
+            Text("实验性功能")
+        } footer: {
+            Text("把文件分成 4 段并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。")
         }
     }
 
@@ -96,7 +129,7 @@ struct SettingsView: View {
     private static var appName: String {
         (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
             ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String)
-            ?? "VideoSaver"
+            ?? "nox"
     }
 
     private static var appVersion: String {
@@ -104,7 +137,6 @@ struct SettingsView: View {
     }
 
     private static var appIcon: UIImage? {
-        // asset catalog 里另建了 AppIconPreview 普通 image set，读取最可靠
         if let image = UIImage(named: "AppIconPreview") {
             return image
         }

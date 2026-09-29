@@ -5,13 +5,21 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>VideoSaver</string>
+    <string>nox</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>zh-Hans</string>
+        <string>ko</string>
+        <string>fr</string>
+        <string>de</string>
+    </array>
     <key>CFBundleName</key>
     <string>$(PRODUCT_NAME)</string>
     <key>CFBundlePackageType</key>
@@ -24,11 +32,11 @@
     <string>public.app-category.utilities</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
-    <key>UILaunchScreen</key>
-    <dict/>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
     <key>UIFileSharingEnabled</key>
     <true/>
+    <key>UILaunchScreen</key>
+    <dict/>
 </dict>
 </plist>

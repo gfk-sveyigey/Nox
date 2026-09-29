@@ -45,6 +45,7 @@ struct DownloadsView: View {
                 }
             }
             .navigationTitle("下载")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if appState.downloads.contains(where: {
@@ -69,7 +70,7 @@ struct DownloadsView: View {
             .alert("分享失败", isPresented: $showShareFailureAlert) {
                 Button("确定", role: .cancel) {}
             } message: {
-                Text(shareFailureMessage ?? "无法分享此文件")
+                Text(shareFailureMessage ?? String(localized: "无法分享此文件"))
             }
         }
     }
@@ -80,7 +81,7 @@ struct DownloadsView: View {
     private func share(_ record: DownloadRecord) {
         guard let url = manager.shareableFileURL(for: record) else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                shareFailureMessage = "文件不存在或已删除"
+                shareFailureMessage = String(localized: "文件不存在或已删除")
                 showShareFailureAlert = true
             }
             return
@@ -156,26 +157,28 @@ struct DownloadRow: View {
         }
     }
 
-    /// 暂停过就写「继续」，否则写「重试」
+    /// 暂停过就写「继续下载」，否则写「重试」
     private var retryTitle: String {
-        (record.receivedBytes ?? 0) > 0 ? "继续下载" : "重试"
+        (record.receivedBytes ?? 0) > 0
+            ? String(localized: "继续下载")
+            : String(localized: "重试")
     }
 
     @ViewBuilder
     private var statusLine: some View {
-        if record.status == .downloading, let stats {
-            Text(stats.displayText)
+        if record.status == .downloading {
+            Text(stats?.displayText ?? TransferStats().displayText)
                 .font(.footnote)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if record.status == .failed, let message = record.errorMessage {
-            Text(message)
+            Text(verbatim: message)
                 .font(.footnote)
                 .foregroundStyle(.red)
                 .lineLimit(2)
         } else if record.status == .cancelled, let received = record.receivedBytes, received > 0 {
-            Text("已暂停 · 已下载 \(TransferStats.formattedSize(received))，重试可继续")
+            Text(String(localized: "已暂停 · 已下载 \(TransferStats.formattedSize(received))，重试可继续"))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -197,47 +200,33 @@ struct DownloadRow: View {
 
     private var progressColor: Color {
         switch record.status {
-        case .finished:
-            return .green
-        case .failed:
-            return .red
-        case .cancelled:
-            return .gray
-        case .queued, .downloading:
-            return .accentColor
+        case .finished: return .green
+        case .failed: return .red
+        case .cancelled: return .gray
+        case .queued, .downloading: return .accentColor
         }
     }
 
     private var iconColor: Color {
         switch record.status {
-        case .finished:
-            return .green
-        case .failed:
-            return .red
-        case .cancelled:
-            return .secondary
-        case .queued, .downloading:
-            return .accentColor
+        case .finished: return .green
+        case .failed: return .red
+        case .cancelled: return .secondary
+        case .queued, .downloading: return .accentColor
         }
     }
 
     private var iconName: String {
         switch record.status {
-        case .finished:
-            return "checkmark.circle.fill"
-        case .failed:
-            return "exclamationmark.circle.fill"
-        case .cancelled:
-            return "arrow.clockwise.circle"
-        case .queued, .downloading:
-            return "arrow.down.circle"
+        case .finished: return "checkmark.circle.fill"
+        case .failed: return "exclamationmark.circle.fill"
+        case .cancelled: return "arrow.clockwise.circle"
+        case .queued, .downloading: return "arrow.down.circle"
         }
     }
 }
 
 /// 从当前最上层视图控制器弹出系统分享面板。
-/// 相比把 UIActivityViewController 塞进 SwiftUI .sheet（部分系统版本会渲染空白），
-/// 主动 present 更稳定。
 enum SharePresenter {
     static func present(items: [Any]) {
         guard

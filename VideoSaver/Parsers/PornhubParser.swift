@@ -3,6 +3,7 @@ import Foundation
 /// Pornhub / Pornhub Premium 的解析实现。
 @MainActor
 final class PornhubParser: VideoSiteParser {
+    let identifier = "pornhub"
     let displayName = "Pornhub"
 
     private static let hosts = ["pornhub.com", "pornhubpremium.com"]
