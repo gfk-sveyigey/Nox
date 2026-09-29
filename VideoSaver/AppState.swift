@@ -7,11 +7,14 @@ final class AppState: ObservableObject {
     @Published var downloads: [DownloadRecord] = []
     @Published var preferredQuality = "每次询问"
     @Published var clearHistoryOnLaunch = false
+    /// 实验性：多线程（分片）下载
+    @Published var experimentalMultiThreadDownload = false
 
     private let historyKey = "VideoSaver.history"
     private let downloadsKey = "VideoSaver.downloads"
     private let qualityKey = "VideoSaver.quality"
     private let clearHistoryKey = "VideoSaver.clearHistory"
+    private let multiThreadKey = "VideoSaver.multiThreadDownload"
 
     init() {
         load()
@@ -47,7 +50,7 @@ final class AppState: ObservableObject {
         persist()
     }
 
-    /// - Parameter persist: 高频进度回调传 false，避免每次分片都写 UserDefaults。
+    /// - Parameter persist: 高频进度回调传 false，避免每秒写 UserDefaults。
     func updateDownload(_ record: DownloadRecord, persist shouldPersist: Bool = true) {
         guard let index = downloads.firstIndex(where: { $0.id == record.id }) else {
             return
@@ -87,6 +90,7 @@ final class AppState: ObservableObject {
 
         defaults.set(preferredQuality, forKey: qualityKey)
         defaults.set(clearHistoryOnLaunch, forKey: clearHistoryKey)
+        defaults.set(experimentalMultiThreadDownload, forKey: multiThreadKey)
     }
 
     private func load() {
@@ -99,7 +103,15 @@ final class AppState: ObservableObject {
 
         if let data = defaults.data(forKey: downloadsKey),
            let value = try? JSONDecoder().decode([DownloadRecord].self, from: data) {
-            downloads = value
+            // 进程被系统回收时任务不会回调，残留的 .downloading 需要归位，
+            // 否则会永远显示「下载中」且无法重试。
+            downloads = value.map { record in
+                guard record.status == .downloading else { return record }
+                var updated = record
+                updated.status = .cancelled
+                updated.errorMessage = nil
+                return updated
+            }
         }
 
         let savedQuality = defaults.string(forKey: qualityKey) ?? "每次询问"
@@ -118,5 +130,6 @@ final class AppState: ObservableObject {
         }
 
         clearHistoryOnLaunch = defaults.bool(forKey: clearHistoryKey)
+        experimentalMultiThreadDownload = defaults.bool(forKey: multiThreadKey)
     }
 }

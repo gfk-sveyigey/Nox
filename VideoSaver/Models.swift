@@ -71,10 +71,20 @@ struct DownloadRecord: Identifiable, Codable {
     var createdAt: Date
     var errorMessage: String?
 
+    // MARK: - 断点续传 / 多线程下载
+
+    /// 远端文件总大小；未知为 nil。用于计算分片边界与进度。
+    var totalBytes: Int64?
+    /// 已写入磁盘（分片文件）的字节数，用于暂停后展示进度。
+    var receivedBytes: Int64?
+    /// 上次使用的分片数量。续传时必须沿用同一数量，否则分片边界会错位。
+    var segmentCount: Int?
+
     init(id: UUID = UUID(), title: String, quality: String, format: String, sourceURL: URL,
          refererURL: URL? = nil, cookieHeader: String? = nil, fileName: String? = nil,
          fileURL: URL? = nil, status: DownloadStatus = .queued, progress: Double = 0,
-         createdAt: Date = .now, errorMessage: String? = nil) {
+         createdAt: Date = .now, errorMessage: String? = nil,
+         totalBytes: Int64? = nil, receivedBytes: Int64? = nil, segmentCount: Int? = nil) {
         self.id = id
         self.title = title
         self.quality = quality
@@ -88,6 +98,9 @@ struct DownloadRecord: Identifiable, Codable {
         self.progress = progress
         self.createdAt = createdAt
         self.errorMessage = errorMessage
+        self.totalBytes = totalBytes
+        self.receivedBytes = receivedBytes
+        self.segmentCount = segmentCount
     }
 
     /// 用于长按菜单判断是否显示「分享」。
@@ -100,7 +113,7 @@ struct DownloadRecord: Identifiable, Codable {
 struct TransferStats: Equatable {
     /// 已下载字节数
     var bytesReceived: Int64 = 0
-    /// 总字节数；0 表示服务器未返回 Content-Length
+    /// 总字节数；0 表示服务器未返回总大小
     var totalBytes: Int64 = 0
     /// 平滑后的瞬时速度（字节/秒）
     var bytesPerSecond: Double = 0
@@ -125,6 +138,11 @@ struct TransferStats: Equatable {
 
     var displayText: String {
         "\(sizeText) · \(speedText)"
+    }
+
+    /// 供其它视图复用的大小格式化（例如「已下载 12.4 MB」）。
+    static func formattedSize(_ bytes: Int64) -> String {
+        size(bytes)
     }
 
     private static func size(_ bytes: Int64) -> String {
