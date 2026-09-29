@@ -122,6 +122,24 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     private var speedSamples: [UUID: (bytes: Int64, date: Date, speed: Double)] = [:]
     private var progressTimer: Timer?
 
+    // MARK: - 全局并发调度
+
+    /// 同时进行的**任务**数上限。
+    ///
+    /// 注意这是任务数而不是连接数：每个任务内部还会开
+    /// `multiThreadSegmentCount`（普通下载）或 m3u8 并发（HLS）条连接，
+    /// 实际连接总数 ≈ 本值 × 单任务分片数。
+    private var maxConcurrentTasks: Int {
+        max(1, min(appState.maxConcurrentDownloads, 4))
+    }
+
+    /// 已占用槽位的任务（探测中 / 下载中 / HLS 合并中）
+    private var activeIDs = Set<UUID>()
+    /// 排队等待槽位的任务，先进先出
+    private var pendingQueue: [UUID] = []
+    /// 每个任务的调度句柄；取消它会一路中止其内部的 async 工作
+    private var slotTasks: [UUID: Task<Void, Never>] = [:]
+
     /// key = task.taskIdentifier
     private var contexts: [Int: SegmentContext] = [:]
     /// 每个任务当前规划的分片
@@ -211,6 +229,15 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     func cancel(_ record: DownloadRecord) {
         cancellingIDs.insert(record.id)
 
+        // 还在排队就直接出队，否则槽位空出来时它会莫名其妙地开始下载
+        if let index = pendingQueue.firstIndex(of: record.id) {
+            pendingQueue.remove(at: index)
+        }
+
+        // 普通下载靠 contexts 里的 URLSessionDownloadTask 取消；
+        // HLS 用的是 async URLSession，只能靠取消调度句柄（CancellationError 会向下传播）。
+        slotTasks[record.id]?.cancel()
+
         let identifiers = contexts
             .filter { $0.value.recordID == record.id }
             .map(\.key)
@@ -235,6 +262,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         clearTransferStats(for: record.id)
         appState.updateDownload(updated)
+        releaseSlot(record.id)
     }
 
     /// 清空：删除记录 + 本地文件 + 未完成的分片。
@@ -271,6 +299,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func deleteLocalArtifacts(for record: DownloadRecord) {
+        // 先停掉可能还在跑的调度任务与网络请求，再删文件，
+        // 否则删完文件后请求回调仍会往分片目录写。
+        slotTasks[record.id]?.cancel()
+
         if let url = shareableFileURL(for: record) {
             try? FileManager.default.removeItem(at: url)
         } else if let url = record.fileURL, url.isFileURL {
@@ -283,15 +315,62 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         plannedSegments.removeValue(forKey: record.id)
         completedSegments.removeValue(forKey: record.id)
         clearTransferStats(for: record.id)
+        releaseSlot(record.id)
     }
 
     // MARK: - 启动流程
 
+    /// 入队入口：不再直接开跑，交给 `drainQueue` 按槽位调度。
     private func start(_ record: DownloadRecord) {
-        Task { await begin(record) }
+        guard !activeIDs.contains(record.id), !pendingQueue.contains(record.id) else { return }
+
+        pendingQueue.append(record.id)
+        drainQueue()
+    }
+
+    /// 有空闲槽位就启动下一个排队任务。
+    private func drainQueue() {
+        while activeIDs.count < maxConcurrentTasks, !pendingQueue.isEmpty {
+            let id = pendingQueue.removeFirst()
+
+            guard let record = appState.downloads.first(where: { $0.id == id }) else { continue }
+
+            activeIDs.insert(id)
+
+            slotTasks[id] = Task { [weak self] in
+                await self?.begin(record)
+
+                // begin 返回 ≠ 下载结束：普通下载此时字节还在流，
+                // 要等 assemble / abort 把它推进终态才释放槽位。
+                self?.releaseSlotIfSettled(id)
+            }
+        }
+    }
+
+    /// 任务已经落到终态（完成 / 失败 / 取消）才真正释放槽位。
+    private func releaseSlotIfSettled(_ id: UUID) {
+        guard let status = appState.downloads.first(where: { $0.id == id })?.status else {
+            releaseSlot(id)
+            return
+        }
+
+        guard status != .queued, status != .downloading else { return }
+        releaseSlot(id)
+    }
+
+    /// 幂等：重复调用不会重复触发 `drainQueue`。
+    private func releaseSlot(_ id: UUID) {
+        guard activeIDs.remove(id) != nil else { return }
+
+        slotTasks.removeValue(forKey: id)
+        drainQueue()
     }
 
     private func begin(_ record: DownloadRecord) async {
+        // 排队期间被取消：调度句柄已被 cancel，直接退出。
+        // 必须在清除 cancellingIDs 之前判断，否则会把取消标记抹掉。
+        if Task.isCancelled { return }
+
         // m3u8 走独立管线：清单 → 分片 → AES-128 解密 → 合并。
         // 它的总大小事先未知、分片数量由清单决定，套用下面的字节分片逻辑没有意义。
         if record.format.lowercased() == "m3u8" {
@@ -685,6 +764,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         segments: [DownloadSegment],
         partsDirectory: URL
     ) async {
+        defer { releaseSlot(recordID) }
+
         guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
         guard record.status != .cancelled else { return }
 
@@ -755,7 +836,21 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         speedSamples[id] = (0, Date(), 0)
         startProgressTimerIfNeeded()
 
-        let concurrency = min(max(appState.m3u8SegmentConcurrency, 1), 8)
+        // 复用「实验性功能 → 多线程下载」：用户只需要理解一个并发旋钮。
+        // m3u8 分片远小于字节分片（通常 2–10 秒一片、总数可达数百），
+        // 所以再夹一道上限，避免打爆 CDN 触发限速或 403。
+        let desired: Int
+
+        if appState.m3u8SegmentConcurrency > 0 {
+            // 显式覆盖（0 表示跟随多线程设置）
+            desired = appState.m3u8SegmentConcurrency
+        } else if appState.experimentalMultiThreadDownload {
+            desired = appState.multiThreadSegmentCount
+        } else {
+            desired = AppState.defaultHLSConcurrency
+        }
+
+        let concurrency = min(max(desired, 1), AppState.maxHLSConcurrency)
 
         do {
             let merged = try await HLSDownloader(concurrency: concurrency).download(
@@ -824,6 +919,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func finishHLS(recordID: UUID, mergedFile: URL) {
+        defer { releaseSlot(recordID) }
+
         guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
         guard record.status != .cancelled else { return }
 
@@ -930,6 +1027,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func abort(id: UUID, message: String) {
+        defer { releaseSlot(id) }
+
         // 一个分片失败即整体失败；其余分片取消，但分片文件保留，方便重试续传
         let identifiers = contexts
             .filter { $0.value.recordID == id }
@@ -977,6 +1076,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                     record.errorMessage = nil
                     self.appState.updateDownload(record)
                 }
+                self.releaseSlot(id)
                 return
             }
 

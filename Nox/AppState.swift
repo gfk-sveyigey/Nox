@@ -7,10 +7,20 @@ final class AppState: ObservableObject {
     static let segmentCountRange = 1...32
     /// 多线程下载的默认线程数
     static let defaultSegmentCount = 4
-    /// m3u8 分片并发数范围
-    static let m3u8ConcurrencyRange = 1...8
-    /// m3u8 分片并发数默认值
-    static let defaultM3u8Concurrency = 4
+
+    /// m3u8 分片并发数范围。0 表示跟随「多线程下载」设置
+    static let m3u8ConcurrencyRange = 0...8
+    /// m3u8 分片并发数默认值：跟随「多线程下载」设置
+    static let defaultM3u8Concurrency = 0
+    /// m3u8 分片并发上限。分片远小于字节分片、总数可达数百，开太大容易触发 CDN 限速
+    static let maxHLSConcurrency = 8
+    /// 未开启「多线程下载」时，m3u8 使用的分片并发
+    static let defaultHLSConcurrency = 4
+
+    /// 同时进行的下载任务数范围
+    static let maxConcurrentDownloadsRange = 1...4
+    /// 同时进行的下载任务数默认值
+    static let defaultMaxConcurrentDownloads = 2
 
     @Published var history: [HistoryItem] = []
     @Published var downloads: [DownloadRecord] = []
@@ -19,8 +29,10 @@ final class AppState: ObservableObject {
     @Published var experimentalMultiThreadDownload = false
     /// 下载线程数（1...32），仅在多线程下载开启时生效
     @Published var multiThreadSegmentCount: Int = AppState.defaultSegmentCount
-    /// m3u8 分片并发数（1...8）
+    /// m3u8 分片并发数（0...8）。0 = 跟随「多线程下载」设置
     @Published var m3u8SegmentConcurrency: Int = AppState.defaultM3u8Concurrency
+    /// 同时进行的下载任务数（1...4）。每个任务内部还会再开分片连接
+    @Published var maxConcurrentDownloads: Int = AppState.defaultMaxConcurrentDownloads
     /// 被用户关闭的站点标识（未列入即视为开启）
     @Published private var disabledSiteIDs: Set<String> = []
 
@@ -30,6 +42,7 @@ final class AppState: ObservableObject {
     private let multiThreadKey = "Nox.multiThreadDownload"
     private let segmentCountKey = "Nox.multiThreadSegmentCount"
     private let m3u8ConcurrencyKey = "Nox.m3u8SegmentConcurrency"
+    private let maxConcurrentDownloadsKey = "Nox.maxConcurrentDownloads"
     private let disabledSitesKey = "Nox.disabledSites"
 
     init() {
@@ -124,6 +137,7 @@ final class AppState: ObservableObject {
         defaults.set(experimentalMultiThreadDownload, forKey: multiThreadKey)
         defaults.set(multiThreadSegmentCount, forKey: segmentCountKey)
         defaults.set(m3u8SegmentConcurrency, forKey: m3u8ConcurrencyKey)
+        defaults.set(maxConcurrentDownloads, forKey: maxConcurrentDownloadsKey)
         defaults.set(Array(disabledSiteIDs).sorted(), forKey: disabledSitesKey)
     }
 
@@ -156,12 +170,17 @@ final class AppState: ObservableObject {
             ? storedSegments
             : Self.defaultSegmentCount
 
-        // 键不存在时 defaults.integer 返回 0，必须用区间判断兜底，
-        // 否则首次启动会拿到 0（被 max(…, 1) 兜成 1，等于没有并发）。
+        // 0 是合法值（= 跟随多线程设置），恰好也是 defaults.integer 缺键时的返回值，
+        // 所以两者天然一致，不需要额外区分「键不存在」。
         let storedConcurrency = defaults.integer(forKey: m3u8ConcurrencyKey)
         m3u8SegmentConcurrency = Self.m3u8ConcurrencyRange.contains(storedConcurrency)
             ? storedConcurrency
             : Self.defaultM3u8Concurrency
+
+        let storedConcurrentDownloads = defaults.integer(forKey: maxConcurrentDownloadsKey)
+        maxConcurrentDownloads = Self.maxConcurrentDownloadsRange.contains(storedConcurrentDownloads)
+            ? storedConcurrentDownloads
+            : Self.defaultMaxConcurrentDownloads
 
         disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
     }
