@@ -1,6 +1,7 @@
 import Foundation
 import WebKit
 
+/// 浏览器宿主 + 解析调度。具体站点的规则由 `VideoSiteParser` 实现。
 @MainActor
 final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     @Published private(set) var isLoading = false
@@ -9,9 +10,11 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
 
     private let webView: WKWebView
     private let appState: AppState
+    private let registry: VideoSiteParserRegistry
 
-    init(appState: AppState) {
+    init(appState: AppState, registry: VideoSiteParserRegistry = .default) {
         self.appState = appState
+        self.registry = registry
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
@@ -23,10 +26,13 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     var browserWebView: WKWebView { webView }
     var canParseCurrentPage: Bool { pageReady && pageMatchesRule && !isLoading }
 
+    /// 当前页面命中的站点名，可用于 UI 提示。
+    var currentSiteName: String? { registry.parser(for: webView.url)?.displayName }
+
     func load(_ url: URL) {
         isLoading = true
         pageReady = false
-        pageMatchesRule = Self.matchesVideoPageRule(url)
+        pageMatchesRule = registry.canHandle(url)
         webView.load(URLRequest(url: url))
     }
 
@@ -37,118 +43,48 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         }
 
         guard let pageURL = webView.url else { throw ParserError.invalidURL }
-        let payload = try await evaluateExtractionScript()
-        guard let mediaDefinitions = payload["mediaDefinitions"] as? [[String: Any]] else {
-            throw ParserError.noMediaDefinitions
+        guard let siteParser = registry.parser(for: pageURL) else {
+            throw ParserError.unsupportedURL
         }
 
-        guard let remote = mediaDefinitions.first(where: {
-            if let value = $0["remote"] as? Bool { return value }
-            if let value = $0["remote"] as? String { return value == "true" }
-            return false
-        }), let remoteAddress = remote["videoUrl"] as? String, let remoteURL = URL(string: remoteAddress) else {
-            throw ParserError.noRemoteManifest
-        }
+        let page = WKWebPageContext(webView: webView)
+        let variants = try await siteParser.parse(page: page)
 
-        let cookies = await cookieHeaderForCurrentPage()
-        var request = URLRequest(url: remoteURL)
-        request.httpMethod = "GET"
-        request.setValue("application/json,text/plain,*/*", forHTTPHeaderField: "Accept")
-        if let cookieHeader = cookies { request.setValue(cookieHeader, forHTTPHeaderField: "Cookie") }
-        if let userAgent = webView.customUserAgent, !userAgent.isEmpty { request.setValue(userAgent, forHTTPHeaderField: "User-Agent") }
-        request.setValue(pageURL.absoluteString, forHTTPHeaderField: "Referer")
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            throw ParserError.manifestRequestFailed(error.localizedDescription)
-        }
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw ParserError.manifestRequestFailed("HTTP \(http.statusCode)")
-        }
-
-        let object = try JSONSerialization.jsonObject(with: data)
-        guard let items = object as? [[String: Any]] else { throw ParserError.invalidManifest }
-        let variants = items.compactMap { item -> VideoVariant? in
-            guard let urlString = item["videoUrl"] as? String, let url = URL(string: urlString) else { return nil }
-            return VideoVariant(quality: String(describing: item["quality"] ?? ""), format: String(describing: item["format"] ?? ""), url: url)
-        }
         guard !variants.isEmpty else { throw ParserError.noVideoVariants }
 
-        let title = await currentTitle() ?? pageURL.host ?? "Video"
+        let title = await page.documentTitle() ?? pageURL.host ?? "Video"
         appState.addHistory(title: title, url: pageURL)
         return ParsedVideo(title: title, pageURL: pageURL, variants: variants)
     }
 
-    private func evaluateExtractionScript() async throws -> [String: Any] {
-        let script = #"""
-        (() => {
-          const keys = Object.getOwnPropertyNames(window).filter(k => k.startsWith('flashvars_'));
-          if (!keys.length) return {error: 'no_flashvars'};
-          for (const key of keys) {
-            try {
-              const value = window[key];
-              if (value && Array.isArray(value.mediaDefinitions)) {
-                return {mediaDefinitions: value.mediaDefinitions};
-              }
-            } catch (_) {}
-          }
-          return {error: 'no_mediaDefinitions'};
-        })()
-        """#
-        let value = try await webView.evaluateJavaScript(script)
-        guard let dict = value as? [String: Any] else { throw ParserError.noMediaDefinitions }
-        if dict["error"] != nil { throw ParserError.noMediaDefinitions }
-        return dict
-    }
-
-    private func currentTitle() async -> String? {
-        (try? await webView.evaluateJavaScript("document.title")) as? String
-    }
-
+    /// 供下载请求复用：当前页面的 Cookie 头。
     func cookieHeaderForCurrentPage() async -> String? {
-        await withCheckedContinuation { continuation in
-            webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
-                let host = self.webView.url?.host
-                let relevant = cookies.filter { cookie in
-                    guard let host else { return false }
-                    return host == cookie.domain || host.hasSuffix(cookie.domain)
-                }
-                let value = relevant.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
-                continuation.resume(returning: value.isEmpty ? nil : value)
-            }
-        }
+        await WKWebPageContext(webView: webView).cookieHeader(matching: webView.url)
     }
+
+    // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         isLoading = true
         pageReady = false
-        pageMatchesRule = Self.matchesVideoPageRule(webView.url)
+        pageMatchesRule = registry.canHandle(webView.url)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         isLoading = false
         pageReady = true
-        pageMatchesRule = Self.matchesVideoPageRule(webView.url)
+        pageMatchesRule = registry.canHandle(webView.url)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         isLoading = false
         pageReady = false
-        pageMatchesRule = Self.matchesVideoPageRule(webView.url)
+        pageMatchesRule = registry.canHandle(webView.url)
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         isLoading = false
         pageReady = false
-        pageMatchesRule = Self.matchesVideoPageRule(webView.url)
-    }
-
-    private static func matchesVideoPageRule(_ url: URL?) -> Bool {
-        guard let url else { return false }
-        let pattern = #"^https://(?:[^./]+\.)?(?:pornhub\.com|pornhubpremium\.com)/view_video\.php\?viewkey=[^&]+(?:&.*)?$"#
-        return url.absoluteString.range(of: pattern, options: .regularExpression) != nil
+        pageMatchesRule = registry.canHandle(webView.url)
     }
 }
