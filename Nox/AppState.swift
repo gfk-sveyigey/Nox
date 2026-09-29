@@ -174,7 +174,7 @@ enum AppLocale {
     /// 文本查表用的资源包。
     ///
     /// - 跟随系统：返回 `Bundle.main`，由 iOS 按「系统偏好语言 ∩ CFBundleLocalizations」挑选；
-    /// - 指定语言：直接指向 `<code>.lproj`，绕开替换 Bundle 类的做法。
+    /// - 指定语言：直接指向 `<code>.lproj`。
     ///
     /// 若目标 `.lproj` 不存在（例如资源未打进包），回落到 `Bundle.main`，
     /// 此时显示的是开发语言（`CFBundleDevelopmentRegion`）的文本，便于发现资源缺失。
@@ -197,7 +197,10 @@ enum AppLocale {
 /// - 带插值的文案用 `String(format:)`：
 ///   `String(format: L("页面加载失败：%@"), message)`
 func L(_ key: String) -> String {
-    NSLocalizedString(key, table: nil, bundle: AppLocale.bundle, value: key, comment: "")
+    // 等价写法：NSLocalizedString(key, tableName: nil, bundle: AppLocale.bundle, value: key, comment: "")
+    // 注意：全局函数 NSLocalizedString 的标签是 tableName；
+    //       而 Bundle 实例方法 localizedString(forKey:value:table:) 的标签是 table。两者不要混用。
+    AppLocale.bundle.localizedString(forKey: key, value: key, table: nil)
 }
 
 /// App 内可选的显示语言。
