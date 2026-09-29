@@ -69,7 +69,7 @@ struct VideoBrowserView: View {
         }
     }
 
-    // MARK: - 顶部工具栏（单行）
+    // MARK: - 顶部工具栏（单行，两个控件等高）
 
     private var browserToolbar: some View {
         HStack(spacing: 8) {
@@ -80,22 +80,29 @@ struct VideoBrowserView: View {
                     await parse()
                 }
             } label: {
-                if isParsing {
-                    ProgressView()
-                        .frame(height: controlHeight)
-                } else {
-                    Label("解析视频", systemImage: "arrow.down.circle")
-                        .frame(height: controlHeight)
+                Group {
+                    if isParsing {
+                        ProgressView()
+                    } else {
+                        Label("解析视频", systemImage: "arrow.down.circle")
+                            .labelStyle(.titleAndIcon)
+                            .lineLimit(1)
+                    }
                 }
+                // 与地址栏共用 controlHeight，避免玻璃按钮样式撑高
+                .frame(height: controlHeight)
+                .padding(.horizontal, 14)
             }
-            .browserGlassButton()
+            .buttonStyle(.plain)
+            .contentShape(Rectangle())
+            .browserGlassBar()
+            .opacity(parser.canParseCurrentPage && !isParsing ? 1 : 0.45)
             .disabled(!parser.canParseCurrentPage || isParsing)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
     }
 
-    /// 地址栏：「打开」按钮改成栏内的前往图标，整条栏与「解析视频」同处一行
     private var addressBar: some View {
         HStack(spacing: 6) {
             TextField("输入网页地址", text: $address)
