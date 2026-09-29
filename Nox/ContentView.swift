@@ -30,7 +30,7 @@ struct ContentView: View {
             .tabItem { Label(L("历史"), systemImage: "clock") }
             .tag(2)
 
-            SettingsView()
+            SettingsView(manager: downloadManager)
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(3)
         }

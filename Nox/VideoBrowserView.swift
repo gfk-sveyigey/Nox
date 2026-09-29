@@ -33,14 +33,24 @@ struct VideoBrowserView: View {
             VStack(spacing: 0) {
                 browserToolbar
 
-                // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
-                WebViewContainer(webView: parser.browserWebView)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // 用 ZStack 而不是 .overlay：让徽标与 WebView 处于同一层级的显式上下关系，
+                // 命中测试时徽标在上；`.overlay` 在 UIViewRepresentable 之上
+                // 有时会被 WKWebView 的图层抢先，导致点击穿透。
+                ZStack(alignment: .bottomTrailing) {
+                    // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
+                    WebViewContainer(webView: parser.browserWebView)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    if isSnifferBadgeVisible {
+                        snifferBadge
+                            .padding(16)
+                            .transition(.opacity)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay(alignment: .bottomTrailing) {
-                snifferBadge
-            }
+            .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -139,14 +149,22 @@ struct VideoBrowserView: View {
 
     // MARK: - 嗅探面板入口
 
+    /// 「通用嗅探」在设置页是否开启。
+    /// 关闭后即便脚本还在上报，也不显示入口 —— 与「解析视频」按钮的判定保持一致。
+    private var isSnifferEnabled: Bool {
+        appState.isSiteEnabled(GenericSnifferParser.siteIdentifier)
+    }
+
+    private var isSnifferBadgeVisible: Bool {
+        isSnifferEnabled && !sniffer.items.isEmpty
+    }
+
     /// 悬浮胶囊：显示当前已嗅探到的资源数。
     ///
-    /// 嗅探是随页面加载被动进行的，这个角标让用户知道「有东西了」，
-    /// 不必先点「解析视频」。没有结果时整体隐藏，且不接收点击，
-    /// 免得挡住 WebView 右下角的原生控件。
-    ///
-    /// `.sheet` 刻意挂在这个徽标上，而不是外层 `VStack`：
-    /// `VStack` 已经挂了 `variantSheet`，同一视图上叠两个 `.sheet` 会互相干扰。
+    /// 用 `contentShape(Capsule())` 把命中区域收敛到胶囊本身，
+    /// 否则外层留白会落到 WebView 上（表现为「点按钮顺带点了页面」）。
+    /// `.sheet` 挂在徽标上而不是外层 `VStack`：后者已挂了 `variantSheet`，
+    /// 同一视图叠两个 `.sheet` 会互相干扰。
     private var snifferBadge: some View {
         Button {
             showSniffer = true
@@ -161,14 +179,11 @@ struct VideoBrowserView: View {
             .foregroundStyle(Color.accentColor)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .browserGlassBar(cornerRadius: nil)
-        .opacity(sniffer.items.isEmpty ? 0 : 1)
-        .allowsHitTesting(!sniffer.items.isEmpty)
-        .animation(.easeInOut(duration: 0.2), value: sniffer.items.isEmpty)
-        .padding(.trailing, 16)
-        .padding(.bottom, 16)
+        .zIndex(1)
         .accessibilityLabel(L("已嗅探"))
         .sheet(isPresented: $showSniffer) {
             SnifferSheet(
@@ -302,7 +317,7 @@ struct VideoBrowserView: View {
         Int(quality.filter(\.isNumber)) ?? 0
     }
 
-    /// 「解析视频」路径：标题来自页面标题
+    /// 「解析视频」路径：标题来自页面标题；历史已由 `parseCurrentPage()` 记录
     private func download(_ variant: VideoVariant) async {
         guard let parsedVideo else { return }
 
@@ -320,8 +335,13 @@ struct VideoBrowserView: View {
 
     /// 嗅探面板路径：标题来自脚本上报的标题（退回文件名 / 域名），
     /// Referer 用 WebView 当前地址。
+    ///
+    /// 这条路径不经过 `VideoParser.parseCurrentPage()`，所以历史要在这里补记
+    /// —— 否则「从嗅探面板下载」在历史页里查不到。
     private func download(_ item: SnifferBridge.Item) {
         showSniffer = false
+
+        appState.addHistory(title: item.displayTitle, url: item.url)
 
         Task {
             let cookieHeader = await parser.cookieHeaderForCurrentPage()

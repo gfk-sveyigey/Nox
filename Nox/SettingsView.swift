@@ -4,6 +4,14 @@ import UIKit
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var localization = LocalizationManager.shared
+    @ObservedObject private var manager: DownloadManager
+
+    @State private var cacheBytes: Int64 = 0
+    @State private var showingCacheClearConfirmation = false
+
+    init(manager: DownloadManager) {
+        _manager = ObservedObject(wrappedValue: manager)
+    }
 
     var body: some View {
         NavigationStack {
@@ -16,11 +24,28 @@ struct SettingsView: View {
                 sitesLinkSection
                 languageSection
                 experimentalSection
+                storageSection
                 aboutSection
             }
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                refreshCacheSize()
+            }
+            .alert(L("清空缓存？"), isPresented: $showingCacheClearConfirmation) {
+                Button(L("取消"), role: .cancel) {}
+                Button(L("清空"), role: .destructive) {
+                    manager.clearCache()
+                    refreshCacheSize()
+                }
+            } message: {
+                Text(L("将删除未完成下载的分片与临时文件。正在下载的任务不受影响，已下载的视频也不会被删除。"))
+            }
         }
+    }
+
+    private func refreshCacheSize() {
+        cacheBytes = manager.cacheSize()
     }
 
     // MARK: - App 图标 + 名称（可滚动）
@@ -162,6 +187,25 @@ struct SettingsView: View {
             Text(L("实验性功能"))
         } footer: {
             Text(L("把文件分成多个分片并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。"))
+        }
+    }
+
+    // MARK: - 存储（缓存）
+
+    private var storageSection: some View {
+        Section {
+            LabeledContent(L("已用缓存"), value: TransferStats.formattedSize(cacheBytes))
+
+            Button(role: .destructive) {
+                showingCacheClearConfirmation = true
+            } label: {
+                Text(L("清空缓存"))
+            }
+            .disabled(cacheBytes == 0)
+        } header: {
+            Text(L("存储"))
+        } footer: {
+            Text(L("缓存是未完成下载的分片与临时文件。清空不会删除已下载的视频；正在下载的任务会被跳过。"))
         }
     }
 
