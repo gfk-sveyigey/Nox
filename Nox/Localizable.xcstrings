@@ -545,6 +545,38 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "조각 파일 쓰기 실패" } }
       }
     },
+    "同时下载任务数" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gleichzeitige Downloads" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Concurrent Downloads" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargements simultanés" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동시 다운로드 수" } }
+      }
+    },
+    "m3u8 分片并发" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "m3u8-Segmentparallelität" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "m3u8 Segment Concurrency" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Parallélisme des segments m3u8" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "m3u8 조각 동시성" } }
+      }
+    },
+    "跟随多线程设置" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mehrthread-Einstellung folgen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow Multi-threaded Setting" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre le réglage multithread" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "멀티스레드 설정 따르기" } }
+      }
+    },
+    "网络请求失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Netzwerkanfrage fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Network Request Failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de la requête réseau" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "네트워크 요청 실패" } }
+      }
+    },
     "资源类型" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Ressourcentyp" } },

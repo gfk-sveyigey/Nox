@@ -288,14 +288,20 @@ enum HLSDownloaderError: LocalizedError {
 
 /// m3u8 → 分片并发下载 → AES-128 解密 → 顺序合并。
 ///
-/// 刻意不做 actor 隔离：下载逻辑本身无共享可变状态，
-/// 进度计数交给 `ProgressTracker` actor，避免主线程被网络等待占住。
+/// 三件事保证「取消」和「续传」都能工作：
+/// 1. 全流程只靠 `Task.checkCancellation()` 与 URLSession 的 async API 响应取消，
+///    调用方只要取消外层 `Task` 就能中止（不需要额外的 isCancelled 闭包）；
+/// 2. 每个分片先写 `<name>.tmp` 再原子改名，因此「分片文件存在」等价于「该分片已完整下载」；
+/// 3. 分片目录里存一份清单签名，签名变化（换清晰度、换集、密钥变化）就整体作废重来。
 final class HLSDownloader {
     struct Progress {
         let completed: Int
         let total: Int
         let bytes: Int64
     }
+
+    /// 分片目录里的清单签名文件名
+    private static let signatureFileName = "manifest.sig"
 
     private let concurrency: Int
     private let timeout: TimeInterval
@@ -321,9 +327,12 @@ final class HLSDownloader {
         let partsDirectory = DownloadStorage.partsDirectory(for: recordID)
         let stagingDirectory = DownloadStorage.stagingDirectory(for: recordID)
 
-        try? fileManager.removeItem(at: partsDirectory)
+        // 注意：这里不再清空分片目录 —— 那是断点续传的前提。
+        // 是否保留旧分片由下面的「清单签名」决定。
         try fileManager.createDirectory(at: partsDirectory, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: stagingDirectory, withIntermediateDirectories: true)
+
+        try Task.checkCancellation()
 
         // 1) 清单：master 时按偏好挑子流，最多下钻 3 层
         var playlist = try await loadPlaylist(
@@ -353,7 +362,24 @@ final class HLSDownloader {
         guard !playlist.segments.isEmpty else { throw ParserError.noVideoVariants }
         guard !playlist.isLive else { throw HLSDownloaderError.liveStreamUnsupported }
 
-        // 2) 密钥
+        try Task.checkCancellation()
+
+        // 2) 续传判据：签名一致才保留旧分片。
+        //    同一部片子换了集数或清晰度，分片序号会对不上，硬拼出来的是损坏文件。
+        let signature = Self.signature(for: playlist, playlistURL: playlistURL)
+        let signatureURL = partsDirectory.appendingPathComponent(Self.signatureFileName)
+
+        let previousSignature = try? String(contentsOf: signatureURL, encoding: .utf8)
+
+        if previousSignature != signature {
+            Self.removeContents(of: partsDirectory)
+            try? signature.write(to: signatureURL, atomically: true, encoding: .utf8)
+        } else {
+            // 上次中断可能留下半截 .tmp，清掉；已改名的 .part 才是可信的
+            Self.removeTemporaryFiles(in: partsDirectory)
+        }
+
+        // 3) 密钥
         var key: Data?
 
         if playlist.isEncrypted, let keyURL = playlist.keyURL {
@@ -372,73 +398,99 @@ final class HLSDownloader {
             )
         }
 
-        // 3) fMP4 初始化段（有就先落地，合并时排第一位）
+        try Task.checkCancellation()
+
+        // 4) fMP4 初始化段（有就落地，合并时排第一位）
         var initPart: URL?
 
         if let initSegmentURL = playlist.initSegmentURL {
             let target = partsDirectory.appendingPathComponent("init.part")
 
-            _ = try await Self.downloadSegment(
-                url: initSegmentURL,
-                key: nil,
-                iv: nil,
-                sequence: 0,
-                destination: target,
-                referer: referer,
-                cookieHeader: cookieHeader,
-                userAgent: userAgent
-            )
+            if !Self.isUsable(target) {
+                try await Self.downloadSegment(
+                    url: initSegmentURL,
+                    key: nil,
+                    iv: nil,
+                    sequence: 0,
+                    destination: target,
+                    referer: referer,
+                    cookieHeader: cookieHeader,
+                    userAgent: userAgent
+                )
+            }
 
             initPart = target
         }
 
-        // 4) 分片并发下载 + 解密；文件名带序号，合并时按序号取
+        // 5) 扫描已落盘的分片，从断点继续
         let total = playlist.segments.count
-        let tracker = ProgressTracker()
+        var resumedCount = 0
+        var resumedBytes: Int64 = 0
+        var pendingIndexes: [Int] = []
 
-        try await withThrowingTaskGroup(of: Int64.self) { group in
-            var next = 0
-            let initial = min(concurrency, total)
+        for index in 0..<total {
+            let partURL = Self.partURL(in: partsDirectory, index: index)
 
-            func addTask(_ index: Int) {
-                let segment = playlist.segments[index]
-                let destination = Self.partURL(in: partsDirectory, index: index)
+            if Self.isUsable(partURL) {
+                resumedCount += 1
+                resumedBytes += DownloadStorage.fileSize(at: partURL)
+            } else {
+                pendingIndexes.append(index)
+            }
+        }
 
-                group.addTask {
-                    try Task.checkCancellation()
+        let tracker = ProgressTracker(completed: resumedCount, bytes: resumedBytes)
 
-                    return try await Self.downloadSegment(
-                        url: segment.url,
-                        key: key,
-                        iv: playlist.keyIV,
-                        sequence: segment.sequence,
-                        destination: destination,
-                        referer: referer,
-                        cookieHeader: cookieHeader,
-                        userAgent: userAgent
-                    )
+        // 先把「续传进度」报上去，否则进度条从 0 开始，看起来像没续上
+        onProgress?(Progress(completed: resumedCount, total: total, bytes: resumedBytes))
+
+        if !pendingIndexes.isEmpty {
+            try await withThrowingTaskGroup(of: Int64.self) { group in
+                var cursor = 0
+
+                func addNextTask() {
+                    guard cursor < pendingIndexes.count else { return }
+
+                    let index = pendingIndexes[cursor]
+                    cursor += 1
+
+                    let segment = playlist.segments[index]
+                    let destination = Self.partURL(in: partsDirectory, index: index)
+
+                    group.addTask {
+                        try Task.checkCancellation()
+
+                        return try await Self.downloadSegment(
+                            url: segment.url,
+                            key: key,
+                            iv: playlist.keyIV,
+                            sequence: segment.sequence,
+                            destination: destination,
+                            referer: referer,
+                            cookieHeader: cookieHeader,
+                            userAgent: userAgent
+                        )
+                    }
                 }
-            }
 
-            while next < initial {
-                addTask(next)
-                next += 1
-            }
+                for _ in 0..<min(concurrency, pendingIndexes.count) {
+                    addNextTask()
+                }
 
-            while let bytes = try await group.next() {
-                let snapshot = await tracker.advance(bytes: bytes)
-                onProgress?(Progress(completed: snapshot.completed, total: total, bytes: snapshot.bytes))
+                while let bytes = try await group.next() {
+                    let snapshot = await tracker.advance(bytes: bytes)
+                    onProgress?(
+                        Progress(completed: snapshot.completed, total: total, bytes: snapshot.bytes)
+                    )
 
-                if next < total {
-                    addTask(next)
-                    next += 1
+                    addNextTask()
                 }
             }
         }
 
         try Task.checkCancellation()
 
-        // 5) 顺序合并（不把整部片子读进内存）
+        // 6) 顺序合并（不把整部片子读进内存）
         var orderedParts: [URL] = []
         if let initPart { orderedParts.append(initPart) }
         orderedParts.append(contentsOf: (0..<total).map { Self.partURL(in: partsDirectory, index: $0) })
@@ -449,9 +501,56 @@ final class HLSDownloader {
             try DownloadStorage.concatenate(orderedParts, into: merged)
         }.value
 
+        // 合并成功才清分片；失败时保留，下次重试可以接着下
         try? fileManager.removeItem(at: partsDirectory)
 
         return merged
+    }
+
+    // MARK: - 续传辅助
+
+    /// 清单签名：清单地址 + 分片数 + 密钥与初始化段地址 + 首尾分片地址。
+    /// 任一变化都说明「这不是同一份清单」，旧分片不能再拼。
+    private static func signature(for playlist: HLSPlaylist, playlistURL: URL) -> String {
+        [
+            playlistURL.absoluteString,
+            String(playlist.segments.count),
+            playlist.keyURL?.absoluteString ?? "-",
+            playlist.initSegmentURL?.absoluteString ?? "-",
+            playlist.segments.first?.url.absoluteString ?? "-",
+            playlist.segments.last?.url.absoluteString ?? "-"
+        ].joined(separator: "|")
+    }
+
+    /// 分片存在且非空即视为已完成 —— 依赖「先写 .tmp 再原子改名」的写入策略。
+    private static func isUsable(_ url: URL) -> Bool {
+        DownloadStorage.fileSize(at: url) > 0
+    }
+
+    private static func removeContents(of directory: URL) {
+        let fileManager = FileManager.default
+
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else { return }
+
+        for entry in entries {
+            try? fileManager.removeItem(at: entry)
+        }
+    }
+
+    private static func removeTemporaryFiles(in directory: URL) {
+        let fileManager = FileManager.default
+
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else { return }
+
+        for entry in entries where entry.pathExtension == "tmp" {
+            try? fileManager.removeItem(at: entry)
+        }
     }
 
     // MARK: - 清单 / 选流
@@ -529,6 +628,9 @@ final class HLSDownloader {
         var lastError: Error = ParserError.manifestRequestFailed("请求失败")
 
         for attempt in 0...maxRetries {
+            // 被取消时立刻退出，不要白等 sleep 与后续重试
+            if Task.isCancelled { throw CancellationError() }
+
             do {
                 guard let data = try await performFetch(
                     url,
@@ -542,6 +644,8 @@ final class HLSDownloader {
 
                 return data
             } catch {
+                if Task.isCancelled { throw CancellationError() }
+
                 lastError = error
 
                 if attempt < maxRetries {
@@ -595,6 +699,8 @@ final class HLSDownloader {
         let attempts = 2
 
         for attempt in 0...attempts {
+            if Task.isCancelled { throw CancellationError() }
+
             do {
                 guard let data = try await performFetch(
                     url,
@@ -614,7 +720,18 @@ final class HLSDownloader {
                     payload = data
                 }
 
-                try payload.write(to: destination, options: .atomic)
+                try Task.checkCancellation()
+
+                // 先写临时文件再原子改名：中途被杀只会留下 .tmp，
+                // 不会被下次运行误判成「已完成的分片」。
+                let temporary = destination.appendingPathExtension("tmp")
+
+                try? FileManager.default.removeItem(at: temporary)
+                try payload.write(to: temporary, options: .atomic)
+
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.moveItem(at: temporary, to: destination)
+
                 return Int64(payload.count)
             } catch {
                 if Task.isCancelled { throw CancellationError() }
@@ -637,8 +754,13 @@ final class HLSDownloader {
 
 /// 并发任务的进度计数。用 actor 而不是 `var` + 锁，避免捕获可变状态。
 private actor ProgressTracker {
-    private var completed = 0
-    private var bytes: Int64 = 0
+    private var completed: Int
+    private var bytes: Int64
+
+    init(completed: Int = 0, bytes: Int64 = 0) {
+        self.completed = completed
+        self.bytes = bytes
+    }
 
     func advance(bytes delta: Int64) -> (completed: Int, bytes: Int64) {
         completed += 1

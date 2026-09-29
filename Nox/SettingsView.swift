@@ -136,6 +136,28 @@ struct SettingsView: View {
                     appState.persist()
                 }
             }
+
+            Picker(L("同时下载任务数"), selection: $appState.maxConcurrentDownloads) {
+                ForEach(Array(AppState.maxConcurrentDownloadsRange), id: \.self) { count in
+                    Text(String(count)).tag(count)
+                }
+            }
+            .onChange(of: appState.maxConcurrentDownloads) { _, _ in
+                appState.persist()
+            }
+
+            Picker(L("m3u8 分片并发"), selection: $appState.m3u8SegmentConcurrency) {
+                Text(L("跟随多线程设置")).tag(0)
+
+                ForEach(Array(AppState.m3u8ConcurrencyRange), id: \.self) { count in
+                    if count > 0 {
+                        Text(String(count)).tag(count)
+                    }
+                }
+            }
+            .onChange(of: appState.m3u8SegmentConcurrency) { _, _ in
+                appState.persist()
+            }
         } header: {
             Text(L("实验性功能"))
         } footer: {
