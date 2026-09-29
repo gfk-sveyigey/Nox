@@ -43,7 +43,7 @@
     },
     "媒体" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Medium" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Medien" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Media" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Média" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "미디어" } }
