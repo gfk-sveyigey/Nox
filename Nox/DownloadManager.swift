@@ -292,6 +292,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     private func begin(_ record: DownloadRecord) async {
+        // m3u8 走独立管线：清单 → 分片 → AES-128 解密 → 合并。
+        // 它的总大小事先未知、分片数量由清单决定，套用下面的字节分片逻辑没有意义。
+        if record.format.lowercased() == "m3u8" {
+            await beginHLS(record)
+            return
+        }
+
         let id = record.id
         cancellingIDs.remove(id)
 
@@ -521,6 +528,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
             guard !cancellingIDs.contains(id) else { continue }
 
+            // m3u8 的进度由 HLSDownloader 按分片回调上报；这里的分片统计对它不适用，
+            // 不跳过的话每秒都会被覆盖成 0，进度条会一直空着。
+            if record.format.lowercased() == "m3u8" { continue }
+
             let inFlight = inFlightBytes[id] ?? 0
             let segments = plannedSegments[id] ?? []
             let onDisk = DownloadStorage.totalPartSize(
@@ -724,6 +735,128 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         completedSegments.removeValue(forKey: recordID)
         clearTransferStats(for: recordID)
 
+        appState.updateDownload(record)
+    }
+
+    // MARK: - HLS（m3u8）
+
+    /// m3u8 下载进度由 `HLSDownloader` 按「已完成分片数」上报，
+    /// 因此这里不写 `totalBytes`，进度条走 `record.progress` 那条分支。
+    private func beginHLS(_ record: DownloadRecord) async {
+        let id = record.id
+        cancellingIDs.remove(id)
+
+        var updated = record
+        updated.status = .downloading
+        updated.errorMessage = nil
+        appState.updateDownload(updated)
+
+        transfers[id] = TransferStats()
+        speedSamples[id] = (0, Date(), 0)
+        startProgressTimerIfNeeded()
+
+        let concurrency = min(max(appState.m3u8SegmentConcurrency, 1), 8)
+
+        do {
+            let merged = try await HLSDownloader(concurrency: concurrency).download(
+                recordID: id,
+                playlistURL: record.sourceURL,
+                referer: record.refererURL,
+                cookieHeader: record.cookieHeader,
+                userAgent: nil,
+                quality: appState.preferredQuality
+            ) { [weak self] progress in
+                Task { @MainActor in
+                    self?.applyHLSProgress(recordID: id, progress: progress)
+                }
+            }
+
+            guard !cancellingIDs.contains(id) else { return }
+
+            finishHLS(recordID: id, mergedFile: merged)
+        } catch is CancellationError {
+            // cancel() 已经改过状态并清了统计
+            return
+        } catch {
+            guard !cancellingIDs.contains(id) else { return }
+            abort(id: id, message: error.localizedDescription)
+        }
+    }
+
+    private func applyHLSProgress(recordID: UUID, progress: HLSDownloader.Progress) {
+        let now = Date()
+        var speed: Double = 0
+
+        if let previous = speedSamples[recordID] {
+            let interval = now.timeIntervalSince(previous.date)
+
+            if interval > 0 {
+                let delta = progress.bytes - previous.bytes
+
+                if delta >= 0 {
+                    let instantaneous = Double(delta) / interval
+                    speed = previous.speed > 0
+                        ? previous.speed * 0.6 + instantaneous * 0.4
+                        : instantaneous
+                }
+            }
+        }
+
+        speedSamples[recordID] = (progress.bytes, now, speed)
+
+        // totalBytes 传 0：界面显示「已下载 X」而不是「X / Y」
+        transfers[recordID] = TransferStats(
+            bytesReceived: progress.bytes,
+            totalBytes: 0,
+            bytesPerSecond: speed
+        )
+
+        guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
+        guard record.status == .downloading else { return }
+
+        record.receivedBytes = progress.bytes
+        if progress.total > 0 {
+            record.progress = min(Double(progress.completed) / Double(progress.total), 1)
+        }
+
+        // 高频刷新只改内存，不写 UserDefaults
+        appState.updateDownload(record, persist: false)
+    }
+
+    private func finishHLS(recordID: UUID, mergedFile: URL) {
+        guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
+        guard record.status != .cancelled else { return }
+
+        do {
+            let directory = DownloadStorage.documentsDirectory
+
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+
+            // 合并结果统一是 MP4 容器（TS / fMP4 分片拼接后由系统播放器识别）
+            let filename = Self.safeFilename("\(record.title)-\(record.quality).mp4")
+            let destination = directory.appendingPathComponent(filename)
+
+            try? FileManager.default.removeItem(at: destination)
+            try FileManager.default.moveItem(at: mergedFile, to: destination)
+
+            record.fileName = filename
+            record.fileURL = destination
+            record.status = .finished
+            record.progress = 1
+            record.errorMessage = nil
+            record.receivedBytes = DownloadStorage.fileSize(at: destination)
+        } catch {
+            record.status = .failed
+            record.errorMessage = String(format: L("保存文件失败：%@"), error.localizedDescription)
+        }
+
+        try? FileManager.default.removeItem(at: DownloadStorage.partsDirectory(for: recordID))
+        try? FileManager.default.removeItem(at: DownloadStorage.stagingDirectory(for: recordID))
+
+        clearTransferStats(for: recordID)
         appState.updateDownload(record)
     }
 

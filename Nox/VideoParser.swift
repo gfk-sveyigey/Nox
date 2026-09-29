@@ -15,9 +15,21 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     init(appState: AppState, registry: VideoSiteParserRegistry = .default) {
         self.appState = appState
         self.registry = registry
+
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
+
+        // 嗅探脚本：跨域 iframe 也会注入，各自 postMessage 上来
+        if let script = SnifferScript.userScript() {
+            configuration.userContentController.addUserScript(script)
+        }
+        // 桥接单例，WKUserContentController 会强持有它
+        configuration.userContentController.add(
+            SnifferBridge.shared,
+            name: SnifferBridge.handlerName
+        )
+
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
@@ -35,6 +47,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     var currentSiteName: String? { activeParser(for: webView.url)?.displayName }
 
     func load(_ url: URL) {
+        SnifferBridge.shared.reset()   // ← 新增
         isLoading = true
         pageReady = false
         pageMatchesRule = activeParser(for: url) != nil
@@ -97,8 +110,9 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        isLoading = false
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        SnifferBridge.shared.reset()   // ← 新增：换页清空上一页结果
+        isLoading = true
         pageReady = false
         pageMatchesRule = activeParser(for: webView.url) != nil
     }

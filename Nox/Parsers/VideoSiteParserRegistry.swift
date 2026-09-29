@@ -6,9 +6,13 @@ import Foundation
 /// 不需要额外改 UI 或工程配置。
 @MainActor
 final class VideoSiteParserRegistry {
-    /// 全部已接入的站点（顺序即设置页展示顺序）
+    /// 全部已接入的站点（顺序即设置页展示顺序，也是匹配优先级）
+    ///
+    /// `GenericSnifferParser` 必须放最后 —— 它的 `canHandle` 对任何
+    /// http(s) 地址都返回 true，放前面会把具名站点全部挡掉。
     static let all: [VideoSiteParser] = [
-        PornhubParser()
+        PornhubParser(),
+        GenericSnifferParser()
     ]
 
     static let `default` = VideoSiteParserRegistry(parsers: all)
