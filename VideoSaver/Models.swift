@@ -40,6 +40,7 @@ enum ParserError: LocalizedError {
         case .manifestRequestFailed(let message): return "视频清单请求失败：\(message)"
         case .invalidManifest: return "视频清单格式无法识别。"
         case .noVideoVariants: return "没有找到可下载的视频清晰度。"
+        case .scriptFailed(let message): return "页面脚本执行失败：\(message)"
         }
     }
 }
