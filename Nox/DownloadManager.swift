@@ -318,6 +318,77 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         releaseSlot(record.id)
     }
 
+    // MARK: - 缓存（未完成的分片与暂存文件）
+
+    /// 缓存占用：`Parts` 与 `Staging` 两个目录的字节数。
+    ///
+    /// 不含 `Documents`（已下载的视频），也不含 WKWebView 的网站数据
+    /// —— 后者含登录态，清掉会把用户退出登录。
+    func cacheSize() -> Int64 {
+        Self.directorySize(DownloadStorage.partsRoot)
+            + Self.directorySize(DownloadStorage.stagingRoot)
+    }
+
+    /// 清空缓存：删除未完成下载的分片与暂存文件。
+    ///
+    /// - 正在下载 / 排队中的任务会被跳过，否则会把它们正在写的文件删掉。
+    /// - 已完成的视频在 `Documents`，不受影响（其分片目录在完成时就已经清理）。
+    func clearCache() {
+        let protectedIDs = activeIDs.union(pendingQueue)
+
+        Self.removeSubdirectories(in: DownloadStorage.partsRoot, keeping: protectedIDs)
+        Self.removeSubdirectories(in: DownloadStorage.stagingRoot, keeping: protectedIDs)
+
+        // 探测与清单请求留下的 HTTP 缓存同样属于「缓存」，一并清掉
+        URLCache.shared.removeAllCachedResponses()
+    }
+
+    private static func directorySize(_ directory: URL) -> Int64 {
+        guard let enumerator = FileManager.default.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]
+        ) else {
+            return 0
+        }
+
+        var total: Int64 = 0
+
+        for case let url as URL in enumerator {
+            let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+
+            guard values?.isRegularFile == true else { continue }
+            total += Int64(values?.fileSize ?? 0)
+        }
+
+        return total
+    }
+
+    /// 删除目录下的一级子目录，`keep` 中的 UUID 目录除外。
+    /// 散落的非目录条目（临时文件）一并删除。
+    private static func removeSubdirectories(in directory: URL, keeping keep: Set<UUID>) {
+        let fileManager = FileManager.default
+
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        ) else {
+            return
+        }
+
+        for entry in entries {
+            let isDirectory = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+
+            guard isDirectory, let id = UUID(uuidString: entry.lastPathComponent) else {
+                try? fileManager.removeItem(at: entry)
+                continue
+            }
+
+            guard !keep.contains(id) else { continue }
+
+            try? fileManager.removeItem(at: entry)
+        }
+    }
+
     // MARK: - 启动流程
 
     /// 入队入口：不再直接开跑，交给 `drainQueue` 按槽位调度。
@@ -540,6 +611,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         var updated = record
         updated.totalBytes = totalBytes > 0 ? totalBytes : nil
         updated.segmentCount = segments.count
+        // 普通下载的并发就是分片数：这些请求是一次性全部发出去的
+        // （不支持 Range 时只剩 1 条单流）。仅用于列表展示。
+        updated.threadCount = segments.count
         updated.receivedBytes = onDisk
         if totalBytes > 0 {
             updated.progress = min(Double(onDisk) / Double(totalBytes), 1)
@@ -851,6 +925,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
 
         let concurrency = min(max(desired, 1), AppState.maxHLSConcurrency)
+
+        // 如实记录这个任务实际使用的并发，供下载列表展示
+        updated.threadCount = concurrency
+        appState.updateDownload(updated)
 
         do {
             let merged = try await HLSDownloader(concurrency: concurrency).download(

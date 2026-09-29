@@ -545,6 +545,62 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "조각 파일 쓰기 실패" } }
       }
     },
+    "存储" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Speicher" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storage" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Stockage" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 공간" } }
+      }
+    },
+    "已用缓存" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Belegter Cache" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cache Used" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cache utilisé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용 중인 캐시" } }
+      }
+    },
+    "清空缓存" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cache leeren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear Cache" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vider le cache" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캐시 지우기" } }
+      }
+    },
+    "清空缓存？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cache leeren?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear cache?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vider le cache ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캐시를 지울까요?" } }
+      }
+    },
+    "将删除未完成下载的分片与临时文件。正在下载的任务不受影响，已下载的视频也不会被删除。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unvollständige Segmente und temporäre Dateien werden gelöscht. Laufende Downloads sind nicht betroffen, bereits geladene Videos werden nicht gelöscht." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Segments and temporary files from unfinished downloads will be deleted. Running downloads are skipped, and already downloaded videos are kept." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les segments et fichiers temporaires des téléchargements inachevés seront supprimés. Les téléchargements en cours ne sont pas affectés et les vidéos déjà téléchargées sont conservées." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료되지 않은 다운로드의 조각과 임시 파일이 삭제됩니다. 진행 중인 작업은 건너뛰며, 이미 받은 동영상은 삭제되지 않습니다." } }
+      }
+    },
+    "缓存是未完成下载的分片与临时文件。清空不会删除已下载的视频；正在下载的任务会被跳过。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der Cache besteht aus Segmenten und temporären Dateien unvollständiger Downloads. Beim Leeren bleiben bereits geladene Videos erhalten; laufende Downloads werden übersprungen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cache holds segments and temporary files of unfinished downloads. Clearing keeps downloaded videos and skips running downloads." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le cache contient les segments et fichiers temporaires des téléchargements inachevés. Le vidage conserve les vidéos téléchargées et ignore les téléchargements en cours." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캐시는 완료되지 않은 다운로드의 조각과 임시 파일입니다. 지워도 받은 동영상은 유지되며 진행 중인 작업은 건너뜁니다." } }
+      }
+    },
+    "线程 %d" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%d Threads" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%d threads" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%d threads" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%d 스레드" } }
+      }
+    },
     "同时下载任务数" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Gleichzeitige Downloads" } },

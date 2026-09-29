@@ -111,10 +111,19 @@ struct DownloadRow: View {
                     Text(record.title)
                         .lineLimit(2)
 
-                    // 清晰度与格式来自远端数据，不做本地化
-                    Text(verbatim: "\(record.quality) · \(record.format.uppercased())")
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        // 清晰度与格式来自远端数据，不做本地化
+                        Text(verbatim: "\(record.quality) · \(record.format.uppercased())")
+
+                        // 实际并发数（普通下载 = 分片数，m3u8 = 分片并发）。
+                        // 部分站点的媒体不支持 Range，这时会退化成单流，显示 1。
+                        if let threads = record.threadCount {
+                            Text(String(format: L("线程 %d"), threads))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                 }
 
                 Spacer()

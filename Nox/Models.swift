@@ -134,12 +134,16 @@ struct DownloadRecord: Identifiable, Codable {
     var receivedBytes: Int64?
     /// 上次使用的分片数量。续传时必须沿用同一数量，否则分片边界会错位。
     var segmentCount: Int?
+    /// 实际使用的并发数（普通下载 = 分片数，m3u8 = 分片并发）。
+    /// 仅用于在下载列表里如实展示「这个任务开了几条连接」，不参与续传计算。
+    var threadCount: Int?
 
     init(id: UUID = UUID(), title: String, quality: String, format: String, sourceURL: URL,
          refererURL: URL? = nil, cookieHeader: String? = nil, fileName: String? = nil,
          fileURL: URL? = nil, status: DownloadStatus = .queued, progress: Double = 0,
          createdAt: Date = .now, errorMessage: String? = nil,
-         totalBytes: Int64? = nil, receivedBytes: Int64? = nil, segmentCount: Int? = nil) {
+         totalBytes: Int64? = nil, receivedBytes: Int64? = nil, segmentCount: Int? = nil,
+         threadCount: Int? = nil) {
         self.id = id
         self.title = title
         self.quality = quality
@@ -156,6 +160,7 @@ struct DownloadRecord: Identifiable, Codable {
         self.totalBytes = totalBytes
         self.receivedBytes = receivedBytes
         self.segmentCount = segmentCount
+        self.threadCount = threadCount
     }
 
     /// 用于长按菜单判断是否显示「分享」。
