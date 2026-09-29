@@ -26,6 +26,7 @@
         A10000010000000000000018 /* SnifferBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000018 /* SnifferBridge.swift */; };
         A10000010000000000000019 /* SnifferScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000019 /* SnifferScript.swift */; };
         A10000010000000000000020 /* MediaSniffer.js in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000020 /* MediaSniffer.js */; };
+        A10000010000000000000021 /* SnifferSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000021 /* SnifferSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
         B10000010000000000000018 /* SnifferBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnifferBridge.swift; sourceTree = "<group>"; };
         B10000010000000000000019 /* SnifferScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnifferScript.swift; sourceTree = "<group>"; };
         B10000010000000000000020 /* MediaSniffer.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = MediaSniffer.js; sourceTree = "<group>"; };
+        B10000010000000000000021 /* SnifferSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnifferSheet.swift; sourceTree = "<group>"; };
         C10000010000000000000001 /* Nox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -112,6 +114,7 @@
                 B10000010000000000000018,
                 B10000010000000000000019,
                 B10000010000000000000020,
+                B10000010000000000000021,
             );
             path = Sniffer;
             sourceTree = "<group>";
@@ -184,6 +187,7 @@
                 A10000010000000000000017,
                 A10000010000000000000018,
                 A10000010000000000000019,
+                A10000010000000000000021,
             );
             runOnlyForDeploymentPostprocessing = 0;
         };

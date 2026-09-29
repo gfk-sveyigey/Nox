@@ -545,6 +545,94 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "조각 파일 쓰기 실패" } }
       }
     },
+    "资源类型" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ressourcentyp" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resource Type" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Type de ressource" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "리소스 유형" } }
+      }
+    },
+    "已嗅探" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Erfasst" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sniffed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Détectés" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "탐지됨" } }
+      }
+    },
+    "重新扫描" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Neu scannen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rescan" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rescanner" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다시 검사" } }
+      }
+    },
+    "完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fertig" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Terminé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료" } }
+      }
+    },
+    "暂无资源" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Ressourcen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No Resources" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune ressource" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "리소스 없음" } }
+      }
+    },
+    "页面加载或播放后会自动出现在这里。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ressourcen erscheinen hier automatisch, sobald die Seite geladen oder abgespielt wird." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resources will appear here automatically once the page loads or plays." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les ressources apparaîtront ici automatiquement dès que la page sera chargée ou lue." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "페이지가 로드되거나 재생되면 리소스가 여기에 자동으로 표시됩니다." } }
+      }
+    },
+    "视频" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Videos" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Videos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vidéos" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상" } }
+      }
+    },
+    "流媒体" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Streams" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Streams" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Flux" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "스트림" } }
+      }
+    },
+    "音频" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Audio" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Audio" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오디오" } }
+      }
+    },
+    "图片" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bilder" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Images" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Images" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이미지" } }
+      }
+    },
+    "直播" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Live" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Live" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Direct" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "라이브" } }
+      }
+    },
     "通用嗅探" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Universeller Sniffer" } },
