@@ -9,7 +9,7 @@ struct VideoBrowserView: View {
 
     @Binding private var requestedURL: URL?
 
-    @State private var address = "https://www.pornhub.com/"
+    @State private var address = ""
     @State private var parsedVideo: ParsedVideo?
     @State private var isParsing = false
     @State private var errorMessage: String?
@@ -69,49 +69,35 @@ struct VideoBrowserView: View {
         }
     }
 
-    // MARK: - 顶部工具栏
+    // MARK: - 顶部工具栏（单行）
 
     private var browserToolbar: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                addressBar
+        HStack(spacing: 8) {
+            addressBar
 
-                Button("打开") {
-                    openAddress()
+            Button {
+                Task {
+                    await parse()
                 }
-                .browserGlassButton()
-                .frame(height: controlHeight)
-            }
-
-            HStack(spacing: 8) {
-                Spacer(minLength: 0)
-
-                Button {
-                    Task {
-                        await parse()
-                    }
-                } label: {
-                    if isParsing {
-                        ProgressView()
-                            .frame(height: controlHeight)
-                    } else {
-                        Label("解析视频", systemImage: "arrow.down.circle")
-                            .frame(height: controlHeight)
-                    }
+            } label: {
+                if isParsing {
+                    ProgressView()
+                        .frame(height: controlHeight)
+                } else {
+                    Label("解析视频", systemImage: "arrow.down.circle")
+                        .frame(height: controlHeight)
                 }
-                .browserGlassButton()
-                .disabled(!parser.canParseCurrentPage || isParsing)
             }
+            .browserGlassButton()
+            .disabled(!parser.canParseCurrentPage || isParsing)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
     }
 
+    /// 地址栏：「打开」按钮改成栏内的前往图标，整条栏与「解析视频」同处一行
     private var addressBar: some View {
         HStack(spacing: 6) {
-            Image(systemName: "globe")
-                .foregroundStyle(.secondary)
-
             TextField("输入网页地址", text: $address)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -132,6 +118,15 @@ struct VideoBrowserView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("清空地址栏")
             }
+
+            Button {
+                openAddress()
+            } label: {
+                Image(systemName: "arrow.right.circle.fill")
+                    .foregroundStyle(Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("打开")
         }
         .padding(.horizontal, 12)
         .frame(height: controlHeight)
@@ -160,7 +155,7 @@ struct VideoBrowserView: View {
                     }
                 }
             }
-            .navigationTitle(parsedVideo?.title ?? "选择清晰度")
+            .navigationTitle(Text(parsedVideo?.title ?? String(localized: "选择清晰度")))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") {
@@ -182,17 +177,18 @@ struct VideoBrowserView: View {
     }
 
     private func openAddress() {
-        // 点击「打开」后收起键盘
+        // 点击打开后收起键盘
         addressFocused = false
 
         var text = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
 
         if !text.contains("://") {
             text = "https://" + text
         }
 
         guard let url = URL(string: text), url.scheme == "https" else {
-            errorMessage = "请输入 HTTPS 地址。"
+            errorMessage = String(localized: "请输入 HTTPS 地址。")
             return
         }
 
@@ -211,8 +207,7 @@ struct VideoBrowserView: View {
         do {
             parsedVideo = try await parser.parseCurrentPage()
 
-            if appState.preferredQuality != "每次询问",
-               let video = parsedVideo,
+            if let video = parsedVideo,
                let variant = preferredVariant(
                     video.variants,
                     preference: appState.preferredQuality
@@ -228,17 +223,26 @@ struct VideoBrowserView: View {
 
     private func preferredVariant(
         _ variants: [VideoVariant],
-        preference: String
+        preference: PreferredQuality
     ) -> VideoVariant? {
-        if preference == "最佳" {
+        switch preference {
+        case .ask:
+            return nil
+        case .best:
+            return variants.max {
+                qualityNumber($0.quality) < qualityNumber($1.quality)
+            } ?? variants.first
+        case .p1080, .p720, .p480, .p360:
+            if let exact = variants.first(where: {
+                qualityNumber($0.quality) == preference.qualityNumber
+            }) {
+                return exact
+            }
+            // 找不到目标清晰度时退回最高可用
             return variants.max {
                 qualityNumber($0.quality) < qualityNumber($1.quality)
             } ?? variants.first
         }
-
-        return variants.first {
-            $0.quality.localizedCaseInsensitiveContains(preference)
-        } ?? variants.first
     }
 
     private func qualityNumber(_ quality: String) -> Int {
@@ -297,7 +301,6 @@ struct WebViewContainer: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> WKWebView {
-        // 下拉刷新（替代原来的「刷新」按钮）
         if webView.scrollView.refreshControl == nil {
             let control = UIRefreshControl()
             control.addTarget(
@@ -320,7 +323,6 @@ struct WebViewContainer: UIViewRepresentable {
         init(webView: WKWebView) {
             self.webView = webView
 
-            // 加载结束后收起刷新指示器，否则会一直转
             observation = webView.observe(\.isLoading, options: [.new]) { webView, _ in
                 guard !webView.isLoading else { return }
                 webView.scrollView.refreshControl?.endRefreshing()

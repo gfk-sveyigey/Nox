@@ -22,7 +22,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         super.init()
 
         webView.navigationDelegate = self
-        // 边缘左右滑动 = 后退 / 前进（替代原先的三个按钮）
+        // 边缘左右滑动 = 后退 / 前进
         webView.allowsBackForwardNavigationGestures = true
         // 拖动页面即收起键盘
         webView.scrollView.keyboardDismissMode = .onDrag
@@ -31,24 +31,24 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     var browserWebView: WKWebView { webView }
     var canParseCurrentPage: Bool { pageReady && pageMatchesRule && !isLoading }
 
-    /// 当前页面命中的站点名，可用于 UI 提示。
-    var currentSiteName: String? { registry.parser(for: webView.url)?.displayName }
+    /// 当前页面命中的站点名（仅当该站点开关为开启时）
+    var currentSiteName: String? { activeParser(for: webView.url)?.displayName }
 
     func load(_ url: URL) {
         isLoading = true
         pageReady = false
-        pageMatchesRule = registry.canHandle(url)
+        pageMatchesRule = activeParser(for: url) != nil
         webView.load(URLRequest(url: url))
     }
 
     func parseCurrentPage() async throws -> ParsedVideo {
         guard canParseCurrentPage else {
             if !pageMatchesRule { throw ParserError.unsupportedURL }
-            throw ParserError.pageLoadFailed("页面尚未加载完成。")
+            throw ParserError.pageLoadFailed(String(localized: "页面尚未加载完成。"))
         }
 
         guard let pageURL = webView.url else { throw ParserError.invalidURL }
-        guard let siteParser = registry.parser(for: pageURL) else {
+        guard let siteParser = activeParser(for: pageURL) else {
             throw ParserError.unsupportedURL
         }
 
@@ -67,29 +67,39 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         await WKWebPageContext(webView: webView).cookieHeader(matching: webView.url)
     }
 
+    // MARK: - 站点开关
+
+    /// 匹配站点规则 **且** 该站点在设置页处于开启状态
+    private func activeParser(for url: URL?) -> VideoSiteParser? {
+        guard let url else { return nil }
+        return registry.parsers.first {
+            appState.isSiteEnabled($0.identifier) && $0.canHandle(url)
+        }
+    }
+
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         isLoading = true
         pageReady = false
-        pageMatchesRule = registry.canHandle(webView.url)
+        pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         isLoading = false
         pageReady = true
-        pageMatchesRule = registry.canHandle(webView.url)
+        pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         isLoading = false
         pageReady = false
-        pageMatchesRule = registry.canHandle(webView.url)
+        pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         isLoading = false
         pageReady = false
-        pageMatchesRule = registry.canHandle(webView.url)
+        pageMatchesRule = activeParser(for: webView.url) != nil
     }
 }

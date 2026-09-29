@@ -56,6 +56,7 @@ struct HistoryView: View {
                 }
             }
             .navigationTitle("历史")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !appState.history.isEmpty {
