@@ -10,6 +10,11 @@ struct DownloadsView: View {
     @State private var shareFailureMessage: String?
     @State private var showShareFailureAlert = false
 
+    @State private var editMode: EditMode = .inactive
+    @State private var selection = Set<UUID>()
+    @State private var showingDeleteConfirmation = false
+    @State private var isVisible = false
+
     init(appState: AppState, manager: DownloadManager) {
         self.appState = appState
         _manager = ObservedObject(wrappedValue: manager)
@@ -25,41 +30,14 @@ struct DownloadsView: View {
                         description: Text(L("在浏览页面解析视频后即可加入下载队列。"))
                     )
                 } else {
-                    List {
-                        ForEach(appState.downloads) { record in
-                            DownloadRow(
-                                record: record,
-                                stats: manager.transfers[record.id],
-                                onShare: { record in
-                                    share(record)
-                                },
-                                onRetry: { manager.retry($0) },
-                                onCancel: { manager.cancel($0) }
-                            )
-                        }
-                        .onDelete { indexSet in
-                            for index in indexSet {
-                                manager.deleteFile(for: appState.downloads[index])
-                            }
-                        }
-                    }
+                    list
                 }
             }
             .navigationTitle(L("下载"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if appState.downloads.contains(where: {
-                        $0.status == .finished ||
-                        $0.status == .failed ||
-                        $0.status == .cancelled
-                    }) {
-                        Button(L("清空")) {
-                            showingClearConfirmation = true
-                        }
-                    }
-                }
-            }
+            .environment(\.editMode, $editMode)
+            .toolbar { toolbarContent }
+            .safeAreaInset(edge: .bottom, spacing: 0) { selectionBar }
             .alert(L("清空下载？"), isPresented: $showingClearConfirmation) {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("清空"), role: .destructive) {
@@ -68,11 +46,115 @@ struct DownloadsView: View {
             } message: {
                 Text(L("已完成、失败和已取消的任务将被移除，同时删除对应的本地文件与未完成的分片。此操作无法撤销。"))
             }
+            .alert(L("删除所选？"), isPresented: $showingDeleteConfirmation) {
+                Button(L("取消"), role: .cancel) {}
+                Button(L("删除"), role: .destructive) {
+                    manager.deleteFiles(ids: selection)
+                    selection.removeAll()
+
+                    if appState.downloads.isEmpty { editMode = .inactive }
+                }
+            } message: {
+                Text(String(format: L("将删除选中的 %d 项，同时删除对应的本地文件与未完成的分片。"),
+                            selection.count))
+            }
             .alert(L("分享失败"), isPresented: $showShareFailureAlert) {
                 Button(L("确定"), role: .cancel) {}
             } message: {
                 Text(shareFailureMessage ?? L("无法分享此文件"))
             }
+            .onChange(of: editMode) { _, newValue in
+                if !newValue.isEditing { selection.removeAll() }
+            }
+            .onAppear { isVisible = true }
+            .onDisappear { isVisible = false }
+            // 双指下滑进入多选（类似「信息」App）
+            .twoFingerPanToSelect(isEnabled: isVisible) {
+                withAnimation { editMode = .active }
+            }
+        }
+    }
+
+    private var list: some View {
+        List(selection: $selection) {
+            ForEach(appState.downloads) { record in
+                DownloadRow(
+                    record: record,
+                    stats: manager.transfers[record.id],
+                    onShare: { record in
+                        share(record)
+                    },
+                    onRetry: { manager.retry($0) },
+                    onCancel: { manager.cancel($0) }
+                )
+                .tag(record.id)
+            }
+            .onDelete { indexSet in
+                for index in indexSet {
+                    manager.deleteFile(for: appState.downloads[index])
+                }
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            if !appState.downloads.isEmpty {
+                Button(editMode.isEditing ? L("完成") : L("选择")) {
+                    withAnimation {
+                        editMode = editMode.isEditing ? .inactive : .active
+                    }
+                }
+            }
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            if !editMode.isEditing, appState.downloads.contains(where: {
+                $0.status == .finished ||
+                $0.status == .failed ||
+                $0.status == .cancelled
+            }) {
+                Button(L("清空")) {
+                    showingClearConfirmation = true
+                }
+            }
+        }
+    }
+
+    /// 多选时底部操作条。只在编辑态且有选中项时出现。
+    @ViewBuilder
+    private var selectionBar: some View {
+        if editMode.isEditing, !selection.isEmpty {
+            HStack(spacing: 10) {
+                Text(String(format: L("已选 %d 项"), selection.count))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button {
+                    let retryable = appState.downloads.filter {
+                        selection.contains($0.id)
+                            && ($0.status == .failed || $0.status == .cancelled)
+                    }
+
+                    manager.retryAll(ids: Set(retryable.map(\.id)))
+                } label: {
+                    Label(L("重试所选"), systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
+
+                Button(role: .destructive) {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Label(L("删除所选"), systemImage: "trash")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.bar)
         }
     }
 
@@ -101,6 +183,13 @@ struct DownloadRow: View {
     let onRetry: (DownloadRecord) -> Void
     let onCancel: (DownloadRecord) -> Void
 
+    /// 编辑态下行内的按钮要收起来，否则点击会被按钮吃掉、选不中行
+    @Environment(\.editMode) private var editMode
+
+    private var isEditing: Bool {
+        editMode?.wrappedValue.isEditing ?? false
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -115,8 +204,8 @@ struct DownloadRow: View {
                         // 清晰度与格式来自远端数据，不做本地化
                         Text(verbatim: "\(record.quality) · \(record.format.uppercased())")
 
-                        // 实际并发数（普通下载 = 分片数，m3u8 = 分片并发）。
-                        // 部分站点的媒体不支持 Range，这时会退化成单流，显示 1。
+                        // 实际并发数（普通下载 = 同时在飞的分片数，m3u8 = 分片并发）。
+                        // 服务器不支持 Range 时会退化成单流，显示 1。
                         if let threads = record.threadCount {
                             Text(String(format: L("线程 %d"), threads))
                                 .foregroundStyle(.tertiary)
@@ -128,7 +217,8 @@ struct DownloadRow: View {
 
                 Spacer()
 
-                if record.status == .queued || record.status == .downloading {
+                if !isEditing,
+                   record.status == .queued || record.status == .downloading {
                     Button {
                         onCancel(record)
                     } label: {
