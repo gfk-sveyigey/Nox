@@ -29,6 +29,7 @@ enum ParserError: LocalizedError {
     case manifestRequestFailed(String)
     case invalidManifest
     case noVideoVariants
+    case scriptFailed(String)
 
     var errorDescription: String? {
         switch self {
