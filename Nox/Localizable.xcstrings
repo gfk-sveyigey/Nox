@@ -673,6 +673,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "기본 이름: %@" } }
       }
     },
+    "扩展名固定为 .%@，不可修改" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Erweiterung ist auf .%@ festgelegt und kann nicht geändert werden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The extension is fixed to .%@ and can't be changed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'extension est fixée à .%@ et ne peut pas être modifiée" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "확장자는 .%@(으)로 고정되며 변경할 수 없습니다" } }
+      }
+    },
     "选择" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswählen" } },

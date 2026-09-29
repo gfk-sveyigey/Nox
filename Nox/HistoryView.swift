@@ -30,7 +30,6 @@ struct HistoryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .environment(\.editMode, $editMode)
             .toolbar { toolbarContent }
-            .safeAreaInset(edge: .bottom, spacing: 0) { selectionBar }
             .alert(L("清空历史记录？"), isPresented: $showingClearConfirmation) {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("清空"), role: .destructive) {
@@ -117,34 +116,18 @@ struct HistoryView: View {
         }
 
         ToolbarItem(placement: .topBarTrailing) {
-            if !editMode.isEditing, !appState.history.isEmpty {
+            if editMode.isEditing {
+                Button(role: .destructive) {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Label(L("删除"), systemImage: "trash")
+                }
+                .disabled(selection.isEmpty)
+            } else if !appState.history.isEmpty {
                 Button(L("清空")) {
                     showingClearConfirmation = true
                 }
             }
-        }
-    }
-
-    @ViewBuilder
-    private var selectionBar: some View {
-        if editMode.isEditing, !selection.isEmpty {
-            HStack(spacing: 10) {
-                Text(String(format: L("已选 %d 项"), selection.count))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button(role: .destructive) {
-                    showingDeleteConfirmation = true
-                } label: {
-                    Label(L("删除所选"), systemImage: "trash")
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.bar)
         }
     }
 }

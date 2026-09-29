@@ -18,6 +18,8 @@ struct VideoBrowserView: View {
     @State private var showVariants = false
     @State private var showSniffer = false
     @State private var pendingRequest: DownloadRequest?
+    @State private var isFilenameDialogPresented = false
+    /// 只存**不含扩展名**的主名 —— 扩展名固定，不让用户改
     @State private var filenameInput = ""
     @FocusState private var addressFocused: Bool
 
@@ -32,6 +34,9 @@ struct VideoBrowserView: View {
         let variant: VideoVariant
         let referer: URL?
         let cookieHeader: String?
+        /// 固定的扩展名（不含点）。用户无法修改
+        let fileExtension: String
+        /// 完整默认文件名（含扩展名），「使用默认文件名」时直接用它
         let defaultFilename: String
     }
 
@@ -88,10 +93,7 @@ struct VideoBrowserView: View {
             }
             .alert(
                 L("保存文件"),
-                isPresented: Binding(
-                    get: { pendingRequest != nil },
-                    set: { if !$0 { pendingRequest = nil } }
-                ),
+                isPresented: $isFilenameDialogPresented,
                 presenting: pendingRequest
             ) { request in
                 TextField(L("文件名"), text: $filenameInput)
@@ -108,7 +110,15 @@ struct VideoBrowserView: View {
                     pendingRequest = nil
                 }
             } message: { request in
-                Text(String(format: L("默认文件名：%@"), request.defaultFilename))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(format: L("扩展名固定为 .%@，不可修改"), request.fileExtension))
+                    Text(String(format: L("默认文件名：%@"), request.defaultFilename))
+                }
+            }
+            .onChange(of: isFilenameDialogPresented) { _, presented in
+                // 任何非「保存」的关闭路径（点空白、下拉收起、系统收起）都视为取消：
+                // 只丢弃待办请求，不会入队下载。
+                if !presented { pendingRequest = nil }
             }
         }
     }
@@ -407,21 +417,40 @@ struct VideoBrowserView: View {
             // 等 sheet 退场动画走完再弹 alert：动画期间同步 present 会被系统静默丢弃
             try? await Task.sleep(nanoseconds: 350_000_000)
 
-            filenameInput = suggested
+            let suggestedURL = URL(fileURLWithPath: suggested)
+            let fileExtension = suggestedURL.pathExtension
+
+            // 输入框只放主名，扩展名单独固定，用户看不到也改不了
+            filenameInput = suggestedURL.deletingPathExtension().lastPathComponent
 
             pendingRequest = DownloadRequest(
                 title: title,
                 variant: variant,
                 referer: referer,
                 cookieHeader: cookieHeader,
+                fileExtension: fileExtension,
                 defaultFilename: suggested
             )
+
+            isFilenameDialogPresented = true
         }
     }
 
     private func commit(_ request: DownloadRequest, useCustom: Bool) {
-        let typed = filenameInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        let filename = (useCustom && !typed.isEmpty) ? typed : request.defaultFilename
+        var filename = request.defaultFilename
+
+        if useCustom {
+            // 用户只能改主名。就算他手动敲了后缀，也按固定扩展名收口 ——
+            // 否则会出现「选了 .mp4 却存成 .mp4.txt」这类坏文件。
+            let stem = Self.stem(
+                from: filenameInput,
+                stripping: request.fileExtension
+            )
+
+            if !stem.isEmpty {
+                filename = "\(stem).\(request.fileExtension)"
+            }
+        }
 
         downloads.enqueue(
             title: request.title,
@@ -431,7 +460,23 @@ struct VideoBrowserView: View {
             filename: filename
         )
 
-        pendingRequest = nil
+        isFilenameDialogPresented = false
+    }
+
+    /// 只剥掉「与固定扩展名完全一致」的尾缀。
+    /// 不能按 `pathExtension` 通用剥离 —— 像 `S01.E02` 这种主名里的点会被误伤。
+    private static func stem(from text: String, stripping fileExtension: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !fileExtension.isEmpty else { return trimmed }
+
+        let suffix = "." + fileExtension
+
+        if trimmed.lowercased().hasSuffix(suffix.lowercased()) {
+            return String(trimmed.dropLast(suffix.count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return trimmed
     }
 }
 

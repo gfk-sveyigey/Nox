@@ -168,6 +168,20 @@ struct DownloadRecord: Identifiable, Codable {
         self.threadCount = threadCount
     }
 
+    /// 列表里展示的文件名。
+    ///
+    /// - 已完成 → 实际落盘名（可能带 " (2)" 去重后缀）
+    /// - 进行中 / 排队 → 用户选定的名字
+    /// - 老数据（没选过名）→ 按 `title-quality.ext` 推导，与自动命名规则一致
+    var displayFilename: String {
+        if let fileName, !fileName.isEmpty { return fileName }
+        if let desiredFilename, !desiredFilename.isEmpty { return desiredFilename }
+
+        let lowered = format.lowercased()
+        let suffix = (lowered.isEmpty || lowered == "m3u8") ? "mp4" : lowered
+        return "\(title)-\(quality).\(suffix)"
+    }
+
     /// 用于长按菜单判断是否显示「分享」。
     var hasLocalFile: Bool {
         fileName != nil || fileURL != nil

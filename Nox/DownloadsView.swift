@@ -37,7 +37,6 @@ struct DownloadsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .environment(\.editMode, $editMode)
             .toolbar { toolbarContent }
-            .safeAreaInset(edge: .bottom, spacing: 0) { selectionBar }
             .alert(L("清空下载？"), isPresented: $showingClearConfirmation) {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("清空"), role: .destructive) {
@@ -88,10 +87,15 @@ struct DownloadsView: View {
                     onCancel: { manager.cancel($0) }
                 )
                 .tag(record.id)
-            }
-            .onDelete { indexSet in
-                for index in indexSet {
-                    manager.deleteFile(for: appState.downloads[index])
+                // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
+                // 左侧红色减号按钮，与「右上角统一删除」重复。
+                // swipeActions 在编辑态自动失效，不影响多选。
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        manager.deleteFile(for: record)
+                    } label: {
+                        Label(L("删除"), systemImage: "trash")
+                    }
                 }
             }
         }
@@ -110,7 +114,14 @@ struct DownloadsView: View {
         }
 
         ToolbarItem(placement: .topBarTrailing) {
-            if !editMode.isEditing, appState.downloads.contains(where: {
+            if editMode.isEditing {
+                Button(role: .destructive) {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Label(L("删除"), systemImage: "trash")
+                }
+                .disabled(selection.isEmpty)
+            } else if appState.downloads.contains(where: {
                 $0.status == .finished ||
                 $0.status == .failed ||
                 $0.status == .cancelled
@@ -119,42 +130,6 @@ struct DownloadsView: View {
                     showingClearConfirmation = true
                 }
             }
-        }
-    }
-
-    /// 多选时底部操作条。只在编辑态且有选中项时出现。
-    @ViewBuilder
-    private var selectionBar: some View {
-        if editMode.isEditing, !selection.isEmpty {
-            HStack(spacing: 10) {
-                Text(String(format: L("已选 %d 项"), selection.count))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button {
-                    let retryable = appState.downloads.filter {
-                        selection.contains($0.id)
-                            && ($0.status == .failed || $0.status == .cancelled)
-                    }
-
-                    manager.retryAll(ids: Set(retryable.map(\.id)))
-                } label: {
-                    Label(L("重试所选"), systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(.bordered)
-
-                Button(role: .destructive) {
-                    showingDeleteConfirmation = true
-                } label: {
-                    Label(L("删除所选"), systemImage: "trash")
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.bar)
         }
     }
 
@@ -197,7 +172,8 @@ struct DownloadRow: View {
                     .foregroundStyle(iconColor)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(record.title)
+                    // 显示实际文件名（而非标题）—— 这才是「文件」App 里看到的名字
+                    Text(record.displayFilename)
                         .lineLimit(2)
 
                     HStack(spacing: 6) {
