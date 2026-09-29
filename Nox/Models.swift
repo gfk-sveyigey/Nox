@@ -273,7 +273,7 @@ struct HistoryItem: Identifiable, Codable {
 }
 
 extension URL {
-    /// 常见的跟踪参数：同一个页面往往带不同的一串，用来做「是否同一条」会误判成不同页。
+    /// 常见的跟踪参数：同一页面往往带不同的一串，逐字比较会误判成不同页。
     private static let trackingParameterNames: Set<String> = [
         "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
         "fbclid", "gclid", "msclkid", "igshid", "spm_id_from", "vd_source",
@@ -294,7 +294,9 @@ extension URL {
         components.scheme = components.scheme?.lowercased()
         components.host = components.host?.lowercased()
 
-        if var path = components.path, path.count > 1, path.hasSuffix("/") {
+        // path 是 String（不是 String?），所以只能用普通变量接，不能写 `if var path = ...`
+        var path = components.path
+        if path.count > 1, path.hasSuffix("/") {
             path.removeLast()
             components.path = path
         }
