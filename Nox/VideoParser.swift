@@ -47,7 +47,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     var currentSiteName: String? { activeParser(for: webView.url)?.displayName }
 
     func load(_ url: URL) {
-        SnifferBridge.shared.reset()   // ← 新增
+        SnifferBridge.shared.reset()
         isLoading = true
         pageReady = false
         pageMatchesRule = activeParser(for: url) != nil
@@ -93,6 +93,8 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        // 换页清空上一页的嗅探结果
+        SnifferBridge.shared.reset()
         isLoading = true
         pageReady = false
         pageMatchesRule = activeParser(for: webView.url) != nil
@@ -110,9 +112,8 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
-    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        SnifferBridge.shared.reset()   // ← 新增：换页清空上一页结果
-        isLoading = true
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        isLoading = false
         pageReady = false
         pageMatchesRule = activeParser(for: webView.url) != nil
     }
