@@ -142,7 +142,7 @@ struct VideoBrowserView: View {
                     HStack {
                         VStack(alignment: .leading) {
                             Text(variant.displayName)
-                            Text(variant.url.host ?? "media")
+                            Text(variant.url.host ?? String(localized: "媒体"))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
