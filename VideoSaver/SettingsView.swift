@@ -3,12 +3,11 @@ import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var localization = LocalizationManager.shared
 
     var body: some View {
         NavigationStack {
             Form {
-                appHeader
-
                 Section("下载") {
                     Picker("下载清晰度", selection: $appState.preferredQuality) {
                         ForEach(PreferredQuality.allCases) { quality in
@@ -24,30 +23,36 @@ struct SettingsView: View {
 
                 experimentalSection
 
+                languageSection
+
                 Section("关于") {
                     LabeledContent("版本", value: Self.appVersion)
                 }
             }
             .navigationTitle("设置")
             .navigationBarTitleDisplayMode(.inline)
+            // 固定在顶部：表单内容从头部下方滚过，头部不会被遮挡
+            .safeAreaInset(edge: .top, spacing: 0) {
+                appHeader
+            }
         }
     }
 
-    // MARK: - 顶部 App 图标 + 名称
+    // MARK: - 顶部 App 图标 + 名称（固定）
 
     private var appHeader: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 10) {
             appIconView
 
             Text(Self.appName)
-                .font(.title2.weight(.semibold))
+                .font(.largeTitle.weight(.bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 16)
-        .padding(.bottom, 8)
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets())
+        .padding(.top, 14)
+        .padding(.bottom, 14)
+        .background(.bar)
     }
 
     @ViewBuilder
@@ -72,6 +77,22 @@ struct SettingsView: View {
                         .font(.system(size: 62))
                         .foregroundStyle(Color.accentColor)
                 }
+        }
+    }
+
+    // MARK: - 语言
+
+    private var languageSection: some View {
+        Section {
+            Picker("语言", selection: $localization.language) {
+                ForEach(AppLanguage.allCases) { language in
+                    Text(language.title).tag(language)
+                }
+            }
+        } header: {
+            Text("语言")
+        } footer: {
+            Text("选择 App 的显示语言。选择「跟随系统」时，App 会与系统语言保持一致。")
         }
     }
 
@@ -129,7 +150,7 @@ struct SettingsView: View {
     private static var appName: String {
         (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
             ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String)
-            ?? "nox"
+            ?? "Nox"
     }
 
     private static var appVersion: String {

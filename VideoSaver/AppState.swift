@@ -136,3 +136,123 @@ final class AppState: ObservableObject {
         disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
     }
 }
+
+// MARK: - App 语言
+
+/// App 内可选的显示语言。
+///
+/// - `system`：不设任何覆盖，交给 iOS 按「系统偏好语言 ∩ App 支持语言」选择，
+///   系统语言不在支持列表时回落到 `CFBundleDevelopmentRegion`（en）。
+/// - 其余 case 的 `rawValue` 必须与 `.lproj` 目录名一致。
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system
+    case english = "en"
+    case simplifiedChinese = "zh-Hans"
+    case korean = "ko"
+    case french = "fr"
+    case german = "de"
+
+    var id: String { rawValue }
+
+    /// `nil` 表示跟随系统（清除覆盖）
+    var resolvedCode: String? {
+        self == .system ? nil : rawValue
+    }
+
+    /// 语言名用其本族语言书写，便于用户识别
+    var title: String {
+        switch self {
+        case .system: return String(localized: "跟随系统")
+        case .english: return "English"
+        case .simplifiedChinese: return "简体中文"
+        case .korean: return "한국어"
+        case .french: return "Français"
+        case .german: return "Deutsch"
+        }
+    }
+}
+
+@MainActor
+final class LocalizationManager: ObservableObject {
+    static let shared = LocalizationManager()
+
+    /// 当前选择（修改后立即生效，无需重启）
+    @Published var language: AppLanguage {
+        didSet {
+            guard language != oldValue else { return }
+            apply()
+        }
+    }
+
+    private let storageKey = "Nox.appLanguage"
+
+    private init() {
+        let stored = UserDefaults.standard.string(forKey: storageKey)
+        language = AppLanguage(rawValue: stored ?? "") ?? .system
+
+        // 启动时立刻应用一次，确保首帧就是正确语言
+        Bundle.applyAppLanguage(language.resolvedCode)
+    }
+
+    /// 交给 `\.locale`，让日期、数字格式跟随所选语言
+    var locale: Locale {
+        guard let code = language.resolvedCode else { return .autoupdatingCurrent }
+        return Locale(identifier: code)
+    }
+
+    private func apply() {
+        UserDefaults.standard.set(language.rawValue, forKey: storageKey)
+        Bundle.applyAppLanguage(language.resolvedCode)
+    }
+}
+
+// MARK: - Bundle 语言覆盖
+
+private var appLanguageBundleKey: UInt8 = 0
+
+/// 按「用户所选语言」查表，而不是按进程启动时的系统语言。
+private final class AppLanguageBundle: Bundle {
+    override func localizedString(
+        forKey key: String,
+        value: String?,
+        table tableName: String?
+    ) -> String {
+        guard let path = objc_getAssociatedObject(self, &appLanguageBundleKey) as? String,
+              let languageBundle = Bundle(path: path) else {
+            return super.localizedString(forKey: key, value: value, table: tableName)
+        }
+
+        // languageBundle 是普通 Bundle，不会再走到这里，不会递归
+        return languageBundle.localizedString(forKey: key, value: value, table: tableName)
+    }
+}
+
+extension Bundle {
+    /// - Parameter code: `nil` = 跟随系统；否则为 `en` / `zh-Hans` / `ko` / `fr` / `de`
+    static func applyAppLanguage(_ code: String?) {
+        // 把 Bundle.main 的 localizedString 换成我们自己的实现，只需替换一次
+        if !(Bundle.main is AppLanguageBundle) {
+            object_setClass(Bundle.main, AppLanguageBundle.self)
+        }
+
+        guard let code,
+              let path = Bundle.main.path(forResource: code, ofType: "lproj"),
+              Bundle(path: path) != nil else {
+            // 跟随系统：清掉覆盖，回到系统语言
+            objc_setAssociatedObject(
+                Bundle.main,
+                &appLanguageBundleKey,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            return
+        }
+
+        objc_setAssociatedObject(
+            Bundle.main,
+            &appLanguageBundleKey,
+            path,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+    }
+}

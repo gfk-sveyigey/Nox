@@ -480,6 +480,30 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une fois désactivé, les pages de ce site ne peuvent plus être analysées et le bouton « Analyser la vidéo » reste grisé." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "끄면 해당 사이트의 페이지를 분석할 수 없고 '동영상 분석' 버튼도 비활성화됩니다." } }
       }
+    },
+    "语言" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Sprache" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Language" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Langue" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "언어" } }
+      }
+    },
+    "跟随系统" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Systemeinstellung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow System" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Système" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 설정 따르기" } }
+      }
+    },
+    "选择 App 的显示语言。选择「跟随系统」时，App 会与系统语言保持一致。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wähle die Anzeigesprache der App. Bei „Systemeinstellung“ folgt die App der Systemsprache." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose the app's display language. With Follow System, the app matches your system language." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisissez la langue d'affichage de l'app. Avec « Système », elle suit la langue du système." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱 표시 언어를 선택하세요. '시스템 설정 따르기'를 선택하면 시스템 언어를 따릅니다." } }
+      }
     }
   },
   "version" : "1.0"

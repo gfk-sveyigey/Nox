@@ -141,7 +141,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.background(
-            withIdentifier: "com.videosaver.downloads"
+            withIdentifier: "com.aholic.nox"
         )
         configuration.isDiscretionary = false
         configuration.sessionSendsLaunchEvents = true
