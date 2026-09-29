@@ -213,7 +213,7 @@ final class LocalizationManager: ObservableObject {
         }
     }
 
-    private let storageKey = AppLocale.languageKe
+    private let storageKey = AppLocale.languageKey
 
     private init() {
         let stored = UserDefaults.standard.string(forKey: storageKey)
