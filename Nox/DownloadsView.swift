@@ -4,6 +4,7 @@ import UIKit
 struct DownloadsView: View {
     @ObservedObject var appState: AppState
     @ObservedObject private var manager: DownloadManager
+    @ObservedObject private var localization = LocalizationManager.shared
 
     @State private var showingClearConfirmation = false
     @State private var shareFailureMessage: String?
@@ -19,9 +20,9 @@ struct DownloadsView: View {
             Group {
                 if appState.downloads.isEmpty {
                     ContentUnavailableView(
-                        "暂无下载",
+                        L("暂无下载"),
                         systemImage: "arrow.down.circle",
-                        description: Text("在浏览页面解析视频后即可加入下载队列。")
+                        description: Text(L("在浏览页面解析视频后即可加入下载队列。"))
                     )
                 } else {
                     List {
@@ -44,7 +45,7 @@ struct DownloadsView: View {
                     }
                 }
             }
-            .navigationTitle(String(localized: "下载"))
+            .navigationTitle(L("下载"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -53,24 +54,24 @@ struct DownloadsView: View {
                         $0.status == .failed ||
                         $0.status == .cancelled
                     }) {
-                        Button("清空") {
+                        Button(L("清空")) {
                             showingClearConfirmation = true
                         }
                     }
                 }
             }
-            .alert("清空下载？", isPresented: $showingClearConfirmation) {
-                Button("取消", role: .cancel) {}
-                Button("清空", role: .destructive) {
+            .alert(L("清空下载？"), isPresented: $showingClearConfirmation) {
+                Button(L("取消"), role: .cancel) {}
+                Button(L("清空"), role: .destructive) {
                     manager.clearFinished()
                 }
             } message: {
-                Text("已完成、失败和已取消的任务将被移除，同时删除对应的本地文件与未完成的分片。此操作无法撤销。")
+                Text(L("已完成、失败和已取消的任务将被移除，同时删除对应的本地文件与未完成的分片。此操作无法撤销。"))
             }
-            .alert("分享失败", isPresented: $showShareFailureAlert) {
-                Button("确定", role: .cancel) {}
+            .alert(L("分享失败"), isPresented: $showShareFailureAlert) {
+                Button(L("确定"), role: .cancel) {}
             } message: {
-                Text(shareFailureMessage ?? String(localized: "无法分享此文件"))
+                Text(shareFailureMessage ?? L("无法分享此文件"))
             }
         }
     }
@@ -81,7 +82,7 @@ struct DownloadsView: View {
     private func share(_ record: DownloadRecord) {
         guard let url = manager.shareableFileURL(for: record) else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                shareFailureMessage = String(localized: "文件不存在或已删除")
+                shareFailureMessage = L("文件不存在或已删除")
                 showShareFailureAlert = true
             }
             return
@@ -110,7 +111,8 @@ struct DownloadRow: View {
                     Text(record.title)
                         .lineLimit(2)
 
-                    Text("\(record.quality) · \(record.format.uppercased())")
+                    // 清晰度与格式来自远端数据，不做本地化
+                    Text(verbatim: "\(record.quality) · \(record.format.uppercased())")
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -125,7 +127,7 @@ struct DownloadRow: View {
                             .font(.title3)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("取消下载")
+                    .accessibilityLabel(L("取消下载"))
                 }
             }
 
@@ -151,7 +153,7 @@ struct DownloadRow: View {
                 Button {
                     onShare(record)
                 } label: {
-                    Label("分享", systemImage: "square.and.arrow.up")
+                    Label(L("分享"), systemImage: "square.and.arrow.up")
                 }
             }
         }
@@ -159,9 +161,7 @@ struct DownloadRow: View {
 
     /// 暂停过就写「继续下载」，否则写「重试」
     private var retryTitle: String {
-        (record.receivedBytes ?? 0) > 0
-            ? String(localized: "继续下载")
-            : String(localized: "重试")
+        (record.receivedBytes ?? 0) > 0 ? L("继续下载") : L("重试")
     }
 
     @ViewBuilder
@@ -178,7 +178,7 @@ struct DownloadRow: View {
                 .foregroundStyle(.red)
                 .lineLimit(2)
         } else if record.status == .cancelled, let received = record.receivedBytes, received > 0 {
-            Text(String(localized: "已暂停 · 已下载 \(TransferStats.formattedSize(received))，重试可继续"))
+            Text(String(format: L("已暂停 · 已下载 %@，重试可继续"), TransferStats.formattedSize(received)))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

@@ -3,6 +3,7 @@ import WebKit
 
 struct VideoBrowserView: View {
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var localization = LocalizationManager.shared
 
     @StateObject private var parser: VideoParser
     @ObservedObject private var downloads: DownloadManager
@@ -47,13 +48,13 @@ struct VideoBrowserView: View {
                 variantSheet
             }
             .alert(
-                "解析失败",
+                L("解析失败"),
                 isPresented: Binding(
                     get: { errorMessage != nil },
                     set: { if !$0 { errorMessage = nil } }
                 )
             ) {
-                Button("确定", role: .cancel) {}
+                Button(L("确定"), role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "")
             }
@@ -75,18 +76,18 @@ struct VideoBrowserView: View {
                     if isParsing {
                         ProgressView()
                     } else {
-                        Label("解析视频", systemImage: "arrow.down.circle")
+                        Label(L("解析视频"), systemImage: "arrow.down.circle")
                             .labelStyle(.titleAndIcon)
                             .lineLimit(1)
                     }
                 }
-                // 与地址栏共用 controlHeight，避免玻璃按钮样式撑高
                 .frame(height: controlHeight)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 16)
             }
             .buttonStyle(.plain)
             .contentShape(Rectangle())
-            .browserGlassBar()
+            // cornerRadius 传 nil ⇒ 胶囊形，两端是半圆
+            .browserGlassBar(cornerRadius: nil)
             .opacity(parser.canParseCurrentPage && !isParsing ? 1 : 0.45)
             .disabled(!parser.canParseCurrentPage || isParsing)
         }
@@ -96,7 +97,7 @@ struct VideoBrowserView: View {
 
     private var addressBar: some View {
         HStack(spacing: 6) {
-            TextField("输入网页地址", text: $address)
+            TextField(L("输入网页地址"), text: $address)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.URL)
@@ -114,7 +115,7 @@ struct VideoBrowserView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("清空地址栏")
+                .accessibilityLabel(L("清空地址栏"))
             }
 
             Button {
@@ -124,7 +125,7 @@ struct VideoBrowserView: View {
                     .foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("打开")
+            .accessibilityLabel(L("打开"))
         }
         .padding(.horizontal, 12)
         .frame(height: controlHeight)
@@ -142,7 +143,7 @@ struct VideoBrowserView: View {
                     HStack {
                         VStack(alignment: .leading) {
                             Text(variant.displayName)
-                            Text(variant.url.host ?? String(localized: "媒体"))
+                            Text(variant.url.host ?? L("媒体"))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
@@ -153,10 +154,10 @@ struct VideoBrowserView: View {
                     }
                 }
             }
-            .navigationTitle(Text(parsedVideo?.title ?? String(localized: "选择清晰度")))
+            .navigationTitle(Text(parsedVideo?.title ?? L("选择清晰度")))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") {
+                    Button(L("关闭")) {
                         showVariants = false
                     }
                 }
@@ -186,7 +187,7 @@ struct VideoBrowserView: View {
         }
 
         guard let url = URL(string: text), url.scheme == "https" else {
-            errorMessage = String(localized: "请输入 HTTPS 地址。")
+            errorMessage = L("请输入 HTTPS 地址。")
             return
         }
 
@@ -275,16 +276,26 @@ private extension View {
         }
     }
 
-    /// 液态玻璃"容器"样式（地址栏）
+    /// 液态玻璃「容器」样式（地址栏、解析按钮）。
+    ///
+    /// - Parameter cornerRadius: 传具体值得圆角矩形（默认 12）；传 `nil` 得**胶囊形**，两端为半圆。
     @ViewBuilder
-    func browserGlassBar(cornerRadius: CGFloat = 12) -> some View {
+    func browserGlassBar(cornerRadius: CGFloat? = 12) -> some View {
         if #available(iOS 26.0, *) {
-            self.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+            if let cornerRadius {
+                self.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+            } else {
+                self.glassEffect(.regular, in: .capsule)
+            }
         } else {
-            self.background(
-                .ultraThinMaterial,
-                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            )
+            if let cornerRadius {
+                self.background(
+                    .ultraThinMaterial,
+                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                )
+            } else {
+                self.background(.ultraThinMaterial, in: Capsule())
+            }
         }
     }
 }
@@ -299,6 +310,7 @@ struct WebViewContainer: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> WKWebView {
+        // 下拉刷新（替代原来的「刷新」按钮）
         if webView.scrollView.refreshControl == nil {
             let control = UIRefreshControl()
             control.addTarget(
@@ -321,6 +333,7 @@ struct WebViewContainer: UIViewRepresentable {
         init(webView: WKWebView) {
             self.webView = webView
 
+            // 加载结束后收起刷新指示器，否则会一直转
             observation = webView.observe(\.isLoading, options: [.new]) { webView, _ in
                 guard !webView.isLoading else { return }
                 webView.scrollView.refreshControl?.endRefreshing()

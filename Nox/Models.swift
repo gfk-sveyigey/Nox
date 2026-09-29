@@ -14,7 +14,7 @@ struct VideoVariant: Identifiable, Codable, Hashable {
     }
 
     var displayName: String {
-        let q = quality.isEmpty ? String(localized: "未知清晰度") : quality
+        let q = quality.isEmpty ? L("未知清晰度") : quality
         let f = format.isEmpty ? "VIDEO" : format.uppercased()
         return "\(q) · \(f)"
     }
@@ -35,8 +35,8 @@ enum PreferredQuality: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .ask: return String(localized: "每次询问")
-        case .best: return String(localized: "最佳")
+        case .ask: return L("每次询问")
+        case .best: return L("最佳")
         case .p1080: return "1080P"
         case .p720: return "720P"
         case .p480: return "480P"
@@ -80,23 +80,23 @@ enum ParserError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return String(localized: "请输入有效的视频页面地址。")
+            return L("请输入有效的视频页面地址。")
         case .unsupportedURL:
-            return String(localized: "当前网页不符合视频解析规则。")
+            return L("当前网页不符合视频解析规则。")
         case .pageLoadFailed(let message):
-            return String(localized: "页面加载失败：\(message)")
+            return String(format: L("页面加载失败：%@"), message)
         case .noMediaDefinitions:
-            return String(localized: "页面中没有找到可用的视频信息。")
+            return L("页面中没有找到可用的视频信息。")
         case .noRemoteManifest:
-            return String(localized: "没有找到远程视频清单。")
+            return L("没有找到远程视频清单。")
         case .manifestRequestFailed(let message):
-            return String(localized: "视频清单请求失败：\(message)")
+            return String(format: L("视频清单请求失败：%@"), message)
         case .invalidManifest:
-            return String(localized: "视频清单格式无法识别。")
+            return L("视频清单格式无法识别。")
         case .noVideoVariants:
-            return String(localized: "没有找到可下载的视频清晰度。")
+            return L("没有找到可下载的视频清晰度。")
         case .scriptFailed(let message):
-            return String(localized: "页面脚本执行失败：\(message)")
+            return String(format: L("页面脚本执行失败：%@"), message)
         }
     }
 }
@@ -201,7 +201,7 @@ struct TransferStats: Equatable {
         }
 
         let number = Self.decimal(scaled, maximumFractionDigits: scaled >= 100 ? 0 : 1)
-        return String(format: String(localized: "%@ %@/s"), number, Self.unitLabel(unitKey))
+        return String(format: L("%@ %@/s"), number, Self.unitLabel(unitKey))
     }
 
     var displayText: String {
@@ -247,10 +247,10 @@ struct TransferStats: Equatable {
     /// 用 switch 而不是动态拼 key，避免依赖不稳定的 API
     private static func unitLabel(_ key: String) -> String {
         switch key {
-        case "GB": return String(localized: "GB")
-        case "MB": return String(localized: "MB")
-        case "KB": return String(localized: "KB")
-        default: return String(localized: "B")
+        case "GB": return L("GB")
+        case "MB": return L("MB")
+        case "KB": return L("KB")
+        default: return L("B")
         }
     }
 }

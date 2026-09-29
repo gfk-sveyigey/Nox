@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var appState: AppState
     @StateObject private var downloadManager: DownloadManager
+    @ObservedObject private var localization = LocalizationManager.shared
     @State private var selectedTab = 0
     @State private var browserURL: URL?
 
@@ -15,22 +16,22 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             VideoBrowserView(appState: appState, downloads: downloadManager, requestedURL: $browserURL)
-                .tabItem { Label(String(localized: "浏览"), systemImage: "safari") }
+                .tabItem { Label(L("浏览"), systemImage: "safari") }
                 .tag(0)
 
             DownloadsView(appState: appState, manager: downloadManager)
-                .tabItem { Label(String(localized: "下载"), systemImage: "arrow.down.circle") }
+                .tabItem { Label(L("下载"), systemImage: "arrow.down.circle") }
                 .tag(1)
 
             HistoryView { url in
                 browserURL = url
                 selectedTab = 0
             }
-            .tabItem { Label(String(localized: "历史"), systemImage: "clock") }
+            .tabItem { Label(L("历史"), systemImage: "clock") }
             .tag(2)
 
             SettingsView()
-                .tabItem { Label(String(localized: "设置"), systemImage: "gearshape") }
+                .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(3)
         }
         .environmentObject(appState)
