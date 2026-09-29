@@ -26,7 +26,6 @@ jobs:
           xcode-version: '26.6'
 
       - name: Validate Info.plist
-        if: steps.check.outputs.exists == 'false'
         run: |
           set -e
           test -f Info.plist || { echo "::error::Info.plist not found"; exit 1; }
@@ -94,8 +93,8 @@ jobs:
           rm -rf build/DerivedData
 
           xcodebuild \
-            -project VideoSaver.xcodeproj \
-            -scheme VideoSaver \
+            -project Nox.xcodeproj \
+            -scheme Nox \
             -sdk iphoneos \
             -configuration Release \
             -destination 'generic/platform=iOS' \
@@ -110,13 +109,13 @@ jobs:
         if: steps.check.outputs.exists == 'false'
         run: |
           set -e
-          APP="build/DerivedData/Build/Products/Release-iphoneos/VideoSaver.app"
-          IPA="build/VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa"
+          APP="build/DerivedData/Build/Products/Release-iphoneos/Nox.app"
+          IPA="build/Nox-${{ steps.version.outputs.raw }}-unsigned.ipa"
 
           test -d "$APP"
           rm -rf build/Payload "$IPA"
           mkdir -p build/Payload
-          cp -R "$APP" build/Payload/VideoSaver.app
+          cp -R "$APP" build/Payload/Nox.app
 
           cd build
           /usr/bin/zip -qry "$(basename "$IPA")" Payload
@@ -130,7 +129,7 @@ jobs:
         if: steps.check.outputs.exists == 'false'
         run: |
           set -e
-          IPA="build/VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa"
+          IPA="build/Nox-${{ steps.version.outputs.raw }}-unsigned.ipa"
           SHA256=$(shasum -a 256 "$IPA" | awk '{print $1}')
           printf '%s  %s\n' "$SHA256" "$(basename "$IPA")" > build/SHA256.txt
 
@@ -150,10 +149,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: "VideoSaver ${{ steps.version.outputs.tag }}"
+          name: "Nox ${{ steps.version.outputs.tag }}"
           body_path: build/PR_BODY.md
           files: |
-            build/VideoSaver-${{ steps.version.outputs.raw }}-unsigned.ipa
+            build/Nox-${{ steps.version.outputs.raw }}-unsigned.ipa
             build/SHA256.txt
           draft: false
           prerelease: ${{ contains(steps.version.outputs.raw, '-') }}

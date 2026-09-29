@@ -14,7 +14,7 @@ enum DownloadStorage {
     /// 分片、暂存等中间数据放 Application Support（用户不可见，也不会被系统当缓存清理）
     static var rootDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("VideoSaver", isDirectory: true)
+        return base.appendingPathComponent("Nox", isDirectory: true)
     }
 
     static var partsRoot: URL {

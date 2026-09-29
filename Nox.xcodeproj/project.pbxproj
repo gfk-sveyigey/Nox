@@ -6,7 +6,7 @@
   objects = {
 
 /* Begin PBXBuildFile section */
-        A10000010000000000000001 /* VideoSaverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000001 /* VideoSaverApp.swift */; };
+        A10000010000000000000001 /* NoxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000001 /* NoxApp.swift */; };
         A10000010000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000002 /* ContentView.swift */; };
         A10000010000000000000003 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000003 /* Models.swift */; };
         A10000010000000000000004 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000004 /* AppState.swift */; };
@@ -24,7 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-        B10000010000000000000001 /* VideoSaverApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSaverApp.swift; sourceTree = "<group>"; };
+        B10000010000000000000001 /* NoxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoxApp.swift; sourceTree = "<group>"; };
         B10000010000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
         B10000010000000000000003 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
         B10000010000000000000004 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
@@ -39,7 +39,7 @@
         B10000010000000000000013 /* PornhubParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PornhubParser.swift; sourceTree = "<group>"; };
         B10000010000000000000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
         B10000010000000000000015 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-        C10000010000000000000001 /* VideoSaver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VideoSaver.app; sourceTree = BUILT_PRODUCTS_DIR; };
+        C10000010000000000000001 /* Nox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,7 +57,7 @@
             children = (E10000010000000000000002, E10000010000000000000003);
             sourceTree = "<group>";
         };
-        E10000010000000000000002 /* VideoSaver */ = {
+        E10000010000000000000002 /* Nox */ = {
             isa = PBXGroup;
             children = (
                 B10000010000000000000001,
@@ -74,7 +74,7 @@
                 B10000010000000000000014,
                 B10000010000000000000015,
             );
-            path = VideoSaver;
+            path = Nox;
             sourceTree = "<group>";
         };
         E10000010000000000000004 /* Parsers */ = {
@@ -96,15 +96,15 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-        F10000010000000000000001 /* VideoSaver */ = {
+        F10000010000000000000001 /* Nox */ = {
             isa = PBXNativeTarget;
-            buildConfigurationList = F10000010000000000000003 /* Build configuration list for PBXNativeTarget "VideoSaver" */;
+            buildConfigurationList = F10000010000000000000003 /* Build configuration list for PBXNativeTarget "Nox" */;
             buildPhases = (F10000010000000000000004 /* Sources */, D10000010000000000000001 /* Frameworks */, F10000010000000000000005 /* Resources */);
             buildRules = ();
             dependencies = ();
-            name = VideoSaver;
-            productName = VideoSaver;
-            productReference = C10000010000000000000001 /* VideoSaver.app */;
+            name = Nox;
+            productName = Nox;
+            productReference = C10000010000000000000001 /* Nox.app */;
             productType = "com.apple.product-type.application";
         };
 /* End PBXNativeTarget section */
@@ -113,7 +113,7 @@
         F10000010000000000000002 /* Project object */ = {
             isa = PBXProject;
             attributes = { LastUpgradeCheck = 2600; TargetAttributes = { F10000010000000000000001 = { CreatedOnToolsVersion = 26.0; }; }; };
-            buildConfigurationList = F10000010000000000000006 /* Build configuration list for PBXProject "VideoSaver" */;
+            buildConfigurationList = F10000010000000000000006 /* Build configuration list for PBXProject "Nox" */;
             compatibilityVersion = "Xcode 26.0";
             developmentRegion = en;
             hasScannedForEncodings = 0;
@@ -209,8 +209,8 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-        F10000010000000000000003 /* Build configuration list for PBXNativeTarget "VideoSaver" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000001, G10000010000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-        F10000010000000000000006 /* Build configuration list for PBXProject "VideoSaver" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000003, G10000010000000000000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+        F10000010000000000000003 /* Build configuration list for PBXNativeTarget "Nox" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000001, G10000010000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+        F10000010000000000000006 /* Build configuration list for PBXProject "Nox" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000003, G10000010000000000000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
   };
   rootObject = F10000010000000000000002 /* Project object */;

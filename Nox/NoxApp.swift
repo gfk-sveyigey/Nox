@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct VideoSaverApp: App {
+struct NoxApp: App {
     /// 观察语言变化，切换后立即刷新 `.locale`（日期/数字格式）
     @ObservedObject private var localization = LocalizationManager.shared
 
