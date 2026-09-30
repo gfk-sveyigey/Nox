@@ -74,8 +74,22 @@ struct DownloadsView: View {
         }
     }
 
+    /// 多选态才把选择绑给列表。
+    ///
+    /// 非多选态下单击列表行没有任何对应操作，绑上去只会留下「选中」高亮，
+    /// 所以此时返回空集合并丢弃写入 —— 多选只能通过「选择」或双指下滑进入。
+    private var listSelection: Binding<Set<UUID>> {
+        Binding(
+            get: { editMode.isEditing ? selection : [] },
+            set: { newValue in
+                guard editMode.isEditing else { return }
+                selection = newValue
+            }
+        )
+    }
+
     private var list: some View {
-        List(selection: $selection) {
+        List(selection: listSelection) {
             ForEach(appState.downloads) { record in
                 DownloadRow(
                     record: record,

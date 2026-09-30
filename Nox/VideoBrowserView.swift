@@ -104,6 +104,17 @@ struct VideoBrowserView: View {
                 Text(errorMessage ?? "")
             }
             .alert(
+                L("无法打开该网页"),
+                isPresented: Binding(
+                    get: { parser.loadErrorMessage != nil },
+                    set: { if !$0 { parser.clearLoadError() } }
+                )
+            ) {
+                Button(L("确定"), role: .cancel) {}
+            } message: {
+                Text(parser.loadErrorMessage ?? "")
+            }
+            .alert(
                 L("保存文件"),
                 isPresented: $isFilenameDialogPresented,
                 presenting: pendingRequest
@@ -191,20 +202,31 @@ struct VideoBrowserView: View {
         appState.isSiteEnabled(GenericSnifferParser.siteIdentifier)
     }
 
-    /// 只有当前页面**确实靠通用嗅探兜底**时才显示入口。
+    /// 当前页面是否由通用嗅探兜底（而不是被某个具名站点解析器接管）。
+    ///
+    /// 判据只看**当前实际生效的解析器**：`GenericSnifferParser.canHandle` 对任何
+    /// http(s) 地址都返回 true，所以「通用生效」= 没有具名站点能处理这个页面。
+    private var isUsingGenericSniffer: Bool {
+        parser.currentParserIdentifier == GenericSnifferParser.siteIdentifier
+    }
+
+    /// 只有当前页面**确实靠通用嗅探兜底**时才显示嗅探入口。
     ///
     /// 页面被具名站点解析器（如 Pornhub）命中时，「解析视频」已经能给出更准确的
     /// 清晰度清单，再摆一个嗅探入口只会得到重复且标注更差的结果。
     /// 反过来，把某个站点的开关关掉，该站点页面就会自动回落到嗅探 —— 语义自洽。
     private var isSnifferBadgeVisible: Bool {
-        isSnifferEnabled
-            && parser.currentParserIdentifier == GenericSnifferParser.siteIdentifier
-            && !sniffer.items.isEmpty
+        isSnifferEnabled && isUsingGenericSniffer && !sniffer.items.isEmpty
     }
 
-    /// 页面可解析时显示。
+    /// 仅当具名站点解析器能处理当前页面时才显示「解析视频」。
+    ///
+    /// 关键点：通用嗅探对任何页面都「可解析」，若只看 `canParseCurrentPage`，
+    /// 那么 Pornhub 首页这类「站内但不可解析」的页面上会同时冒出两个入口
+    /// （解析视频其实也是走嗅探，纯属重复）。因此这里额外要求当前页面**不是**
+    /// 通用嗅探兜底 —— 两个入口在定义上互斥，任何页面都只会出现其中一个。
     private var isParseBadgeVisible: Bool {
-        parser.canParseCurrentPage
+        parser.canParseCurrentPage && !isUsingGenericSniffer
     }
 
     /// 「解析视频」悬浮胶囊：与嗅探入口同样的样式，点击弹出半屏面板。

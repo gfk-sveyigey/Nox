@@ -7,6 +7,11 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     @Published private(set) var isLoading = false
     @Published private(set) var pageMatchesRule = false
     @Published private(set) var pageReady = false
+    /// 最近一次导航失败的原因。
+    ///
+    /// 加载失败时 `WKWebView` 会继续显示上一个页面，用户完全看不出「新地址没打开」，
+    /// 所以这里把失败原因抛给视图层弹提示。
+    @Published private(set) var loadErrorMessage: String?
 
     private let webView: WKWebView
     private let appState: AppState
@@ -68,8 +73,14 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         SnifferBridge.shared.reset()
         isLoading = true
         pageReady = false
+        loadErrorMessage = nil
         pageMatchesRule = activeParser(for: url) != nil
         webView.load(URLRequest(url: url))
+    }
+
+    /// 用户已看过提示，清掉失败原因。
+    func clearLoadError() {
+        loadErrorMessage = nil
     }
 
     func parseCurrentPage() async throws -> ParsedVideo {
@@ -124,6 +135,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         SnifferBridge.shared.reset()
         isLoading = true
         pageReady = false
+        loadErrorMessage = nil
         pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
@@ -137,11 +149,25 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         isLoading = false
         pageReady = false
         pageMatchesRule = activeParser(for: webView.url) != nil
+        recordLoadFailure(error)
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         isLoading = false
         pageReady = false
         pageMatchesRule = activeParser(for: webView.url) != nil
+        recordLoadFailure(error)
+    }
+
+    /// 记录导航失败原因。
+    ///
+    /// 主动取消（页面里又发起了新跳转）与「被策略中断」都不是真的失败，不提示。
+    private func recordLoadFailure(_ error: Error) {
+        let nsError = error as NSError
+
+        if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled { return }
+        if nsError.domain == "WebKitErrorDomain", nsError.code == 102 { return }
+
+        loadErrorMessage = nsError.localizedDescription
     }
 }

@@ -21,6 +21,9 @@ final class GenericSnifferParser: VideoSiteParser {
         url.scheme == "https" || url.scheme == "http"
     }
 
+    /// 兜底解析器不认领任何站点 —— 它只在没有具名站点时生效。
+    func claimsHost(_ url: URL) -> Bool { false }
+
     func parse(page: WebPageContext) async throws -> [VideoVariant] {
         // 1) 让脚本立刻重扫一遍：DOM 可能在 documentStart 之后才填充
         _ = try? await page.evaluate("window.__MS_SNIFF__ && window.__MS_SNIFF__(true)")

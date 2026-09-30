@@ -1,4 +1,5 @@
 import Foundation
+import WebKit
 
 /// 一个分片在远端文件中的位置。分片边界是 (总大小, 固定分片长度) 的纯函数结果，
 /// 与线程数无关，因此改动线程数不会让已下载的分片作废，可以安全续传。
@@ -27,6 +28,15 @@ enum DownloadStorage {
 
     static var documentsDirectory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+
+    /// WebKit 的数据目录（网站数据、网页缓存落在这里）。
+    ///
+    /// 没有公开 API 能取到 `WKWebsiteDataStore` 的占用，只能按目录估算；
+    /// 目录不存在时返回 0。
+    static var webKitDirectory: URL {
+        FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("WebKit", isDirectory: true)
     }
 
     static func partsDirectory(for id: UUID) -> URL {
@@ -369,8 +379,28 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     /// 不含 `Documents`（已下载的视频），也不含 WKWebView 的网站数据
     /// —— 后者含登录态，清掉会把用户退出登录。
     func cacheSize() -> Int64 {
+        partsSize() + stagingSize()
+    }
+
+    /// 未完成下载的分片占用
+    func partsSize() -> Int64 {
         Self.directorySize(DownloadStorage.partsRoot)
-            + Self.directorySize(DownloadStorage.stagingRoot)
+    }
+
+    /// 暂存（分片合并前的落盘中转）占用
+    func stagingSize() -> Int64 {
+        Self.directorySize(DownloadStorage.stagingRoot)
+    }
+
+    /// HTTP 网络缓存占用（探测 / 清单请求留下的响应）
+    func networkCacheSize() -> Int64 {
+        let cache = URLCache.shared
+        return Int64(cache.currentDiskUsage + cache.currentMemoryUsage)
+    }
+
+    /// 网站数据占用（Cookie、本地存储、网页缓存），按 WebKit 数据目录估算。
+    func websiteDataSize() -> Int64 {
+        Self.directorySize(DownloadStorage.webKitDirectory)
     }
 
     /// 已下载视频占用的空间（`Documents` 目录）。
@@ -397,18 +427,50 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
     }
 
-    /// 清空缓存：删除未完成下载的分片与暂存文件。
+    /// 清空缓存：删除未完成下载的分片与暂存文件，以及 HTTP 网络缓存。
     ///
-    /// - 正在下载 / 排队中的任务会被跳过，否则会把它们正在写的文件删掉。
-    /// - 已完成的视频在 `Documents`，不受影响（其分片目录在完成时就已经清理）。
+    /// 已完成的视频在 `Documents`，不受影响（其分片目录在完成时就已经清理）。
     func clearCache() {
-        let protectedIDs = activeIDs.union(pendingQueue)
+        clearParts()
+        clearStaging()
+        clearNetworkCache()
+    }
 
-        Self.removeSubdirectories(in: DownloadStorage.partsRoot, keeping: protectedIDs)
-        Self.removeSubdirectories(in: DownloadStorage.stagingRoot, keeping: protectedIDs)
+    /// 清理未完成下载的分片。
+    ///
+    /// 正在下载 / 排队中的任务会被跳过，否则会把它们正在写的文件删掉。
+    func clearParts() {
+        Self.removeSubdirectories(
+            in: DownloadStorage.partsRoot,
+            keeping: activeIDs.union(pendingQueue)
+        )
+    }
 
-        // 探测与清单请求留下的 HTTP 缓存同样属于「缓存」，一并清掉
+    /// 清理暂存文件（同样跳过正在下载 / 排队中的任务）
+    func clearStaging() {
+        Self.removeSubdirectories(
+            in: DownloadStorage.stagingRoot,
+            keeping: activeIDs.union(pendingQueue)
+        )
+    }
+
+    /// 清理 HTTP 网络缓存
+    func clearNetworkCache() {
         URLCache.shared.removeAllCachedResponses()
+    }
+
+    /// 清理网站数据（Cookie / 本地存储 / 网页缓存）。
+    ///
+    /// - Warning: 会一并清掉登录态，用户需要重新登录相关网站。
+    func clearWebsiteData() async {
+        let store = WKWebsiteDataStore.default()
+        let types = WKWebsiteDataStore.allWebsiteDataTypes()
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            store.removeData(ofTypes: types, modifiedSince: .distantPast) {
+                continuation.resume()
+            }
+        }
     }
 
     private static func directorySize(_ directory: URL) -> Int64 {
