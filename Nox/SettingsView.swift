@@ -70,39 +70,65 @@ struct SettingsView: View {
 
     // MARK: - 设置项
 
-    /// 所有设置项都是「单行」，所以放在同一个分组里，不再逐条套一层分组卡片。
+    /// 设置项按用途分成几个分组，避免全部堆在一个组块里；
+    /// 每个分组至少两行，不出现「只有一行的分组卡片」。
     private var settingsSection: some View {
-        Section {
-            NavigationLink {
-                DownloadSettingsView()
-            } label: {
-                Text(L("下载设置"))
-            }
+        Group {
+            Section {
+                NavigationLink {
+                    DownloadSettingsView()
+                } label: {
+                    Text(L("下载设置"))
+                }
 
-            NavigationLink {
-                SiteSettingsView()
-            } label: {
-                LabeledContent(
-                    L("解析来源"),
-                    value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
-                )
-            }
-
-            Picker(L("语言"), selection: $localization.language) {
-                ForEach(AppLanguage.allCases) { language in
-                    Text(language.title).tag(language)
+                NavigationLink {
+                    StorageSettingsView(manager: manager)
+                } label: {
+                    Text(L("储存空间"))
                 }
             }
 
-            NavigationLink {
-                StorageSettingsView(manager: manager)
-            } label: {
-                Text(L("储存空间"))
+            Section {
+                NavigationLink {
+                    SiteSettingsView()
+                } label: {
+                    LabeledContent(
+                        L("解析来源"),
+                        value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
+                    )
+                }
+
+                NavigationLink {
+                    HistorySettingsView()
+                } label: {
+                    Text(L("历史记录"))
+                }
             }
 
-            LabeledContent(L("版本"), value: "v\(Self.appVersion)")
-        } footer: {
-            Text(L("选择 App 的显示语言。选择「跟随系统」时，App 会与系统语言保持一致。"))
+            Section {
+                Picker(L("外观"), selection: $appState.appearanceMode) {
+                    ForEach(AppearanceMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
+
+                Picker(L("语言"), selection: $localization.language) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.title).tag(language)
+                    }
+                }
+            }
+
+            Section {
+                NavigationLink {
+                    LogsView()
+                } label: {
+                    Text(L("日志"))
+                }
+
+                LabeledContent(L("版本"), value: "v\(Self.appVersion)")
+            }
         }
     }
 
@@ -281,56 +307,96 @@ enum StorageCategory: String, CaseIterable, Identifiable {
     }
 }
 
-/// 「储存空间」二级页：按类别展示占用，勾选任意几类后清理。
+/// 「储存空间」二级页：按类别展示占用。
+///
+/// 多选逻辑与「下载 / 历史」页保持一致：点「选择」或双指下滑进入多选，
+/// 勾选任意几类后由右上角的「清理」统一清理。
 struct StorageSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var localization = LocalizationManager.shared
     @ObservedObject private var manager: DownloadManager
 
     @State private var sizes: [StorageCategory: Int64] = [:]
+    @State private var editMode: EditMode = .inactive
     @State private var selection = Set<StorageCategory>()
     @State private var showingClearConfirmation = false
+    @State private var isVisible = false
 
     init(manager: DownloadManager) {
         _manager = ObservedObject(wrappedValue: manager)
     }
 
     var body: some View {
-        List {
+        List(selection: listSelection) {
             Section {
                 ForEach(StorageCategory.allCases) { category in
-                    Button {
-                        toggle(category)
-                    } label: {
-                        row(for: category)
-                    }
-                    .buttonStyle(.plain)
+                    row(for: category)
+                        .tag(category)
                 }
             } header: {
                 Text(L("储存空间"))
             } footer: {
-                Text(L("点选要清理的类别，再点下方「清理所选」。清理网站数据会退出已登录的网站。"))
+                Text(L("点「选择」或多选态下点选类别，再点右上角「清理」。清理网站数据会退出已登录的网站。"))
             }
 
             Section {
                 LabeledContent(L("合计"), value: TransferStats.formattedSize(totalSize))
             }
+        }
+        .environment(\.editMode, $editMode)
+        .navigationTitle(L("储存空间"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbarContent }
+        .onAppear { isVisible = true }
+        .onDisappear { isVisible = false }
+        .onChange(of: editMode) { _, newValue in
+            if !newValue.isEditing { selection.removeAll() }
+        }
+        .task { refresh() }
+        .onChange(of: appState.downloads.count) { _, _ in refresh() }
+        // 与下载 / 历史页一致：双指下滑进入多选
+        .twoFingerPanToSelect(isEnabled: isVisible) {
+            withAnimation { editMode = .active }
+        }
+        .alert(L("清理所选？"), isPresented: $showingClearConfirmation) {
+            Button(L("取消"), role: .cancel) {}
+            Button(L("清理"), role: .destructive) { clearSelected() }
+        } message: {
+            Text(L("所选类别的缓存与文件将被删除，此操作无法撤销。"))
+        }
+    }
 
-            Section {
+    /// 多选态才把选择绑给列表（与下载 / 历史页相同的处理）。
+    private var listSelection: Binding<Set<StorageCategory>> {
+        Binding(
+            get: { editMode.isEditing ? selection : [] },
+            set: { newValue in
+                guard editMode.isEditing else { return }
+                selection = newValue
+            }
+        )
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button(editMode.isEditing ? L("完成") : L("选择")) {
+                withAnimation {
+                    editMode = editMode.isEditing ? .inactive : .active
+                }
+            }
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            if editMode.isEditing {
                 Button(role: .destructive) {
                     showingClearConfirmation = true
                 } label: {
-                    Text(L("清理所选"))
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    Text(L("清理"))
+                        .foregroundStyle(.red)
                 }
                 .disabled(selection.isEmpty)
-            }
-        }
-        .navigationTitle(L("储存空间"))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            // 右上角：重新统计各项占用
-            ToolbarItem(placement: .topBarTrailing) {
+            } else {
                 Button {
                     refresh()
                 } label: {
@@ -338,16 +404,6 @@ struct StorageSettingsView: View {
                 }
                 .accessibilityLabel(L("刷新"))
             }
-        }
-        .task { refresh() }
-        .onChange(of: appState.downloads.count) { _, _ in refresh() }
-        .alert(L("清理所选？"), isPresented: $showingClearConfirmation) {
-            Button(L("取消"), role: .cancel) {}
-            Button(L("清理"), role: .destructive) {
-                clearSelected()
-            }
-        } message: {
-            Text(L("所选类别的缓存与文件将被删除，此操作无法撤销。"))
         }
     }
 
@@ -365,24 +421,12 @@ struct StorageSettingsView: View {
             Text(TransferStats.formattedSize(sizes[category] ?? 0))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
-
-            Image(systemName: selection.contains(category) ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(selection.contains(category)
-                                 ? Color.accentColor
-                                 : Color.secondary.opacity(0.35))
         }
+        .contentShape(Rectangle())
     }
 
     private var totalSize: Int64 {
         sizes.values.reduce(0, +)
-    }
-
-    private func toggle(_ category: StorageCategory) {
-        if selection.contains(category) {
-            selection.remove(category)
-        } else {
-            selection.insert(category)
-        }
     }
 
     private func refresh() {
@@ -413,7 +457,155 @@ struct StorageSettingsView: View {
             if categories.contains(.networkCache) { manager.clearNetworkCache() }
             if categories.contains(.websiteData) { await manager.clearWebsiteData() }
 
+            LogStore.shared.info("storage cleared: " + categories.map(\.rawValue).sorted().joined(separator: ","))
+
             refresh()
+        }
+    }
+}
+
+/// 「历史记录」二级页：保留方式（按条数 / 按时间）与具体数值。
+struct HistorySettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject private var localization = LocalizationManager.shared
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(L("保留方式"), selection: $appState.historyRetentionMode) {
+                    ForEach(HistoryRetentionMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .onChange(of: appState.historyRetentionMode) { _, _ in
+                    appState.applyHistoryRetention()
+                    appState.persist()
+                }
+
+                switch appState.historyRetentionMode {
+                case .count:
+                    Picker(L("最大条数"), selection: $appState.historyRetentionCount) {
+                        ForEach(AppState.historyCountOptions, id: \.self) { value in
+                            Text(String(value)).tag(value)
+                        }
+                    }
+                    .onChange(of: appState.historyRetentionCount) { _, _ in
+                        appState.applyHistoryRetention()
+                        appState.persist()
+                    }
+                case .days:
+                    Picker(L("最多保留天数"), selection: $appState.historyRetentionDays) {
+                        ForEach(AppState.historyDayOptions, id: \.self) { value in
+                            Text(String(format: L("%d 天"), value)).tag(value)
+                        }
+                    }
+                    .onChange(of: appState.historyRetentionDays) { _, _ in
+                        appState.applyHistoryRetention()
+                        appState.persist()
+                    }
+                }
+            } footer: {
+                Text(L("超出保留范围的历史记录会被自动删除。"))
+            }
+
+            Section {
+                LabeledContent(L("当前记录"), value: String(appState.history.count))
+            }
+        }
+        .navigationTitle(L("历史记录"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// 「日志」二级页：查看 / 清空 / 导出运行日志。
+struct LogsView: View {
+    @ObservedObject private var store = LogStore.shared
+    @ObservedObject private var localization = LocalizationManager.shared
+
+    @State private var showingClearConfirmation = false
+    @State private var shareFailureMessage: String?
+    @State private var showShareFailureAlert = false
+
+    var body: some View {
+        Group {
+            if store.entries.isEmpty {
+                ContentUnavailableView(
+                    L("暂无日志"),
+                    systemImage: "doc.text.magnifyingglass",
+                    description: Text(L("运行日志会显示在这里。"))
+                )
+            } else {
+                List(store.entries.reversed()) { entry in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(entry.level.title)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(color(for: entry.level))
+                            Text(entry.date, format: .dateTime.year().month().day().hour().minute().second())
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text(entry.message)
+                            .font(.footnote)
+                            .textSelection(.enabled)
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+        .navigationTitle(L("日志"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { export() } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .disabled(store.entries.isEmpty)
+                .accessibilityLabel(L("导出日志"))
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(role: .destructive) {
+                    showingClearConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .disabled(store.entries.isEmpty)
+                .accessibilityLabel(L("清空日志"))
+            }
+        }
+        .alert(L("清空日志？"), isPresented: $showingClearConfirmation) {
+            Button(L("取消"), role: .cancel) {}
+            Button(L("清空"), role: .destructive) { store.clear() }
+        } message: {
+            Text(L("所有日志将被删除，此操作无法撤销。"))
+        }
+        .alert(L("导出失败"), isPresented: $showShareFailureAlert) {
+            Button(L("确定"), role: .cancel) {}
+        } message: {
+            Text(shareFailureMessage ?? L("无法导出日志"))
+        }
+    }
+
+    private func color(for level: LogLevel) -> Color {
+        switch level {
+        case .info: return .secondary
+        case .warning: return .orange
+        case .error: return .red
+        }
+    }
+
+    /// contextMenu / 工具栏点击后同步 present 会被丢弃，延后一拍再弹分享面板。
+    private func export() {
+        guard let url = store.exportFileURL() else {
+            shareFailureMessage = L("无法导出日志")
+            showShareFailureAlert = true
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            SharePresenter.present(items: [url])
         }
     }
 }

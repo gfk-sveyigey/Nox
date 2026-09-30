@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WebKit
 
 struct VideoBrowserView: View {
@@ -66,6 +67,8 @@ struct VideoBrowserView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+                    webStateOverlay
+
                     VStack(alignment: .trailing, spacing: 10) {
                         if isParseBadgeVisible {
                             parseBadge
@@ -102,17 +105,6 @@ struct VideoBrowserView: View {
                 Button(L("确定"), role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "")
-            }
-            .alert(
-                L("无法打开该网页"),
-                isPresented: Binding(
-                    get: { parser.loadErrorMessage != nil },
-                    set: { if !$0 { parser.clearLoadError() } }
-                )
-            ) {
-                Button(L("确定"), role: .cancel) {}
-            } message: {
-                Text(parser.loadErrorMessage ?? "")
             }
             .alert(
                 L("保存文件"),
@@ -184,6 +176,34 @@ struct VideoBrowserView: View {
         .padding(.horizontal, 12)
         .frame(height: isScrolledDown ? collapsedControlHeight : controlHeight)
         .browserGlassBar(cornerRadius: nil)
+    }
+
+    /// 加载中 / 加载失败的页面内提示。
+    ///
+    /// 用不透明占位盖住 WebView：WKWebView 导航失败时会保留上一个页面，
+    /// 只有盖住它，用户才能一眼看出「这个新地址没打开」，而不是弹窗叠在旧页面上。
+    @ViewBuilder
+    private var webStateOverlay: some View {
+        if let message = parser.loadErrorMessage {
+            ContentUnavailableView {
+                Label(L("无法打开该网页"), systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(message)
+            } actions: {
+                Button(L("重试")) { parser.retryLastLoad() }
+                    .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemBackground))
+        } else if parser.isUserInitiatedLoad {
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(L("正在加载…"))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemBackground))
+        }
     }
 
     private func updateCollapsedState(for offset: CGFloat) {
@@ -455,11 +475,6 @@ struct VideoBrowserView: View {
     /// - Referer 用 WebView 当前地址。
     private func download(_ item: SnifferBridge.Item) {
         showSniffer = false
-
-        appState.addHistory(
-            title: parser.currentPageTitle ?? item.displayTitle,
-            url: parser.currentPageURL ?? item.url
-        )
 
         prepareDownload(
             title: item.displayTitle,
