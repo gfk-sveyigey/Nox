@@ -124,6 +124,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     /// 下载中的实时统计（已下载 / 总大小 / 速度），仅内存。
     @Published private(set) var transfers: [UUID: TransferStats] = [:]
 
+    /// 状态是「已完成」但本地文件已经不在了的记录（启动时扫描发现）。
+    /// 列表据此提示「文件缺失」，并隐藏分享入口。
+    @Published private(set) var missingFileIDs: Set<UUID> = []
+
     /// 每个分片的目标大小。
     ///
     /// 必须是**固定值**：分片边界只由 (总大小, 本值) 决定，与线程数无关。
@@ -216,6 +220,26 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             withIntermediateDirectories: true
         )
         _ = session
+
+        // 启动时扫一遍：上次运行留下的「已完成」记录，文件可能已被系统清理或用户删除。
+        refreshMissingFiles()
+    }
+
+    /// 重新扫描「已完成但文件缺失」的记录。
+    func refreshMissingFiles() {
+        var missing = Set<UUID>()
+
+        for record in appState.downloads where record.status == .finished {
+            if shareableFileURL(for: record) == nil {
+                missing.insert(record.id)
+            }
+        }
+
+        missingFileIDs = missing
+
+        if !missing.isEmpty {
+            LogStore.shared.warning("missing files: \(missing.count)")
+        }
     }
 
     // MARK: - 对外接口
@@ -241,7 +265,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         // 历史在这里（真正入队下载时）记录，而不是解析时：
         // 解析了但没下载、或下载被取消，都不该在历史里留下痕迹。
-        appState.addHistory(title: title, url: referer ?? record.sourceURL)
+        // 历史标题用文件名（去扩展名），而不是页面标题。
+        appState.addHistory(title: record.displayTitle, url: referer ?? record.sourceURL)
 
         LogStore.shared.info("enqueue \(record.displayFilename) <- \(referer?.absoluteString ?? record.sourceURL.absoluteString)")
 
@@ -270,7 +295,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.updateDownload(updated)
 
         // 取消时历史已被清掉，重试相当于重新入队，补回一条。
-        appState.addHistory(title: updated.title, url: updated.refererURL ?? updated.sourceURL)
+        appState.addHistory(title: updated.displayTitle, url: updated.refererURL ?? updated.sourceURL)
         LogStore.shared.info("retry \(updated.displayFilename)")
 
         start(updated)
@@ -358,6 +383,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
 
         appState.clearFinishedDownloads()
+        refreshMissingFiles()
     }
 
     func shareableFileURL(for record: DownloadRecord) -> URL? {
@@ -376,6 +402,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     func deleteFile(for record: DownloadRecord) {
         deleteLocalArtifacts(for: record)
         appState.removeDownload(record)
+        refreshMissingFiles()
     }
 
     /// 批量删除（多选时用）。先快照再删，避免边遍历边修改 downloads。

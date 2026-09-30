@@ -74,42 +74,41 @@ struct DownloadsView: View {
         }
     }
 
-    /// 多选态才把选择绑给列表。
+    /// 只有多选态才把选择绑给列表。
     ///
     /// 非多选态下单击列表行没有任何对应操作，绑上去只会留下「选中」高亮，
-    /// 所以此时返回空集合并丢弃写入 —— 多选只能通过「选择」或双指下滑进入。
-    private var listSelection: Binding<Set<UUID>> {
-        Binding(
-            get: { editMode.isEditing ? selection : [] },
-            set: { newValue in
-                guard editMode.isEditing else { return }
-                selection = newValue
-            }
-        )
+    /// 因此非多选态直接用不带 selection 的 List —— 这样连点击高亮都不会出现。
+    @ViewBuilder
+    private var list: some View {
+        if editMode.isEditing {
+            List(selection: $selection) { rows }
+        } else {
+            List { rows }
+        }
     }
 
-    private var list: some View {
-        List(selection: listSelection) {
-            ForEach(appState.downloads) { record in
-                DownloadRow(
-                    record: record,
-                    stats: manager.transfers[record.id],
-                    onShare: { record in
-                        share(record)
-                    },
-                    onRetry: { manager.retry($0) },
-                    onCancel: { manager.cancel($0) }
-                )
-                .tag(record.id)
-                // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
-                // 左侧红色减号按钮，与「右上角统一删除」重复。
-                // swipeActions 在编辑态自动失效，不影响多选。
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        manager.deleteFile(for: record)
-                    } label: {
-                        Label(L("删除"), systemImage: "trash")
-                    }
+    @ViewBuilder
+    private var rows: some View {
+        ForEach(appState.downloads) { record in
+            DownloadRow(
+                record: record,
+                stats: manager.transfers[record.id],
+                isMissingFile: manager.missingFileIDs.contains(record.id),
+                onShare: { record in
+                    share(record)
+                },
+                onRetry: { manager.retry($0) },
+                onCancel: { manager.cancel($0) }
+            )
+            .tag(record.id)
+            // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
+            // 左侧红色减号按钮，与「右上角统一删除」重复。
+            // swipeActions 在编辑态自动失效，不影响多选。
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    manager.deleteFile(for: record)
+                } label: {
+                    Label(L("删除"), systemImage: "trash")
                 }
             }
         }
@@ -170,6 +169,8 @@ struct DownloadsView: View {
 struct DownloadRow: View {
     let record: DownloadRecord
     let stats: TransferStats?
+    /// 已完成的记录，但本地文件已经不在了（启动时扫描发现）
+    let isMissingFile: Bool
     let onShare: (DownloadRecord) -> Void
     let onRetry: (DownloadRecord) -> Void
     let onCancel: (DownloadRecord) -> Void
@@ -247,7 +248,7 @@ struct DownloadRow: View {
                 }
             }
 
-            if record.status == .finished, record.hasLocalFile {
+            if record.status == .finished, record.hasLocalFile, !isMissingFile {
                 Button {
                     onShare(record)
                 } label: {
@@ -264,7 +265,13 @@ struct DownloadRow: View {
 
     @ViewBuilder
     private var statusLine: some View {
-        if record.status == .downloading {
+        if record.status == .finished, isMissingFile {
+            // 文件被系统清理或用户删除后，条目还在：明确提示缺失
+            Label(L("文件缺失"), systemImage: "exclamationmark.triangle")
+                .font(.footnote)
+                .foregroundStyle(.red)
+                .lineLimit(1)
+        } else if record.status == .downloading {
             Text(stats?.displayText ?? TransferStats().displayText)
                 .font(.footnote)
                 .monospacedDigit()
