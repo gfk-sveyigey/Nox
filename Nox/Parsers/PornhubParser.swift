@@ -20,6 +20,12 @@ final class PornhubParser: VideoSiteParser {
         return queryValue("viewkey", in: url)?.isEmpty == false
     }
 
+    /// 首页、列表页等站内页面同样算 Pornhub，虽然它们不能被 canHandle 命中。
+    func claimsHost(_ url: URL) -> Bool {
+        guard url.scheme == "https", let host = url.host else { return false }
+        return Self.hosts.contains { host == $0 || host.hasSuffix("." + $0) }
+    }
+
     func parse(page: WebPageContext) async throws -> [VideoVariant] {
         let definitions = try await mediaDefinitions(on: page)
 

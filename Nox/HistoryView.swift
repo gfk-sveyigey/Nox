@@ -61,8 +61,22 @@ struct HistoryView: View {
         }
     }
 
+    /// 多选态才把选择绑给列表。
+    ///
+    /// 非多选态下单击列表行没有任何对应操作，绑上去只会留下「选中」高亮，
+    /// 所以此时返回空集合并丢弃写入 —— 多选只能通过「选择」或双指下滑进入。
+    private var listSelection: Binding<Set<UUID>> {
+        Binding(
+            get: { editMode.isEditing ? selection : [] },
+            set: { newValue in
+                guard editMode.isEditing else { return }
+                selection = newValue
+            }
+        )
+    }
+
     private var list: some View {
-        List(selection: $selection) {
+        List(selection: listSelection) {
             ForEach(appState.history) { item in
                 VStack(alignment: .leading, spacing: 5) {
                     // 只占一行，超长部分用省略号（完整标题在长按菜单里）。
@@ -104,6 +118,14 @@ struct HistoryView: View {
                         appState.removeHistory(item)
                     } label: {
                         Label(L("删除记录"), systemImage: "trash")
+                    }
+                }
+                // 与下载页一致的左滑删除；编辑态下 swipeActions 会自动失效
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        appState.removeHistory(item)
+                    } label: {
+                        Label(L("删除"), systemImage: "trash")
                     }
                 }
             }

@@ -1001,36 +1001,100 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 중…" } }
       }
     },
-    "删除所有下载" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle Downloads löschen" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete All Downloads" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer tous les téléchargements" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모든 다운로드 삭제" } }
-      }
-    },
-    "删除所有下载？" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle Downloads löschen?" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete all downloads?" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer tous les téléchargements ?" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모든 다운로드를 삭제할까요?" } }
-      }
-    },
-    "将删除全部下载记录、已下载的文件与未完成的分片。此操作无法撤销。" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle Download-Einträge, heruntergeladenen Dateien und unfertigen Teile werden gelöscht. Dies kann nicht rückgängig gemacht werden." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "All download records, downloaded files, and unfinished parts will be deleted. This cannot be undone." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tous les enregistrements, les fichiers téléchargés et les fragments inachevés seront supprimés. Cette action est irréversible." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모든 다운로드 기록, 다운로드한 파일, 미완료 조각이 삭제됩니다. 이 작업은 되돌릴 수 없습니다." } }
-      }
-    },
     "关闭后，对应网站的页面将无法解析，「解析视频」入口也会隐藏。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Wenn deaktiviert, können Seiten der jeweiligen Website nicht mehr analysiert werden; der Eintrag „Video analysieren“ wird ausgeblendet." } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "When disabled, pages from that site can no longer be parsed, and the \"Parse Video\" entry is hidden." } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une fois désactivé, les pages de ce site ne peuvent plus être analysées et l'entrée « Analyser la vidéo » est masquée." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "끄면 해당 사이트의 페이지를 분석할 수 없으며 「동영상 분석」 항목이 숨겨집니다." } }
+      }
+    },
+    "无法打开该网页" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Seite kann nicht geöffnet werden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Can't Open This Page" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible d'ouvrir cette page" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "페이지를 열 수 없습니다" } }
+      }
+    },
+    "下载分片" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Segmente" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download Segments" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Segments de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 조각" } }
+      }
+    },
+    "临时文件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Temporäre Dateien" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Temporary Files" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichiers temporaires" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "임시 파일" } }
+      }
+    },
+    "网络缓存" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Netzwerk-Cache" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Network Cache" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cache réseau" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "네트워크 캐시" } }
+      }
+    },
+    "网站数据" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Website-Daten" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Website Data" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Données des sites web" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "웹사이트 데이터" } }
+      }
+    },
+    "刷新" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktualisieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Refresh" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Actualiser" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "새로고침" } }
+      }
+    },
+    "清理" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bereinigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정리" } }
+      }
+    },
+    "清理所选" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswahl bereinigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear Selected" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer la sélection" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택 항목 정리" } }
+      }
+    },
+    "清理所选？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswahl bereinigen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear selected?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer la sélection ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택 항목을 정리할까요?" } }
+      }
+    },
+    "所选类别的缓存与文件将被删除，此操作无法撤销。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Caches und Dateien der ausgewählten Kategorien werden gelöscht. Dies kann nicht rückgängig gemacht werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The caches and files for the selected categories will be deleted. This cannot be undone." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les caches et fichiers des catégories sélectionnées seront supprimés. Cette action est irréversible." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택한 카테고리의 캐시와 파일이 삭제됩니다. 이 작업은 되돌릴 수 없습니다." } }
+      }
+    },
+    "点选要清理的类别，再点下方「清理所选」。清理网站数据会退出已登录的网站。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Tippen Sie die zu bereinigenden Kategorien und dann unten auf „Auswahl bereinigen“ an. Das Bereinigen von Website-Daten meldet Sie von Websites ab." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap the categories to clear, then tap \"Clear Selected\" below. Clearing website data signs you out of websites." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez les catégories à effacer, puis « Effacer la sélection » ci-dessous. Effacer les données des sites vous déconnecte des sites web." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정리할 카테고리를 탭한 뒤 아래의 「선택 항목 정리」를 누르세요. 웹사이트 데이터를 정리하면 로그인 상태가 해제됩니다." } }
       }
     }
   },
