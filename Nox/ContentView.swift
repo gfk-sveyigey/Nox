@@ -6,6 +6,7 @@ struct ContentView: View {
     @ObservedObject private var localization = LocalizationManager.shared
     @State private var selectedTab = 0
     @State private var browserURL: URL?
+    @State private var didLogSession = false
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -39,6 +40,11 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // 浅色 / 深色 / 跟随系统
         .preferredColorScheme(appState.appearanceMode.colorScheme)
+        .onAppear {
+            guard !didLogSession else { return }
+            didLogSession = true
+            LogStore.shared.recordSessionStart()
+        }
         // 回到前台时重置速度采样：后台期间定时器不触发，
         // 直接沿用旧采样点会算出错误的速度。
         .onChange(of: scenePhase) { _, phase in
