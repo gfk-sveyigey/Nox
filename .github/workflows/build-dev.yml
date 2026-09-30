@@ -1,10 +1,14 @@
 name: Build (dev)
 
 # 提交到 dev 时立即编译验证：编译 + 打包无签名 IPA，上传为 Actions 工件；不发布 Release。
+# 只改动 VERSION 的推送（例如单纯发版号）不触发 —— 这类改动不影响编译。
+# 注意：只要这次推送还改了别的文件，仍会正常触发。
 on:
   push:
     branches: [ dev ]
-  # 需要时也可以在 Actions 页面手动触发
+    paths-ignore:
+      - VERSION
+  # 需要时也可以在 Actions 页面手动触发（手动触发不受上面的路径过滤影响）
   workflow_dispatch:
 
 permissions:

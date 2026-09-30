@@ -71,7 +71,7 @@
 ├── VERSION                         # 版本号，CI 据此打 tag
 ├── .github/workflows/
 │   ├── build-and-release.yml       # 合并到 main 后构建无签名 IPA 并发 Release
-│   └── build-dev.yml               # 推送到 dev 时编译并打包无签名 IPA，上传为 Actions 工件，不发布
+│   └── build-dev.yml               # 推送到 dev 时编译并打包无签名 IPA，上传为 Actions 工件，不发布；仅改 VERSION 的推送不触发
 ├── Nox/
 │   ├── NoxApp.swift                # @main，注入语言环境
 │   ├── ContentView.swift           # TabView：浏览 / 下载 / 历史 / 设置
@@ -133,7 +133,7 @@ plutil -p "$APP/Info.plist" | grep -E "CFBundleDisplayName|CFBundleIdentifier"
 
 ### 发布流程
 
-**dev 分支**：`.github/workflows/build-dev.yml` 在 **推送到 `dev`**（或手动触发）时用 `Debug` 配置编译，并打包为 `Nox-<version>-dev<run_number>-unsigned.ipa`，作为 **Actions 工件**（artifact，保留 14 天）供下载；**不创建 Release、不打 tag**。同一分支的新推送会取消进行中的旧构建。
+**dev 分支**：`.github/workflows/build-dev.yml` 在 **推送到 `dev`**（或手动触发）时用 `Debug` 配置编译，并打包为 `Nox-<version>-dev<run_number>-unsigned.ipa`，作为 **Actions 工件**（artifact，保留 14 天）供下载；**不创建 Release、不打 tag**。同一分支的新推送会取消进行中的旧构建。**只改动 `VERSION` 的推送不会触发**（`paths-ignore`），若同一次推送还改了别的文件则照常触发；手动触发不受该过滤影响。
 
 **发布**：`.github/workflows/build-and-release.yml` 在 **PR 合并进 `main`** 时触发：
 
