@@ -70,56 +70,72 @@ struct SettingsView: View {
 
     // MARK: - 设置项
 
-    /// 所有设置项放在同一个列表里，不做分组。
+    /// 每个设置项单独成组。
     private var settingsSection: some View {
-        Section {
-            NavigationLink {
-                DownloadSettingsView()
-            } label: {
-                Text(L("下载设置"))
-            }
-
-            NavigationLink {
-                StorageSettingsView(manager: manager)
-            } label: {
-                Text(L("储存空间"))
-            }
-
-            NavigationLink {
-                SiteSettingsView()
-            } label: {
-                LabeledContent(
-                    L("解析来源"),
-                    value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
-                )
-            }
-
-            NavigationLink {
-                HistorySettingsView()
-            } label: {
-                Text(L("历史记录"))
-            }
-
-            NavigationLink {
-                LogsView()
-            } label: {
-                Text(L("日志"))
-            }
-
-            Picker(L("外观"), selection: $appState.appearanceMode) {
-                ForEach(AppearanceMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
-
-            Picker(L("语言"), selection: $localization.language) {
-                ForEach(AppLanguage.allCases) { language in
-                    Text(language.title).tag(language)
+        Group {
+            Section {
+                NavigationLink {
+                    DownloadSettingsView()
+                } label: {
+                    Text(L("下载设置"))
                 }
             }
 
-            LabeledContent(L("版本"), value: "v\(Self.appVersion)")
+            Section {
+                NavigationLink {
+                    StorageSettingsView(manager: manager)
+                } label: {
+                    Text(L("储存空间"))
+                }
+            }
+
+            Section {
+                NavigationLink {
+                    SiteSettingsView()
+                } label: {
+                    LabeledContent(
+                        L("解析来源"),
+                        value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
+                    )
+                }
+            }
+
+            Section {
+                NavigationLink {
+                    HistorySettingsView()
+                } label: {
+                    Text(L("历史记录"))
+                }
+            }
+
+            Section {
+                NavigationLink {
+                    LogsView()
+                } label: {
+                    Text(L("日志"))
+                }
+            }
+
+            Section {
+                Picker(L("外观"), selection: $appState.appearanceMode) {
+                    ForEach(AppearanceMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
+            }
+
+            Section {
+                Picker(L("语言"), selection: $localization.language) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.title).tag(language)
+                    }
+                }
+            }
+
+            Section {
+                LabeledContent(L("版本"), value: "v\(Self.appVersion)")
+            }
         }
     }
 
