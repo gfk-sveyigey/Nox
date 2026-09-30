@@ -238,6 +238,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         )
 
         appState.addDownload(record)
+
+        // 历史在这里（真正入队下载时）记录，而不是解析时：
+        // 解析了但没下载、或下载被取消，都不该在历史里留下痕迹。
+        appState.addHistory(title: title, url: referer ?? record.sourceURL)
+
+        LogStore.shared.info("enqueue \(record.displayFilename) <- \(referer?.absoluteString ?? record.sourceURL.absoluteString)")
+
         start(record)
     }
 
@@ -261,6 +268,11 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         // 保留 totalBytes / segmentCount / receivedBytes / progress，start 时会用磁盘上的分片重新校准
 
         appState.updateDownload(updated)
+
+        // 取消时历史已被清掉，重试相当于重新入队，补回一条。
+        appState.addHistory(title: updated.title, url: updated.refererURL ?? updated.sourceURL)
+        LogStore.shared.info("retry \(updated.displayFilename)")
+
         start(updated)
     }
 
@@ -309,6 +321,28 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         clearTransferStats(for: record.id)
         appState.updateDownload(updated)
         releaseSlot(record.id)
+
+        LogStore.shared.info("cancel \(updated.displayFilename)")
+
+        // 被取消的任务不该留在历史里；但同一页面若还有其它未取消的下载，则保留。
+        removeHistoryIfUnused(for: updated)
+    }
+
+    /// 取消 / 删除后，若该页面已没有任何仍在队列、下载中或已完成的记录，
+    /// 就把它的历史条目一并清掉。
+    private func removeHistoryIfUnused(for record: DownloadRecord) {
+        let pageURL = record.refererURL ?? record.sourceURL
+        let identity = pageURL.pageIdentity
+
+        let hasOther = appState.downloads.contains { other in
+            other.id != record.id
+                && (other.refererURL ?? other.sourceURL).pageIdentity == identity
+                && other.status != .cancelled
+                && other.status != .failed
+        }
+
+        guard !hasOther else { return }
+        appState.removeHistory(matching: pageURL)
     }
 
     /// 清空：删除记录 + 本地文件 + 未完成的分片。
@@ -1074,6 +1108,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         clearTransferStats(for: recordID)
         appState.updateDownload(record)
+        logCompletion(record)
     }
 
     // MARK: - HLS（m3u8）
@@ -1179,6 +1214,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         clearTransferStats(for: recordID)
         appState.updateDownload(record)
+        logCompletion(record)
     }
 
     // MARK: - 探测（Range 支持 / 总大小）
@@ -1326,6 +1362,17 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         clearTransferStats(for: id)
         appState.updateDownload(record)
+
+        LogStore.shared.error("failed \(record.displayFilename): \(message)")
+    }
+
+    /// 记录一次任务结束（完成或保存失败）。
+    private func logCompletion(_ record: DownloadRecord) {
+        if record.status == .finished {
+            LogStore.shared.info("finished \(record.displayFilename)")
+        } else if let message = record.errorMessage {
+            LogStore.shared.error("failed \(record.displayFilename): \(message)")
+        }
     }
 
     nonisolated func urlSession(

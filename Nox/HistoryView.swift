@@ -20,7 +20,7 @@ struct HistoryView: View {
                     ContentUnavailableView(
                         L("暂无历史"),
                         systemImage: "clock",
-                        description: Text(L("打开过的视频页面会显示在这里。"))
+                        description: Text(L("下载过的视频页面会显示在这里。"))
                     )
                 } else {
                     list

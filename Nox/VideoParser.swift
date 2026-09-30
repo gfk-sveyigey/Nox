@@ -10,8 +10,17 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     /// 最近一次导航失败的原因。
     ///
     /// 加载失败时 `WKWebView` 会继续显示上一个页面，用户完全看不出「新地址没打开」，
-    /// 所以这里把失败原因抛给视图层弹提示。
+    /// 视图层会用它在页面区域**直接盖一层错误提示**（不再是弹窗）。
     @Published private(set) var loadErrorMessage: String?
+
+    /// 最近一次加载是不是「用户主动换页」（地址栏输入 / 历史跳转）。
+    ///
+    /// 只有这种情况才在换页期间盖一层加载占位，避免「输入了新地址却还显示旧页面」；
+    /// 页面内点链接保持浏览器习惯（旧页面留到新页面提交），但失败提示两种都会给。
+    @Published private(set) var isUserInitiatedLoad = false
+
+    /// 最近一次由用户发起的地址，供失败后的「重试」使用。
+    private(set) var lastLoadURL: URL?
 
     private let webView: WKWebView
     private let appState: AppState
@@ -75,7 +84,16 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         pageReady = false
         loadErrorMessage = nil
         pageMatchesRule = activeParser(for: url) != nil
+        lastLoadURL = url
+        isUserInitiatedLoad = true
+        LogStore.shared.info("open \(url.absoluteString)")
         webView.load(URLRequest(url: url))
+    }
+
+    /// 重新加载最近一次地址（失败提示里的「重试」）。
+    func retryLastLoad() {
+        guard let url = lastLoadURL else { return }
+        load(url)
     }
 
     /// 用户已看过提示，清掉失败原因。
@@ -100,7 +118,9 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         guard !variants.isEmpty else { throw ParserError.noVideoVariants }
 
         let title = await page.documentTitle() ?? pageURL.host ?? "Video"
-        appState.addHistory(title: title, url: pageURL)
+        LogStore.shared.info("parsed \(variants.count) variant(s) on \(pageURL.absoluteString)")
+        // 历史在「真正入队下载」时记录（见 DownloadManager.enqueue），
+        // 只解析不下载、或下载被取消，都不该在历史里留下记录。
         return ParsedVideo(title: title, pageURL: pageURL, variants: variants)
     }
 
@@ -143,12 +163,17 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         isLoading = false
         pageReady = true
         pageMatchesRule = activeParser(for: webView.url) != nil
+        isUserInitiatedLoad = false
+        if let url = webView.url {
+            LogStore.shared.info("loaded \(url.absoluteString)")
+        }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         isLoading = false
         pageReady = false
         pageMatchesRule = activeParser(for: webView.url) != nil
+        isUserInitiatedLoad = false
         recordLoadFailure(error)
     }
 
@@ -156,6 +181,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         isLoading = false
         pageReady = false
         pageMatchesRule = activeParser(for: webView.url) != nil
+        isUserInitiatedLoad = false
         recordLoadFailure(error)
     }
 
@@ -169,5 +195,6 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         if nsError.domain == "WebKitErrorDomain", nsError.code == 102 { return }
 
         loadErrorMessage = nsError.localizedDescription
+        LogStore.shared.error("load failed \(lastLoadURL?.absoluteString ?? "-"): \(nsError.localizedDescription)")
     }
 }

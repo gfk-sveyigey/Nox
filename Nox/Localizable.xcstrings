@@ -1,6 +1,222 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "下载过的视频页面会显示在这里。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heruntergeladene Videoseiten erscheinen hier." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video pages you download will appear here." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les pages vidéo téléchargées apparaîtront ici." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드한 동영상 페이지가 여기에 표시됩니다." } }
+      }
+    },
+    "按条数" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach Anzahl" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "By count" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Par nombre" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "개수 기준" } }
+      }
+    },
+    "按时间" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach Zeitraum" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "By time" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Par période" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기간 기준" } }
+      }
+    },
+    "浅色" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hell" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Light" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Clair" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "라이트" } }
+      }
+    },
+    "深色" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dunkel" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dark" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sombre" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다크" } }
+      }
+    },
+    "外观" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Erscheinungsbild" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Apparence" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 모드" } }
+      }
+    },
+    "信息" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Info" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Info" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Info" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정보" } }
+      }
+    },
+    "警告" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Warnung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Warning" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Avertissement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "경고" } }
+      }
+    },
+    "错误" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fehler" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Error" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오류" } }
+      }
+    },
+    "历史记录" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verlauf" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "History" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Historique" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록" } }
+      }
+    },
+    "日志" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Logs" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Journaux" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그" } }
+      }
+    },
+    "保留方式" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufbewahrung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retention" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Conservation" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "보관 방식" } }
+      }
+    },
+    "最大条数" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Maximale Anzahl" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Maximum entries" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nombre maximum" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최대 개수" } }
+      }
+    },
+    "最多保留天数" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Maximale Tage" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Maximum days" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Jours maximum" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최대 보관 일수" } }
+      }
+    },
+    "当前记录" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktuelle Einträge" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Current entries" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Entrées actuelles" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "현재 기록" } }
+      }
+    },
+    "超出保留范围的历史记录会被自动删除。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einträge außerhalb des Aufbewahrungsbereichs werden automatisch gelöscht." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "History entries outside the retention range are deleted automatically." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les entrées hors de la plage de conservation sont supprimées automatiquement." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "보관 범위를 벗어난 기록은 자동으로 삭제됩니다." } }
+      }
+    },
+    "点「选择」或多选态下点选类别，再点右上角「清理」。清理网站数据会退出已登录的网站。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Tippe auf „Auswählen“ (oder wische mit zwei Fingern nach unten), wähle die Kategorien und tippe oben rechts auf „Bereinigen“. Das Löschen der Websitedaten meldet dich von Websites ab." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap Select (or swipe down with two fingers), choose the categories, then tap Clean in the top-right corner. Clearing website data signs you out of websites." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez Sélectionner (ou balayez vers le bas avec deux doigts), choisissez les catégories, puis touchez Nettoyer en haut à droite. Effacer les données de site vous déconnecte des sites." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택을 누르거나 두 손가락으로 아래로 쓸어 선택 모드로 들어가 범주를 고른 뒤 오른쪽 위 정리를 누르세요. 웹사이트 데이터를 정리하면 로그인 상태가 해제됩니다." } }
+      }
+    },
+    "暂无日志" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Protokolle" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No logs" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun journal" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그 없음" } }
+      }
+    },
+    "运行日志会显示在这里。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Laufzeitprotokolle erscheinen hier." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Runtime logs will appear here." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les journaux d’exécution apparaîtront ici." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실행 로그가 여기에 표시됩니다." } }
+      }
+    },
+    "导出日志" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll exportieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export logs" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exporter les journaux" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그 내보내기" } }
+      }
+    },
+    "清空日志" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll löschen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear logs" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer les journaux" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그 지우기" } }
+      }
+    },
+    "清空日志？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll löschen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear logs?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer les journaux ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그를 지울까요?" } }
+      }
+    },
+    "所有日志将被删除，此操作无法撤销。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle Protokolle werden gelöscht. Dies kann nicht rückgängig gemacht werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All logs will be deleted. This cannot be undone." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tous les journaux seront supprimés. Cette action est irréversible." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모든 로그가 삭제되며 되돌릴 수 없습니다." } }
+      }
+    },
+    "导出失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Export fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l’export" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내보내기 실패" } }
+      }
+    },
+    "无法导出日志" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll konnte nicht exportiert werden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not export logs" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible d’exporter les journaux" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그를 내보낼 수 없습니다" } }
+      }
+    },
+    "正在加载…" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird geladen…" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chargement…" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로딩 중…" } }
+      }
+    },
+    "%d 天" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%d Tage" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%d days" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%d jours" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%d일" } }
+      }
+    },
     "B" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "B" } },
