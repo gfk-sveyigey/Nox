@@ -268,7 +268,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         // 历史标题用文件名（去扩展名），而不是页面标题。
         appState.addHistory(title: record.displayTitle, url: referer ?? record.sourceURL)
 
-        LogStore.shared.info("enqueue \(record.displayFilename) <- \(referer?.absoluteString ?? record.sourceURL.absoluteString)")
+        LogStore.shared.info("enqueue \(record.displayFilename) [\(record.quality)/\(record.format)] <- \(referer?.absoluteString ?? record.sourceURL.absoluteString)")
 
         start(record)
     }
@@ -1396,7 +1396,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     /// 记录一次任务结束（完成或保存失败）。
     private func logCompletion(_ record: DownloadRecord) {
         if record.status == .finished {
-            LogStore.shared.info("finished \(record.displayFilename)")
+            LogStore.shared.info("finished \(record.displayFilename) · \(TransferStats.formattedSize(record.receivedBytes ?? 0))")
         } else if let message = record.errorMessage {
             LogStore.shared.error("failed \(record.displayFilename): \(message)")
         }

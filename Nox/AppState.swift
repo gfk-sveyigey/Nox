@@ -24,12 +24,14 @@ final class AppState: ObservableObject {
     /// 同时进行的下载任务数默认值
     static let defaultMaxConcurrentDownloads = 3
 
-    /// 历史「按条数」保留的可选上限
-    static let historyCountOptions = [20, 50, 100, 200, 500]
+    /// 历史保留「无限制」的取值
+    static let unlimitedHistory = 0
+    /// 历史「按条数」保留的可选上限（0 = 无限制）
+    static let historyCountOptions = [20, 50, 100, 200, 500, unlimitedHistory]
     /// 历史「按条数」保留的默认上限
     static let defaultHistoryCount = 50
-    /// 历史「按时间」保留的可选天数
-    static let historyDayOptions = [1, 3, 7, 30, 90]
+    /// 历史「按时间」保留的可选天数（0 = 无限制）
+    static let historyDayOptions = [1, 3, 7, 30, 90, unlimitedHistory]
     /// 历史「按时间」保留的默认天数
     static let defaultHistoryDays = 30
 
@@ -102,11 +104,17 @@ final class AppState: ObservableObject {
     func applyHistoryRetention() {
         switch historyRetentionMode {
         case .count:
+            // 0 = 无限制：不做裁剪
+            guard historyRetentionCount != Self.unlimitedHistory else { return }
+
             let limit = max(1, historyRetentionCount)
             if history.count > limit {
                 history = Array(history.prefix(limit))
             }
         case .days:
+            // 0 = 无限制：永不过期
+            guard historyRetentionDays != Self.unlimitedHistory else { return }
+
             let cutoff = Calendar.current.date(
                 byAdding: .day,
                 value: -max(1, historyRetentionDays),
@@ -458,18 +466,43 @@ struct LogEntry: Identifiable, Equatable {
     let message: String
 }
 
-/// 极简文件日志。
+/// 文件日志。
 ///
-/// 内存里保留最近若干条供「日志」页展示，同时把每条追加写入
-/// Application Support/Nox/Nox.log，导出时直接把整份文本分享出去。
+/// - 每条日志追加写入 `Application Support/Nox/Nox.log`；
+/// - 「日志」页按块读取：进入时只加载**最近一块**（64 KB），滚到底点「加载更多」再往前读，
+///   不会一次性把整份日志读进内存或列表；
+/// - 可按天数保留（0 = 无限制），超期日志在写入与读取时都会被清理。
 @MainActor
 final class LogStore: ObservableObject {
     static let shared = LogStore()
 
-    @Published private(set) var entries: [LogEntry] = []
+    /// 「保留天数」可选项（0 = 无限制）
+    static let retentionOptions = [1, 3, 7, 30, 90, 0]
+    /// 保留天数默认值
+    static let defaultRetentionDays = 30
+    private static let retentionKey = "Nox.logRetentionDays"
 
-    /// 界面里保留的最大条数
-    private let memoryLimit = 1000
+    /// 当前已加载的日志（按时间升序，最新在最后）
+    @Published private(set) var entries: [LogEntry] = []
+    /// 是否还有更早的日志可以继续加载
+    @Published private(set) var canLoadMore = false
+
+    /// 日志保留天数；0 = 无限制
+    @Published var retentionDays: Int {
+        didSet {
+            guard retentionDays != oldValue else { return }
+            UserDefaults.standard.set(retentionDays, forKey: Self.retentionKey)
+            pruneExpired()
+            reload()
+        }
+    }
+
+    /// 每次从文件尾部读取的字节数（分块加载，避免一次读入整份日志）
+    private let pageBytes = 64 * 1024
+    /// 当前已请求读取的字节数
+    private var loadedBytes = 0
+    /// 文件清理的节流时间戳
+    private var lastFilePrune = Date.distantPast
 
     private let fileURL: URL
     private let dateFormatter: ISO8601DateFormatter
@@ -482,7 +515,13 @@ final class LogStore: ObservableObject {
         dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime]
 
-        loadFromDisk()
+        let stored = UserDefaults.standard.object(forKey: Self.retentionKey) as? Int
+        retentionDays = stored.flatMap { Self.retentionOptions.contains($0) ? $0 : nil }
+            ?? Self.defaultRetentionDays
+
+        loadedBytes = pageBytes
+        pruneExpired()
+        reload()
     }
 
     func info(_ message: String) { log(.info, message) }
@@ -492,16 +531,29 @@ final class LogStore: ObservableObject {
     func log(_ level: LogLevel, _ message: String) {
         let entry = LogEntry(date: .now, level: level, message: message)
         entries.append(entry)
-
-        if entries.count > memoryLimit {
-            entries.removeFirst(entries.count - memoryLimit)
-        }
-
         appendToDisk(entry)
+        pruneExpired()
+    }
+
+    /// 会话启动时记一条环境信息，方便排查问题。
+    func recordSessionStart() {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        let os = ProcessInfo.processInfo.operatingSystemVersionString
+        info("session start · Nox v\(version)(\(build)) · \(os)")
+    }
+
+    /// 载入下一块更早的日志。
+    func loadMore() {
+        guard canLoadMore else { return }
+        loadedBytes += pageBytes
+        reload()
     }
 
     func clear() {
         entries.removeAll()
+        canLoadMore = false
+        loadedBytes = pageBytes
         try? FileManager.default.removeItem(at: fileURL)
     }
 
@@ -517,15 +569,57 @@ final class LogStore: ObservableObject {
         }
     }
 
+    /// 导出整份日志（显式导出时读取全文，避免日常加载占用内存）。
     func exportText() -> String {
-        entries
-            .map { "\(dateFormatter.string(from: $0.date)) [\($0.level.rawValue.uppercased())] \($0.message)" }
-            .joined(separator: "\n")
+        if let text = try? String(contentsOf: fileURL, encoding: .utf8), !text.isEmpty {
+            return text
+        }
+        return entries.map(line(for:)).joined(separator: "\n")
+    }
+
+    // MARK: - 读取
+
+    private func reload() {
+        let (text, truncated) = readTail(maxBytes: loadedBytes)
+        canLoadMore = truncated
+
+        entries = text
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .compactMap(Self.parse)
+    }
+
+    /// 从文件尾部往前读最多 `maxBytes`，返回文本与「是否还有更早内容」。
+    private func readTail(maxBytes: Int) -> (String, Bool) {
+        guard let handle = try? FileHandle(forReadingFrom: fileURL) else { return ("", false) }
+        defer { try? handle.close() }
+
+        let size = (try? handle.seekToEnd()) ?? 0
+        let truncated = size > UInt64(maxBytes)
+        let start = truncated ? size - UInt64(maxBytes) : 0
+
+        try? handle.seek(toOffset: start)
+        let data = (try? handle.readToEnd()) ?? Data()
+
+        guard var text = String(data: data, encoding: .utf8) else {
+            return ("", truncated)
+        }
+
+        // 从中间截断时，丢掉可能不完整的首行
+        if start > 0, let newline = text.firstIndex(of: "\n") {
+            text = String(text[text.index(after: newline)...])
+        }
+
+        return (text, truncated)
+    }
+
+    // MARK: - 写入与清理
+
+    private func line(for entry: LogEntry) -> String {
+        "\(dateFormatter.string(from: entry.date)) [\(entry.level.rawValue.uppercased())] \(entry.message)"
     }
 
     private func appendToDisk(_ entry: LogEntry) {
-        let line = "\(dateFormatter.string(from: entry.date)) [\(entry.level.rawValue.uppercased())] \(entry.message)\n"
-        guard let data = line.data(using: .utf8) else { return }
+        guard let data = (line(for: entry) + "\n").data(using: .utf8) else { return }
 
         if let handle = try? FileHandle(forWritingTo: fileURL) {
             defer { try? handle.close() }
@@ -536,13 +630,38 @@ final class LogStore: ObservableObject {
         }
     }
 
-    private func loadFromDisk() {
+    /// 删除超过保留天数的日志（内存 + 文件；0 表示不清理）。
+    private func pruneExpired() {
+        guard retentionDays != 0 else { return }
+
+        let cutoff = Calendar.current.date(
+            byAdding: .day,
+            value: -retentionDays,
+            to: .now
+        ) ?? .distantPast
+
+        entries.removeAll { $0.date < cutoff }
+
+        // 文件清理较贵，节流到每分钟最多一次
+        guard Date().timeIntervalSince(lastFilePrune) >= 60 else { return }
+        lastFilePrune = .now
+        pruneFile(before: cutoff)
+    }
+
+    private func pruneFile(before cutoff: Date) {
         guard let text = try? String(contentsOf: fileURL, encoding: .utf8) else { return }
 
-        entries = text
-            .split(separator: "\n")
-            .suffix(memoryLimit)
-            .compactMap(Self.parse)
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: true)
+        let kept = lines.filter { line in
+            // 解析不了的行不确定日期，保守保留
+            guard let entry = Self.parse(line) else { return true }
+            return entry.date >= cutoff
+        }
+
+        guard kept.count != lines.count else { return }
+
+        let out = kept.map(String.init).joined(separator: "\n") + "\n"
+        try? out.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 
     /// 解析单行：ISO8601 时间戳 + [级别] + 正文。

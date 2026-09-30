@@ -70,65 +70,56 @@ struct SettingsView: View {
 
     // MARK: - 设置项
 
-    /// 设置项按用途分成几个分组，避免全部堆在一个组块里；
-    /// 每个分组至少两行，不出现「只有一行的分组卡片」。
+    /// 所有设置项放在同一个列表里，不做分组。
     private var settingsSection: some View {
-        Group {
-            Section {
-                NavigationLink {
-                    DownloadSettingsView()
-                } label: {
-                    Text(L("下载设置"))
-                }
+        Section {
+            NavigationLink {
+                DownloadSettingsView()
+            } label: {
+                Text(L("下载设置"))
+            }
 
-                NavigationLink {
-                    StorageSettingsView(manager: manager)
-                } label: {
-                    Text(L("储存空间"))
+            NavigationLink {
+                StorageSettingsView(manager: manager)
+            } label: {
+                Text(L("储存空间"))
+            }
+
+            NavigationLink {
+                SiteSettingsView()
+            } label: {
+                LabeledContent(
+                    L("解析来源"),
+                    value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
+                )
+            }
+
+            NavigationLink {
+                HistorySettingsView()
+            } label: {
+                Text(L("历史记录"))
+            }
+
+            NavigationLink {
+                LogsView()
+            } label: {
+                Text(L("日志"))
+            }
+
+            Picker(L("外观"), selection: $appState.appearanceMode) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
+
+            Picker(L("语言"), selection: $localization.language) {
+                ForEach(AppLanguage.allCases) { language in
+                    Text(language.title).tag(language)
                 }
             }
 
-            Section {
-                NavigationLink {
-                    SiteSettingsView()
-                } label: {
-                    LabeledContent(
-                        L("解析来源"),
-                        value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
-                    )
-                }
-
-                NavigationLink {
-                    HistorySettingsView()
-                } label: {
-                    Text(L("历史记录"))
-                }
-            }
-
-            Section {
-                Picker(L("外观"), selection: $appState.appearanceMode) {
-                    ForEach(AppearanceMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-                .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
-
-                Picker(L("语言"), selection: $localization.language) {
-                    ForEach(AppLanguage.allCases) { language in
-                        Text(language.title).tag(language)
-                    }
-                }
-            }
-
-            Section {
-                NavigationLink {
-                    LogsView()
-                } label: {
-                    Text(L("日志"))
-                }
-
-                LabeledContent(L("版本"), value: "v\(Self.appVersion)")
-            }
+            LabeledContent(L("版本"), value: "v\(Self.appVersion)")
         }
     }
 
@@ -336,7 +327,7 @@ struct StorageSettingsView: View {
             } header: {
                 Text(L("储存空间"))
             } footer: {
-                Text(L("点「选择」或多选态下点选类别，再点右上角「清理」。清理网站数据会退出已登录的网站。"))
+                Text(L("双指下滑进入多选，勾选要清理的类别，再点右上角「清理」。清理网站数据会退出已登录的网站。"))
             }
 
             Section {
@@ -344,6 +335,7 @@ struct StorageSettingsView: View {
             }
         }
         .environment(\.editMode, $editMode)
+        .navigationBarBackButtonHidden(editMode.isEditing)
         .navigationTitle(L("储存空间"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
@@ -379,10 +371,11 @@ struct StorageSettingsView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        // 多选只通过双指下滑进入；进入后在返回键的位置显示「完成」。
         ToolbarItem(placement: .topBarLeading) {
-            Button(editMode.isEditing ? L("完成") : L("选择")) {
-                withAnimation {
-                    editMode = editMode.isEditing ? .inactive : .active
+            if editMode.isEditing {
+                Button(L("完成")) {
+                    withAnimation { editMode = .inactive }
                 }
             }
         }
@@ -486,7 +479,7 @@ struct HistorySettingsView: View {
                 case .count:
                     Picker(L("最大条数"), selection: $appState.historyRetentionCount) {
                         ForEach(AppState.historyCountOptions, id: \.self) { value in
-                            Text(String(value)).tag(value)
+                            Text(historyCountTitle(value)).tag(value)
                         }
                     }
                     .onChange(of: appState.historyRetentionCount) { _, _ in
@@ -496,7 +489,7 @@ struct HistorySettingsView: View {
                 case .days:
                     Picker(L("最多保留天数"), selection: $appState.historyRetentionDays) {
                         ForEach(AppState.historyDayOptions, id: \.self) { value in
-                            Text(String(format: L("%d 天"), value)).tag(value)
+                            Text(historyDayTitle(value)).tag(value)
                         }
                     }
                     .onChange(of: appState.historyRetentionDays) { _, _ in
@@ -515,6 +508,14 @@ struct HistorySettingsView: View {
         .navigationTitle(L("历史记录"))
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private func historyCountTitle(_ value: Int) -> String {
+        value == AppState.unlimitedHistory ? L("无限制") : String(value)
+    }
+
+    private func historyDayTitle(_ value: Int) -> String {
+        value == AppState.unlimitedHistory ? L("无限制") : String(format: L("%d 天"), value)
+    }
 }
 
 /// 「日志」二级页：查看 / 清空 / 导出运行日志。
@@ -527,30 +528,42 @@ struct LogsView: View {
     @State private var showShareFailureAlert = false
 
     var body: some View {
-        Group {
-            if store.entries.isEmpty {
-                ContentUnavailableView(
-                    L("暂无日志"),
-                    systemImage: "doc.text.magnifyingglass",
-                    description: Text(L("运行日志会显示在这里。"))
-                )
-            } else {
-                List(store.entries.reversed()) { entry in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Text(entry.level.title)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(color(for: entry.level))
-                            Text(entry.date, format: .dateTime.year().month().day().hour().minute().second())
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Text(entry.message)
-                            .font(.footnote)
-                            .textSelection(.enabled)
+        List {
+            Section {
+                Picker(L("日志保留"), selection: $store.retentionDays) {
+                    ForEach(LogStore.retentionOptions, id: \.self) { value in
+                        Text(retentionTitle(value)).tag(value)
                     }
-                    .padding(.vertical, 2)
+                }
+            } footer: {
+                Text(L("超过保留天数的日志会被自动清理。"))
+            }
+
+            // 日志按块加载：进入时只有最近一块，更早的按需加载
+            if store.canLoadMore {
+                Section {
+                    Button(L("加载更多")) {
+                        store.loadMore()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+
+            Section {
+                if store.entries.isEmpty {
+                    VStack(spacing: 10) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text(L("暂无日志"))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                } else {
+                    ForEach(store.entries.reversed()) { entry in
+                        logRow(entry)
+                    }
                 }
             }
         }
@@ -586,6 +599,28 @@ struct LogsView: View {
         } message: {
             Text(shareFailureMessage ?? L("无法导出日志"))
         }
+    }
+
+    private func logRow(_ entry: LogEntry) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text(entry.level.title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(color(for: entry.level))
+                Text(entry.date, format: .dateTime.year().month().day().hour().minute().second())
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(entry.message)
+                .font(.footnote)
+                .textSelection(.enabled)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func retentionTitle(_ value: Int) -> String {
+        value == 0 ? L("无限制") : String(format: L("%d 天"), value)
     }
 
     private func color(for level: LogLevel) -> Color {

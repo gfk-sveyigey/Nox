@@ -1,6 +1,38 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "日志保留" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll-Aufbewahrung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Log retention" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Conservation des journaux" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그 보관" } }
+      }
+    },
+    "超过保留天数的日志会被自动清理。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokolle, die älter als der Aufbewahrungszeitraum sind, werden automatisch gelöscht." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Logs older than the retention period are deleted automatically." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les journaux plus anciens que la période de conservation sont supprimés automatiquement." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "보관 기간을 초과한 로그는 자동으로 삭제됩니다." } }
+      }
+    },
+    "加载更多" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mehr laden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Load more" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Charger plus" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "더 불러오기" } }
+      }
+    },
+    "双指下滑进入多选，勾选要清理的类别，再点右上角「清理」。清理网站数据会退出已登录的网站。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wische mit zwei Fingern nach unten, um den Auswahlmodus zu öffnen, markiere die Kategorien und tippe oben rechts auf „Bereinigen“. Das Löschen der Websitedaten meldet dich von Websites ab." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Swipe down with two fingers to enter selection, choose the categories, then tap Clean in the top-right corner. Clearing website data signs you out of websites." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Balayez vers le bas avec deux doigts pour entrer en sélection, choisissez les catégories, puis touchez Nettoyer en haut à droite. Effacer les données de site vous déconnecte des sites." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "두 손가락으로 아래로 쓸어 선택 모드로 들어가 범주를 고른 뒤 오른쪽 위 정리를 누르세요. 웹사이트 데이터를 정리하면 로그인 상태가 해제됩니다." } }
+      }
+    },
     "文件缺失" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Datei fehlt" } },
