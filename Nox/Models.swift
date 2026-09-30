@@ -182,6 +182,12 @@ struct DownloadRecord: Identifiable, Codable {
         return "\(title)-\(quality).\(suffix)"
     }
 
+    /// 历史记录里用的标题：文件名去掉扩展名。
+    var displayTitle: String {
+        let stem = (displayFilename as NSString).deletingPathExtension
+        return stem.isEmpty ? displayFilename : stem
+    }
+
     /// 用于长按菜单判断是否显示「分享」。
     var hasLocalFile: Bool {
         fileName != nil || fileURL != nil

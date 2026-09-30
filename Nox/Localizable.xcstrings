@@ -1,6 +1,14 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "文件缺失" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Datei fehlt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File missing" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichier manquant" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 없음" } }
+      }
+    },
     "下载过的视频页面会显示在这里。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Heruntergeladene Videoseiten erscheinen hier." } },

@@ -61,23 +61,22 @@ struct HistoryView: View {
         }
     }
 
-    /// 多选态才把选择绑给列表。
+    /// 只有多选态才把选择绑给列表。
     ///
     /// 非多选态下单击列表行没有任何对应操作，绑上去只会留下「选中」高亮，
-    /// 所以此时返回空集合并丢弃写入 —— 多选只能通过「选择」或双指下滑进入。
-    private var listSelection: Binding<Set<UUID>> {
-        Binding(
-            get: { editMode.isEditing ? selection : [] },
-            set: { newValue in
-                guard editMode.isEditing else { return }
-                selection = newValue
-            }
-        )
+    /// 因此非多选态直接用不带 selection 的 List —— 这样连点击高亮都不会出现。
+    @ViewBuilder
+    private var list: some View {
+        if editMode.isEditing {
+            List(selection: $selection) { rows }
+        } else {
+            List { rows }
+        }
     }
 
-    private var list: some View {
-        List(selection: listSelection) {
-            ForEach(appState.history) { item in
+    @ViewBuilder
+    private var rows: some View {
+        ForEach(appState.history) { item in
                 VStack(alignment: .leading, spacing: 5) {
                     // 只占一行，超长部分用省略号（完整标题在长按菜单里）。
                     Text(item.title)
@@ -129,7 +128,6 @@ struct HistoryView: View {
                     }
                 }
             }
-        }
     }
 
     @ToolbarContentBuilder

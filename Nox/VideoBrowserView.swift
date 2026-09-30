@@ -344,20 +344,19 @@ struct VideoBrowserView: View {
                                 await download(variant)
                             }
                         } label: {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(variant.displayName)
-                                    Text(variant.url.host ?? L("媒体"))
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-
-                                Spacer()
-
-                                Image(systemName: "arrow.down.circle.fill")
+                            ParseVariantRow(variant: variant)
+                        }
+                        // 与嗅探面板一致的左滑复制链接
+                        .swipeActions(edge: .trailing) {
+                            Button {
+                                UIPasteboard.general.string = variant.url.absoluteString
+                            } label: {
+                                Label(L("复制链接"), systemImage: "doc.on.doc")
                             }
+                            .tint(.indigo)
                         }
                     }
+                    .listStyle(.plain)
                 } else {
                     ContentUnavailableView(
                         L("解析失败"),
@@ -564,6 +563,45 @@ struct VideoBrowserView: View {
         }
 
         return trimmed
+    }
+}
+
+/// 「解析视频」面板里的单个清晰度行。
+///
+/// 与嗅探面板的 `SnifferRow` 保持一致：左侧图标、标题 + 说明两行、右侧下载图标，
+/// 文字统一用 `.primary`（深色）而不是 Button 默认的强调色，避免蓝字看不清。
+private struct ParseVariantRow: View {
+    let variant: VideoVariant
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "play.rectangle")
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(variant.quality.isEmpty ? L("未知清晰度") : variant.quality)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    Text(verbatim: variant.format.isEmpty ? "VIDEO" : variant.format.uppercased())
+
+                    if let host = variant.url.host {
+                        Text("·")
+                        Text(host).lineLimit(1)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "arrow.down.circle")
+                .foregroundStyle(.tint)
+        }
     }
 }
 
