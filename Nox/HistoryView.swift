@@ -65,9 +65,10 @@ struct HistoryView: View {
         List(selection: $selection) {
             ForEach(appState.history) { item in
                 VStack(alignment: .leading, spacing: 5) {
+                    // 只占一行，超长部分用省略号（完整标题在长按菜单里）。
                     Text(item.title)
                         .foregroundStyle(.primary)
-                        .lineLimit(2)
+                        .lineLimit(1)
                     Text(item.url.absoluteString)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -79,6 +80,12 @@ struct HistoryView: View {
                 .contentShape(Rectangle())
                 .tag(item.id)
                 .contextMenu {
+                    // 标题被截断成一行，长按时先把完整标题展示出来；
+                    // 下面原有的菜单项保持不动。
+                    Text(item.title)
+
+                    Divider()
+
                     Button {
                         openInBrowser(item.url)
                     } label: {
@@ -117,10 +124,12 @@ struct HistoryView: View {
 
         ToolbarItem(placement: .topBarTrailing) {
             if editMode.isEditing {
+                // 多选态：红色文字，和列表的删除语义一致。
                 Button(role: .destructive) {
                     showingDeleteConfirmation = true
                 } label: {
-                    Label(L("删除"), systemImage: "trash")
+                    Text(L("删除"))
+                        .foregroundStyle(.red)
                 }
                 .disabled(selection.isEmpty)
             } else if !appState.history.isEmpty {
@@ -190,6 +199,8 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
         private weak var window: UIWindow?
         private var recognizer: UIPanGestureRecognizer?
         private var didFire = false
+        /// 本次双指滑动是否从列表行上开始
+        private var startedOnRow = false
 
         /// 向下拖动多少点才触发，避免与双指滚动混淆
         private let threshold: CGFloat = 40
@@ -226,8 +237,11 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
             switch gesture.state {
             case .began:
                 didFire = false
+                // 只有从列表行上开始的双指滑动才进入多选。
+                // 在空白区域（列表下方、分组之间的间隙）滑动不应进入选择模式。
+                startedOnRow = Self.startedOnRow(gesture)
             case .changed:
-                guard isEnabled, !didFire else { return }
+                guard isEnabled, startedOnRow, !didFire else { return }
 
                 let translation = gesture.translation(in: gesture.view)
 
@@ -247,6 +261,41 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
         ) -> Bool {
             // 与列表自身的滚动手势并存，否则双指滑动会被 ScrollView 吃掉
             true
+        }
+
+        /// 命中测试：起点落在列表行上才算数。
+        ///
+        /// SwiftUI 的 List 底层是 UICollectionView（旧系统为 UITableView）：
+        /// 先看是否有 cell 命中；命中结果是滚动视图本身时，再问它这个点有没有对应的
+        /// item —— 空白区域（列表下方、分组之间的间隙）没有 item，于是不会进入选择模式。
+        private static func startedOnRow(_ gesture: UIPanGestureRecognizer) -> Bool {
+            guard let view = gesture.view else { return false }
+
+            let point = gesture.location(in: view)
+            var hit = view.hitTest(point, with: nil)
+
+            while let current = hit {
+                if current is UITableViewCell || current is UICollectionViewCell {
+                    return true
+                }
+
+                // SwiftUI 的列表 cell 是私有类型，类名判定作为兜底。
+                if String(describing: type(of: current)).contains("Cell") {
+                    return true
+                }
+
+                if let collectionView = current as? UICollectionView {
+                    return collectionView.indexPathForItem(at: collectionView.convert(point, from: view)) != nil
+                }
+
+                if let tableView = current as? UITableView {
+                    return tableView.indexPathForRow(at: tableView.convert(point, from: view)) != nil
+                }
+
+                hit = current.superview
+            }
+
+            return false
         }
     }
 }

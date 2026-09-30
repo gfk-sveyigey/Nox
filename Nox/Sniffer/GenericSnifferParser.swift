@@ -11,7 +11,8 @@ final class GenericSnifferParser: VideoSiteParser {
     static let siteIdentifier = "generic"
 
     let identifier = GenericSnifferParser.siteIdentifier
-    let displayName = L("通用嗅探")
+    /// 面向用户的名称：直接叫 Sniffer，不再翻译成「通用嗅探」之类的说明性文字。
+    let displayName = "Sniffer"
 
     init() {}
 

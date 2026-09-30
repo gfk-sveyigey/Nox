@@ -6,9 +6,6 @@ struct SettingsView: View {
     @ObservedObject private var localization = LocalizationManager.shared
     @ObservedObject private var manager: DownloadManager
 
-    @State private var cacheBytes: Int64 = 0
-    @State private var showingCacheClearConfirmation = false
-
     init(manager: DownloadManager) {
         _manager = ObservedObject(wrappedValue: manager)
     }
@@ -20,32 +17,11 @@ struct SettingsView: View {
                 // 用 listRowInsets/Background/Separator 把它伪装成"表头"。
                 appHeader
 
-                qualitySection
-                sitesLinkSection
-                languageSection
-                experimentalSection
-                storageSection
-                aboutSection
+                settingsSection
             }
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
-            .task {
-                refreshCacheSize()
-            }
-            .alert(L("清空缓存？"), isPresented: $showingCacheClearConfirmation) {
-                Button(L("取消"), role: .cancel) {}
-                Button(L("清空"), role: .destructive) {
-                    manager.clearCache()
-                    refreshCacheSize()
-                }
-            } message: {
-                Text(L("将删除未完成下载的分片与临时文件。正在下载的任务不受影响，已下载的视频也不会被删除。"))
-            }
         }
-    }
-
-    private func refreshCacheSize() {
-        cacheBytes = manager.cacheSize()
     }
 
     // MARK: - App 图标 + 名称（可滚动）
@@ -92,131 +68,46 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 下载
+    // MARK: - 设置项
 
-    private var qualitySection: some View {
+    /// 所有设置项都是「单行」，所以放在同一个分组里，不再逐条套一层分组卡片。
+    private var settingsSection: some View {
         Section {
-            Picker(L("下载清晰度"), selection: $appState.preferredQuality) {
-                ForEach(PreferredQuality.allCases) { quality in
-                    Text(quality.title).tag(quality)
-                }
+            NavigationLink {
+                DownloadSettingsView()
+            } label: {
+                Text(L("下载设置"))
             }
-            .onChange(of: appState.preferredQuality) { _, _ in
-                appState.persist()
-            }
-        }
-    }
 
-    // MARK: - 视频站点（二级页入口）
-
-    private var sitesLinkSection: some View {
-        Section {
             NavigationLink {
                 SiteSettingsView()
             } label: {
                 LabeledContent(
-                    L("视频站点"),
+                    L("解析来源"),
                     value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
                 )
             }
-        }
-    }
 
-    private var enabledSiteCount: Int {
-        VideoSiteParserRegistry.all.filter { appState.isSiteEnabled($0.identifier) }.count
-    }
-
-    // MARK: - 语言
-
-    private var languageSection: some View {
-        Section {
             Picker(L("语言"), selection: $localization.language) {
                 ForEach(AppLanguage.allCases) { language in
                     Text(language.title).tag(language)
                 }
             }
-        } header: {
-            Text(L("语言"))
+
+            NavigationLink {
+                StorageSettingsView(manager: manager)
+            } label: {
+                Text(L("储存空间"))
+            }
+
+            LabeledContent(L("版本"), value: "v\(Self.appVersion)")
         } footer: {
             Text(L("选择 App 的显示语言。选择「跟随系统」时，App 会与系统语言保持一致。"))
         }
     }
 
-    // MARK: - 实验性功能
-
-    private var experimentalSection: some View {
-        Section {
-            Toggle(L("多线程下载"), isOn: $appState.experimentalMultiThreadDownload)
-                .onChange(of: appState.experimentalMultiThreadDownload) { _, _ in
-                    appState.persist()
-                }
-
-            if appState.experimentalMultiThreadDownload {
-                Picker(L("下载线程数"), selection: $appState.multiThreadSegmentCount) {
-                    ForEach(Array(AppState.segmentCountRange), id: \.self) { count in
-                        Text(String(count)).tag(count)
-                    }
-                }
-                .onChange(of: appState.multiThreadSegmentCount) { _, _ in
-                    appState.persist()
-                }
-            }
-
-            Picker(L("同时下载任务数"), selection: $appState.maxConcurrentDownloads) {
-                ForEach(Array(AppState.maxConcurrentDownloadsRange), id: \.self) { count in
-                    Text(String(count)).tag(count)
-                }
-            }
-            .onChange(of: appState.maxConcurrentDownloads) { _, _ in
-                appState.persist()
-            }
-
-            Picker(L("m3u8 分片并发"), selection: $appState.m3u8SegmentConcurrency) {
-                Text(L("跟随多线程设置")).tag(0)
-
-                ForEach(Array(AppState.m3u8ConcurrencyRange), id: \.self) { count in
-                    if count > 0 {
-                        Text(String(count)).tag(count)
-                    }
-                }
-            }
-            .onChange(of: appState.m3u8SegmentConcurrency) { _, _ in
-                appState.persist()
-            }
-        } header: {
-            Text(L("实验性功能"))
-        } footer: {
-            Text(L("把文件分成多个分片并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。"))
-        }
-    }
-
-    // MARK: - 存储（缓存）
-
-    private var storageSection: some View {
-        Section {
-            LabeledContent(L("已用缓存"), value: TransferStats.formattedSize(cacheBytes))
-
-            Button(role: .destructive) {
-                showingCacheClearConfirmation = true
-            } label: {
-                Text(L("清空缓存"))
-            }
-            .disabled(cacheBytes == 0)
-        } header: {
-            Text(L("存储"))
-        } footer: {
-            Text(L("缓存是未完成下载的分片与临时文件。清空不会删除已下载的视频；正在下载的任务会被跳过。"))
-        }
-    }
-
-    // MARK: - 关于
-
-    private var aboutSection: some View {
-        Section {
-            LabeledContent(L("版本"), value: Self.appVersion)
-        } header: {
-            Text(L("关于"))
-        }
+    private var enabledSiteCount: Int {
+        VideoSiteParserRegistry.all.filter { appState.isSiteEnabled($0.identifier) }.count
     }
 
     // MARK: - Bundle 信息
@@ -248,7 +139,76 @@ struct SettingsView: View {
     }
 }
 
-/// 视频站点开关的二级页。
+/// 「下载设置」二级页：同时下载任务数、下载清晰度，以及多线程（分片）相关的开关。
+struct DownloadSettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject private var localization = LocalizationManager.shared
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(L("同时下载任务数"), selection: $appState.maxConcurrentDownloads) {
+                    ForEach(AppState.maxConcurrentDownloadsOptions, id: \.self) { count in
+                        Text(Self.concurrentTitle(count)).tag(count)
+                    }
+                }
+                .onChange(of: appState.maxConcurrentDownloads) { _, _ in
+                    appState.persist()
+                }
+
+                Picker(L("下载清晰度"), selection: $appState.preferredQuality) {
+                    ForEach(PreferredQuality.allCases) { quality in
+                        Text(quality.title).tag(quality)
+                    }
+                }
+                .onChange(of: appState.preferredQuality) { _, _ in
+                    appState.persist()
+                }
+            }
+
+            Section {
+                Toggle(L("多线程下载"), isOn: $appState.experimentalMultiThreadDownload)
+                    .onChange(of: appState.experimentalMultiThreadDownload) { _, _ in
+                        appState.persist()
+                    }
+
+                if appState.experimentalMultiThreadDownload {
+                    Picker(L("下载线程数"), selection: $appState.multiThreadSegmentCount) {
+                        ForEach(Array(AppState.segmentCountRange), id: \.self) { count in
+                            Text(String(count)).tag(count)
+                        }
+                    }
+                    .onChange(of: appState.multiThreadSegmentCount) { _, _ in
+                        appState.persist()
+                    }
+                }
+
+                Picker(L("m3u8 分片并发"), selection: $appState.m3u8SegmentConcurrency) {
+                    Text(L("跟随多线程设置")).tag(0)
+
+                    ForEach(Array(AppState.m3u8ConcurrencyRange), id: \.self) { count in
+                        if count > 0 {
+                            Text(String(count)).tag(count)
+                        }
+                    }
+                }
+                .onChange(of: appState.m3u8SegmentConcurrency) { _, _ in
+                    appState.persist()
+                }
+            } footer: {
+                Text(L("把文件分成多个分片并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。"))
+            }
+        }
+        .navigationTitle(L("下载设置"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private static func concurrentTitle(_ count: Int) -> String {
+        count == AppState.unlimitedConcurrentDownloads ? L("无限制") : String(count)
+    }
+}
+
+/// 「解析来源」开关的二级页（各视频站点 + Sniffer）。
 ///
 /// 站点数量增长后，这里会自动变长，不用改设置主页的结构。
 struct SiteSettingsView: View {
@@ -262,10 +222,10 @@ struct SiteSettingsView: View {
                     Toggle(site.title, isOn: siteBinding(for: site.id))
                 }
             } footer: {
-                Text(L("关闭后，对应网站的页面将无法解析，「解析视频」按钮也会置灰。"))
+                Text(L("关闭后，对应网站的页面将无法解析，「解析视频」入口也会隐藏。"))
             }
         }
-        .navigationTitle(L("视频站点"))
+        .navigationTitle(L("解析来源"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -287,5 +247,76 @@ struct SiteSettingsView: View {
     private struct SiteToggle: Identifiable {
         let id: String
         let title: String
+    }
+}
+
+/// 「储存空间」二级页：展示各类文件占用，并允许分别清理。
+struct StorageSettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject private var localization = LocalizationManager.shared
+    @ObservedObject private var manager: DownloadManager
+
+    @State private var videosBytes: Int64 = 0
+    @State private var cacheBytes: Int64 = 0
+    @State private var showingCacheClearConfirmation = false
+    @State private var showingDeleteAllConfirmation = false
+
+    init(manager: DownloadManager) {
+        _manager = ObservedObject(wrappedValue: manager)
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent(L("已下载视频"), value: TransferStats.formattedSize(videosBytes))
+                LabeledContent(L("已用缓存"), value: TransferStats.formattedSize(cacheBytes))
+                LabeledContent(L("合计"), value: TransferStats.formattedSize(videosBytes + cacheBytes))
+            } header: {
+                Text(L("储存空间"))
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    showingCacheClearConfirmation = true
+                } label: {
+                    Text(L("清空缓存"))
+                }
+                .disabled(cacheBytes == 0)
+
+                Button(role: .destructive) {
+                    showingDeleteAllConfirmation = true
+                } label: {
+                    Text(L("删除所有下载"))
+                }
+                .disabled(appState.downloads.isEmpty)
+            }
+        }
+        .navigationTitle(L("储存空间"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { refresh() }
+        .onChange(of: appState.downloads.count) { _, _ in refresh() }
+        .alert(L("清空缓存？"), isPresented: $showingCacheClearConfirmation) {
+            Button(L("取消"), role: .cancel) {}
+            Button(L("清空"), role: .destructive) {
+                manager.clearCache()
+                refresh()
+            }
+        } message: {
+            Text(L("将删除未完成下载的分片与临时文件。正在下载的任务不受影响，已下载的视频也不会被删除。"))
+        }
+        .alert(L("删除所有下载？"), isPresented: $showingDeleteAllConfirmation) {
+            Button(L("取消"), role: .cancel) {}
+            Button(L("删除"), role: .destructive) {
+                manager.deleteFiles(ids: Set(appState.downloads.map(\.id)))
+                refresh()
+            }
+        } message: {
+            Text(L("将删除全部下载记录、已下载的文件与未完成的分片。此操作无法撤销。"))
+        }
+    }
+
+    private func refresh() {
+        videosBytes = manager.documentsSize()
+        cacheBytes = manager.cacheSize()
     }
 }
