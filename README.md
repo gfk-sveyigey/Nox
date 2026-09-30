@@ -47,14 +47,14 @@
 ### 设置
 
 - 顶部展示 App 图标与名称（随列表滚动）
-- 设置页的每个条目各自单独成组
+- 设置项按功能分成尽可能少的组：内容与下载（下载设置 / 储存空间 / 解析来源 / 历史记录 / 日志）、通用（外观 / 语言）
 - 下载设置（二级页）：同时下载任务数、下载清晰度、多线程下载 / 下载线程数 / m3u8 分片并发
 - 解析来源（二级页）：各站点与 Sniffer 的开关
 - 储存空间（二级页）：按「已下载视频 / 下载分片 / 临时文件 / 网络缓存 / 网站数据」分类列出各自占用；双指下滑进入多选，进入后返回键位置变为「完成」，右上角为刷新按钮（多选态下变为红色「清理」）
 - 历史记录（二级页）：保留方式（按条数 / 按时间），两种方式都可设为「无限制」
 - 外观：跟随系统 / 浅色 / 深色；语言：App 内切换（不再额外显示提示小字）
 - 日志（二级页）：查看运行日志（含版本、系统、下载与解析等细节），可选保留天数（含无限制）；日志按块加载，进入时只读最近一块，更早的用「加载更多」往前翻；支持清空与导出（系统分享面板）
-- 版本（形如 `v1.0.10`）
+- 版本不占行，在最后一组的页脚居中显示，形如 `Nox v1.0.16`
 - 仅支持竖屏（iPhone 竖屏锁定）
 
 ### 文件访问
@@ -70,7 +70,8 @@
 ├── Info.plist                      # 真实生效的 Info.plist（GENERATE_INFOPLIST_FILE = NO）
 ├── VERSION                         # 版本号，CI 据此打 tag
 ├── .github/workflows/
-│   └── build-and-release.yml       # 合并到 main 后构建无签名 IPA 并发 Release
+│   ├── build-and-release.yml       # 合并到 main 后构建无签名 IPA 并发 Release
+│   └── build-dev.yml               # 推送到 dev 时编译并打包无签名 IPA，上传为 Actions 工件，不发布；仅改 VERSION 的推送不触发
 ├── Nox/
 │   ├── NoxApp.swift                # @main，注入语言环境
 │   ├── ContentView.swift           # TabView：浏览 / 下载 / 历史 / 设置
@@ -132,7 +133,9 @@ plutil -p "$APP/Info.plist" | grep -E "CFBundleDisplayName|CFBundleIdentifier"
 
 ### 发布流程
 
-`.github/workflows/build-and-release.yml` 在 **PR 合并进 `main`** 时触发：
+**dev 分支**：`.github/workflows/build-dev.yml` 在 **推送到 `dev`**（或手动触发）时用 `Debug` 配置编译，并打包为 `Nox-<version>-dev<run_number>-unsigned.ipa`，作为 **Actions 工件**（artifact，保留 14 天）供下载；**不创建 Release、不打 tag**。同一分支的新推送会取消进行中的旧构建。**只改动 `VERSION` 的推送不会触发**（`paths-ignore`），若同一次推送还改了别的文件则照常触发；手动触发不受该过滤影响。
+
+**发布**：`.github/workflows/build-and-release.yml` 在 **PR 合并进 `main`** 时触发：
 
 1. 校验 `Info.plist`（`plutil -lint`，并断言 `UIFileSharingEnabled` / `LSSupportsOpeningDocumentsInPlace` 为布尔 `true`）
 2. 读取 `VERSION`，校验 semver，生成 tag `v<VERSION>`

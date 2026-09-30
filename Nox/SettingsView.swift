@@ -70,7 +70,8 @@ struct SettingsView: View {
 
     // MARK: - 设置项
 
-    /// 每个设置项单独成组。
+    /// 按功能分成尽可能少的组：内容与下载、通用。
+    /// 版本信息不占行，放在最后一组的页脚居中显示。
     private var settingsSection: some View {
         Group {
             Section {
@@ -79,17 +80,13 @@ struct SettingsView: View {
                 } label: {
                     Text(L("下载设置"))
                 }
-            }
 
-            Section {
                 NavigationLink {
                     StorageSettingsView(manager: manager)
                 } label: {
                     Text(L("储存空间"))
                 }
-            }
 
-            Section {
                 NavigationLink {
                     SiteSettingsView()
                 } label: {
@@ -98,17 +95,13 @@ struct SettingsView: View {
                         value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
                     )
                 }
-            }
 
-            Section {
                 NavigationLink {
                     HistorySettingsView()
                 } label: {
                     Text(L("历史记录"))
                 }
-            }
 
-            Section {
                 NavigationLink {
                     LogsView()
                 } label: {
@@ -123,20 +116,26 @@ struct SettingsView: View {
                     }
                 }
                 .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
-            }
 
-            Section {
                 Picker(L("语言"), selection: $localization.language) {
                     ForEach(AppLanguage.allCases) { language in
                         Text(language.title).tag(language)
                     }
                 }
-            }
-
-            Section {
-                LabeledContent(L("版本"), value: "v\(Self.appVersion)")
+            } footer: {
+                versionFooter
             }
         }
+    }
+
+    /// 页脚：居中显示版本，形如「Nox v1.0.16」。
+    private var versionFooter: some View {
+        Text(verbatim: "\(Self.appName) v\(Self.appVersion)")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .multilineTextAlignment(.center)
+            .padding(.top, 8)
     }
 
     private var enabledSiteCount: Int {
