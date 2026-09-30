@@ -1,0 +1,113 @@
+name: Build (dev)
+
+# 提交到 dev 时立即编译验证：编译 + 打包无签名 IPA，上传为 Actions 工件；不发布 Release。
+on:
+  push:
+    branches: [ dev ]
+  # 需要时也可以在 Actions 页面手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一分支只保留最新一次构建：新的推送会取消进行中的旧构建，省 runner 时间
+concurrency:
+  group: build-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.6'
+
+      # 与发布流程一致的前置校验，让工程配置问题尽早暴露
+      - name: Validate Info.plist
+        run: |
+          set -e
+          test -f Info.plist || { echo "::error::Info.plist not found"; exit 1; }
+          plutil -lint Info.plist
+          plutil -extract UIFileSharingEnabled raw Info.plist | grep -qx true \
+            || { echo "::error::UIFileSharingEnabled must be <true/>"; exit 1; }
+          plutil -extract LSSupportsOpeningDocumentsInPlace raw Info.plist | grep -qx true \
+            || { echo "::error::LSSupportsOpeningDocumentsInPlace must be <true/>"; exit 1; }
+
+      - name: Read version
+        id: version
+        run: |
+          set -e
+          if [ ! -f VERSION ]; then
+            echo "::error::VERSION file not found in repository root"
+            exit 1
+          fi
+
+          RAW=$(tr -d '[:space:]' < VERSION)
+          if [ -z "$RAW" ]; then
+            echo "::error::VERSION file is empty"
+            exit 1
+          fi
+
+          echo "raw=$RAW" >> "$GITHUB_OUTPUT"
+          echo "Version: $RAW"
+
+      - name: Build unsigned iOS app (Debug)
+        run: |
+          set -e
+          rm -rf build/DerivedData
+
+          xcodebuild \
+            -project Nox.xcodeproj \
+            -scheme Nox \
+            -sdk iphoneos \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            MARKETING_VERSION='${{ steps.version.outputs.raw }}' \
+            CURRENT_PROJECT_VERSION='${{ github.run_number }}' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -e
+          APP="build/DerivedData/Build/Products/Debug-iphoneos/Nox.app"
+          IPA="build/Nox-${{ steps.version.outputs.raw }}-dev${{ github.run_number }}-unsigned.ipa"
+
+          test -d "$APP" || { echo "::error::Nox.app was not produced"; exit 1; }
+
+          rm -rf build/Payload "$IPA"
+          mkdir -p build/Payload
+          cp -R "$APP" build/Payload/Nox.app
+
+          cd build
+          /usr/bin/zip -qry "$(basename "$IPA")" Payload
+          cd ..
+          rm -rf build/Payload
+
+          test -f "$IPA"
+          ls -lh "$IPA"
+          shasum -a 256 "$IPA"
+
+      - name: Smoke check product
+        run: |
+          set -e
+          APP="build/DerivedData/Build/Products/Debug-iphoneos/Nox.app"
+          ls -la "$APP"
+          plutil -p "$APP/Info.plist" | grep -E "CFBundleDisplayName|CFBundleIdentifier"
+
+      # 只上传为 Actions 工件（可在 run 页面下载），不创建 Release
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nox-${{ steps.version.outputs.raw }}-dev${{ github.run_number }}
+          path: build/Nox-*-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
