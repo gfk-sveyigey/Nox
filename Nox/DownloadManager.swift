@@ -133,7 +133,12 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     /// 这是任务数而不是连接数：每个任务内部还会开若干分片连接，
     /// 实际连接总数 ≈ 本值 × 单任务并发。
     private var maxConcurrentTasks: Int {
-        max(1, min(appState.maxConcurrentDownloads, 4))
+        let configured = appState.maxConcurrentDownloads
+
+        // 「无限制」用 0 表示：上限取 Int.max，队列有多少就跑多少。
+        guard configured != AppState.unlimitedConcurrentDownloads else { return .max }
+
+        return max(1, configured)
     }
 
     /// 已占用槽位的任务（探测中 / 下载中 / HLS 合并中）
@@ -366,6 +371,30 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     func cacheSize() -> Int64 {
         Self.directorySize(DownloadStorage.partsRoot)
             + Self.directorySize(DownloadStorage.stagingRoot)
+    }
+
+    /// 已下载视频占用的空间（`Documents` 目录）。
+    /// 与缓存分开统计，方便在「储存空间」里告诉用户「删掉这些能省多少」。
+    func documentsSize() -> Int64 {
+        Self.directorySize(DownloadStorage.documentsDirectory)
+    }
+
+    /// App 回到前台时调用：丢弃后台期间的速度采样。
+    ///
+    /// 后台时进度定时器不会触发，若沿用暂停前的采样点，第一帧会拿「跨越整个后台的时间差」
+    /// 去算瞬时速度，得到明显偏离真实值的数字。重置后从当前字节数重新起算。
+    func resetSpeedSamples() {
+        let now = Date()
+
+        for id in Array(speedSamples.keys) {
+            let bytes = speedSamples[id]?.bytes ?? 0
+            speedSamples[id] = (bytes, now, 0)
+
+            if var stats = transfers[id] {
+                stats.bytesPerSecond = 0
+                transfers[id] = stats
+            }
+        }
     }
 
     /// 清空缓存：删除未完成下载的分片与暂存文件。
@@ -784,7 +813,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             if let previous = speedSamples[id] {
                 let interval = now.timeIntervalSince(previous.date)
 
-                if interval > 0 {
+                // 采样区间过长（App 刚从后台返回、计时器被系统暂停）时不参与计算：
+                // 用旧基准点算出的「瞬时速度」会明显偏离真实值。
+                if interval > 0, interval <= 5 {
                     let delta = received - previous.bytes
 
                     if delta >= 0 {
@@ -993,7 +1024,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         updated.status = .downloading
         updated.errorMessage = nil
 
-        // 复用「实验性功能 → 多线程下载」：用户只需要理解一个并发旋钮。
+        // 复用「下载设置 → 多线程下载」：用户只需要理解一个并发旋钮。
         // m3u8 分片远小于字节分片（通常 2–10 秒一片、总数可达数百），
         // 所以再夹一道上限，避免打爆 CDN 触发限速或 403。
         let desired: Int

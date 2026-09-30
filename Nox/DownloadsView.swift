@@ -115,10 +115,12 @@ struct DownloadsView: View {
 
         ToolbarItem(placement: .topBarTrailing) {
             if editMode.isEditing {
+                // 多选态：红色文字，和列表的删除语义一致。
                 Button(role: .destructive) {
                     showingDeleteConfirmation = true
                 } label: {
-                    Label(L("删除"), systemImage: "trash")
+                    Text(L("删除"))
+                        .foregroundStyle(.red)
                 }
                 .disabled(selection.isEmpty)
             } else if appState.downloads.contains(where: {
@@ -172,9 +174,10 @@ struct DownloadRow: View {
                     .foregroundStyle(iconColor)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    // 显示实际文件名（而非标题）—— 这才是「文件」App 里看到的名字
+                    // 显示实际文件名（而非标题）—— 这才是「文件」App 里看到的名字。
+                    // 列表里只占一行，超长部分用省略号（完整标题在长按菜单里）。
                     Text(record.displayFilename)
-                        .lineLimit(2)
+                        .lineLimit(1)
 
                     HStack(spacing: 6) {
                         // 清晰度与格式来自远端数据，不做本地化
@@ -182,9 +185,9 @@ struct DownloadRow: View {
 
                         // 实际并发数（普通下载 = 同时在飞的分片数，m3u8 = 分片并发）。
                         // 服务器不支持 Range 时会退化成单流，显示 1。
+                        // 与左边的清晰度·格式同一种样式，数字在前，例如「4线程」
                         if let threads = record.threadCount {
-                            Text(String(format: L("线程 %d"), threads))
-                                .foregroundStyle(.tertiary)
+                            Text(String(format: L("%d线程"), threads))
                         }
                     }
                     .foregroundStyle(.secondary)
@@ -216,6 +219,12 @@ struct DownloadRow: View {
         .padding(.vertical, 5)
         .contentShape(Rectangle())
         .contextMenu {
+            // 标题被截断成一行，长按时先把完整标题展示出来；
+            // 下面原有的菜单项保持不动。
+            Text(record.displayFilename)
+
+            Divider()
+
             if record.status == .failed || record.status == .cancelled {
                 Button {
                     onRetry(record)

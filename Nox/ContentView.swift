@@ -6,6 +6,7 @@ struct ContentView: View {
     @ObservedObject private var localization = LocalizationManager.shared
     @State private var selectedTab = 0
     @State private var browserURL: URL?
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let state = AppState()
@@ -36,5 +37,10 @@ struct ContentView: View {
         }
         .environmentObject(appState)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // 回到前台时重置速度采样：后台期间定时器不触发，
+        // 直接沿用旧采样点会算出错误的速度。
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { downloadManager.resetSpeedSamples() }
+        }
     }
 }

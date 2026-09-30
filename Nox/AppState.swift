@@ -9,18 +9,20 @@ final class AppState: ObservableObject {
     static let defaultSegmentCount = 4
 
     /// m3u8 分片并发数范围。0 表示跟随「多线程下载」设置
-    static let m3u8ConcurrencyRange = 0...8
+    static let m3u8ConcurrencyRange = 0...32
     /// m3u8 分片并发数默认值：跟随「多线程下载」设置
     static let defaultM3u8Concurrency = 0
     /// m3u8 分片并发上限。分片远小于字节分片、总数可达数百，开太大容易触发 CDN 限速
-    static let maxHLSConcurrency = 8
+    static let maxHLSConcurrency = 32
     /// 未开启「多线程下载」时，m3u8 使用的分片并发
     static let defaultHLSConcurrency = 4
 
-    /// 同时进行的下载任务数范围
-    static let maxConcurrentDownloadsRange = 1...4
+    /// 同时下载任务数「无限制」的取值
+    static let unlimitedConcurrentDownloads = 0
+    /// 同时下载任务数的可选项（0 = 无限制）
+    static let maxConcurrentDownloadsOptions = [1, 3, 5, 10, 20, unlimitedConcurrentDownloads]
     /// 同时进行的下载任务数默认值
-    static let defaultMaxConcurrentDownloads = 2
+    static let defaultMaxConcurrentDownloads = 3
 
     @Published var history: [HistoryItem] = []
     @Published var downloads: [DownloadRecord] = []
@@ -29,9 +31,9 @@ final class AppState: ObservableObject {
     @Published var experimentalMultiThreadDownload = false
     /// 下载线程数（1...32），仅在多线程下载开启时生效
     @Published var multiThreadSegmentCount: Int = AppState.defaultSegmentCount
-    /// m3u8 分片并发数（0...8）。0 = 跟随「多线程下载」设置
+    /// m3u8 分片并发数（0...32）。0 = 跟随「多线程下载」设置
     @Published var m3u8SegmentConcurrency: Int = AppState.defaultM3u8Concurrency
-    /// 同时进行的下载任务数（1...4）。每个任务内部还会再开分片连接
+    /// 同时进行的下载任务数（见 `maxConcurrentDownloadsOptions`，0 = 无限制）。每个任务内部还会再开分片连接
     @Published var maxConcurrentDownloads: Int = AppState.defaultMaxConcurrentDownloads
     /// 被用户关闭的站点标识（未列入即视为开启）
     @Published private var disabledSiteIDs: Set<String> = []
@@ -193,10 +195,14 @@ final class AppState: ObservableObject {
             ? storedConcurrency
             : Self.defaultM3u8Concurrency
 
-        let storedConcurrentDownloads = defaults.integer(forKey: maxConcurrentDownloadsKey)
-        maxConcurrentDownloads = Self.maxConcurrentDownloadsRange.contains(storedConcurrentDownloads)
-            ? storedConcurrentDownloads
-            : Self.defaultMaxConcurrentDownloads
+        // 0（无限制）是合法取值，而 `integer(forKey:)` 在缺键时也返回 0，
+        // 所以要用 `object(forKey:)` 区分「没存过」与「存的就是无限制」。
+        if let stored = defaults.object(forKey: maxConcurrentDownloadsKey) as? Int,
+           Self.maxConcurrentDownloadsOptions.contains(stored) {
+            maxConcurrentDownloads = stored
+        } else {
+            maxConcurrentDownloads = Self.defaultMaxConcurrentDownloads
+        }
 
         disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
     }

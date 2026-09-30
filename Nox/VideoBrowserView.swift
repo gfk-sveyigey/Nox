@@ -15,16 +15,21 @@ struct VideoBrowserView: View {
     @State private var parsedVideo: ParsedVideo?
     @State private var isParsing = false
     @State private var errorMessage: String?
-    @State private var showVariants = false
+    /// 解析面板内的错误（与地址栏的 `errorMessage` 分开，避免弹窗抢在面板之上）
+    @State private var parseError: String?
+    @State private var showParseSheet = false
     @State private var showSniffer = false
     @State private var pendingRequest: DownloadRequest?
     @State private var isFilenameDialogPresented = false
     /// 只存**不含扩展名**的主名 —— 扩展名固定，不让用户改
     @State private var filenameInput = ""
+    /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
+    @State private var isScrolledDown = false
     @FocusState private var addressFocused: Bool
 
-    /// 统一控件高度，解决按钮与输入框高低不齐
+    /// 地址栏展开 / 收起时的高度
     private let controlHeight: CGFloat = 40
+    private let collapsedControlHeight: CGFloat = 30
 
     /// 待确认文件名的下载请求。用户点「保存」前的全部信息先攒在这里，
     /// 这样嗅探 / 解析两条路径都能复用同一个弹窗。
@@ -49,25 +54,35 @@ struct VideoBrowserView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                browserToolbar
+                addressToolbar
 
                 // 用 ZStack 而不是 .overlay：让徽标与 WebView 处于同一层级的显式上下关系，
                 // 命中测试时徽标在上；`.overlay` 盖在 UIViewRepresentable 之上
                 // 有时会被 WKWebView 的图层抢先，导致点击穿透。
                 ZStack(alignment: .bottomTrailing) {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
-                    WebViewContainer(webView: parser.browserWebView)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    if isSnifferBadgeVisible {
-                        snifferBadge
-                            .padding(16)
-                            .transition(.opacity)
+                    WebViewContainer(webView: parser.browserWebView) { offset in
+                        updateCollapsedState(for: offset)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    VStack(alignment: .trailing, spacing: 10) {
+                        if isParseBadgeVisible {
+                            parseBadge
+                                .transition(.opacity)
+                        }
+
+                        if isSnifferBadgeVisible {
+                            snifferBadge
+                                .transition(.opacity)
+                        }
+                    }
+                    .padding(16)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(.easeInOut(duration: 0.2), value: isParseBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
@@ -76,9 +91,6 @@ struct VideoBrowserView: View {
             }
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()
-            }
-            .sheet(isPresented: $showVariants) {
-                variantSheet
             }
             .alert(
                 L("解析失败"),
@@ -120,41 +132,19 @@ struct VideoBrowserView: View {
                 // 只丢弃待办请求，不会入队下载。
                 if !presented { pendingRequest = nil }
             }
+
         }
     }
 
-    // MARK: - 顶部工具栏（单行，两个控件等高）
+    // MARK: - 顶部地址栏
 
-    private var browserToolbar: some View {
-        HStack(spacing: 8) {
-            addressBar
-
-            Button {
-                Task {
-                    await parse()
-                }
-            } label: {
-                Group {
-                    if isParsing {
-                        ProgressView()
-                    } else {
-                        Label(L("解析视频"), systemImage: "arrow.down.circle")
-                            .labelStyle(.titleAndIcon)
-                            .lineLimit(1)
-                    }
-                }
-                .frame(height: controlHeight)
-                .padding(.horizontal, 16)
-            }
-            .buttonStyle(.plain)
-            .contentShape(Rectangle())
-            // cornerRadius 传 nil ⇒ 胶囊形，两端是半圆
-            .browserGlassBar(cornerRadius: nil)
-            .opacity(parser.canParseCurrentPage && !isParsing ? 1 : 0.45)
-            .disabled(!parser.canParseCurrentPage || isParsing)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+    /// 地址栏：胶囊形，只保留输入框与「清空」。
+    /// 页面向下滚动时高度收缩，回到顶部再展开。
+    private var addressToolbar: some View {
+        addressBar
+            .padding(.horizontal, 10)
+            .padding(.vertical, isScrolledDown ? 3 : 8)
+            .animation(.easeInOut(duration: 0.2), value: isScrolledDown)
     }
 
     private var addressBar: some View {
@@ -179,22 +169,22 @@ struct VideoBrowserView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(L("清空地址栏"))
             }
-
-            Button {
-                openAddress()
-            } label: {
-                Image(systemName: "arrow.right.circle.fill")
-                    .foregroundStyle(Color.accentColor)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(L("打开"))
         }
         .padding(.horizontal, 12)
-        .frame(height: controlHeight)
-        .browserGlassBar()
+        .frame(height: isScrolledDown ? collapsedControlHeight : controlHeight)
+        .browserGlassBar(cornerRadius: nil)
     }
 
-    // MARK: - 嗅探面板入口
+    private func updateCollapsedState(for offset: CGFloat) {
+        let collapsed = offset > 24
+        guard collapsed != isScrolledDown else { return }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isScrolledDown = collapsed
+        }
+    }
+
+    // MARK: - 悬浮入口（解析 / 嗅探）
 
     /// 「通用嗅探」在设置页是否开启
     private var isSnifferEnabled: Bool {
@@ -212,11 +202,52 @@ struct VideoBrowserView: View {
             && !sniffer.items.isEmpty
     }
 
+    /// 页面可解析时显示。
+    private var isParseBadgeVisible: Bool {
+        parser.canParseCurrentPage
+    }
+
+    /// 「解析视频」悬浮胶囊：与嗅探入口同样的样式，点击弹出半屏面板。
+    private var parseBadge: some View {
+        Button {
+            parsedVideo = nil
+            parseError = nil
+            showParseSheet = true
+            Task { await parse() }
+        } label: {
+            HStack(spacing: 6) {
+                if isParsing {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.down.circle")
+                }
+
+                Text(L("解析视频"))
+                    .lineLimit(1)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .browserGlassBar(cornerRadius: nil)
+        .zIndex(1)
+        .accessibilityLabel(L("解析视频"))
+        .sheet(isPresented: $showParseSheet) {
+            parseSheet
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
     /// 悬浮胶囊：显示当前已嗅探到的资源数。
     ///
     /// 用 `contentShape(Capsule())` 把命中区域收敛到胶囊本身，
     /// 否则外层留白会落到 WebView 上（表现为「点按钮顺带点了页面」）。
-    /// `.sheet` 挂在徽标上而不是外层 `VStack`：后者已挂了 `variantSheet`，
+    /// `.sheet` 挂在徽标上而不是外层 `VStack`：后者已挂了 `parseSheet`，
     /// 同一视图叠两个 `.sheet` 会互相干扰。
     private var snifferBadge: some View {
         Button {
@@ -252,35 +283,53 @@ struct VideoBrowserView: View {
         }
     }
 
-    // MARK: - 清晰度选择
+    // MARK: - 解析面板（半屏）
 
-    private var variantSheet: some View {
+    private var parseSheet: some View {
         NavigationStack {
-            List(parsedVideo?.variants ?? []) { variant in
-                Button {
-                    Task {
-                        await download(variant)
+            Group {
+                if isParsing {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text(L("正在解析…"))
+                            .foregroundStyle(.secondary)
                     }
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(variant.displayName)
-                            Text(variant.url.host ?? L("媒体"))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let video = parsedVideo, !video.variants.isEmpty {
+                    List(video.variants) { variant in
+                        Button {
+                            Task {
+                                await download(variant)
+                            }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(variant.displayName)
+                                    Text(variant.url.host ?? L("媒体"))
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "arrow.down.circle.fill")
+                            }
                         }
-
-                        Spacer()
-
-                        Image(systemName: "arrow.down.circle.fill")
                     }
+                } else {
+                    ContentUnavailableView(
+                        L("解析失败"),
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(parseError ?? L("没有找到可下载的视频清晰度。"))
+                    )
                 }
             }
-            .navigationTitle(Text(parsedVideo?.title ?? L("选择清晰度")))
+            .navigationTitle(Text(parsedVideo?.title ?? L("解析视频")))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L("关闭")) {
-                        showVariants = false
+                        showParseSheet = false
                     }
                 }
             }
@@ -318,27 +367,28 @@ struct VideoBrowserView: View {
     }
 
     private func parse() async {
-        guard parser.canParseCurrentPage else { return }
+        guard parser.canParseCurrentPage, !isParsing else { return }
 
         addressFocused = false
 
         isParsing = true
+        parseError = nil
         defer { isParsing = false }
 
         do {
-            parsedVideo = try await parser.parseCurrentPage()
+            let video = try await parser.parseCurrentPage()
+            parsedVideo = video
 
-            if let video = parsedVideo,
-               let variant = preferredVariant(
-                    video.variants,
-                    preference: appState.preferredQuality
-               ) {
+            // 设置里选了明确清晰度就直接开下；否则留在面板里让用户挑。
+            if let variant = preferredVariant(
+                video.variants,
+                preference: appState.preferredQuality
+            ) {
                 await download(variant)
-            } else {
-                showVariants = true
             }
         } catch {
-            errorMessage = error.localizedDescription
+            parsedVideo = nil
+            parseError = error.localizedDescription
         }
     }
 
@@ -402,7 +452,7 @@ struct VideoBrowserView: View {
 
     /// 统一的入队前准备：收起所有 sheet、取 Cookie、生成默认文件名、弹「选择文件名」。
     private func prepareDownload(title: String, variant: VideoVariant, referer: URL?) {
-        showVariants = false
+        showParseSheet = false
         showSniffer = false
 
         Task {
@@ -415,7 +465,7 @@ struct VideoBrowserView: View {
             )
 
             // 等 sheet 退场动画走完再弹 alert：动画期间同步 present 会被系统静默丢弃
-            try? await Task.sleep(nanoseconds: 350_000_000)
+            try? await Task.sleep(nanoseconds: 450_000_000)
 
             let suggestedURL = URL(fileURLWithPath: suggested)
             let fileExtension = suggestedURL.pathExtension
@@ -520,9 +570,11 @@ private extension View {
 
 struct WebViewContainer: UIViewRepresentable {
     let webView: WKWebView
+    /// 滚动偏移回调：供外层收缩地址栏。
+    var onScroll: (CGFloat) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(webView: webView)
+        Coordinator(webView: webView, onScroll: onScroll)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -537,22 +589,37 @@ struct WebViewContainer: UIViewRepresentable {
             webView.scrollView.refreshControl = control
         }
 
+        context.coordinator.startObservingOffset()
         return webView
     }
 
-    func updateUIView(_ uiView: WKWebView, context: Context) {}
+    func updateUIView(_ uiView: WKWebView, context: Context) {
+        context.coordinator.onScroll = onScroll
+    }
 
     final class Coordinator {
         private weak var webView: WKWebView?
         private var observation: NSKeyValueObservation?
+        private var offsetObservation: NSKeyValueObservation?
+        var onScroll: (CGFloat) -> Void
 
-        init(webView: WKWebView) {
+        init(webView: WKWebView, onScroll: @escaping (CGFloat) -> Void) {
             self.webView = webView
+            self.onScroll = onScroll
 
             // 加载结束后收起刷新指示器，否则会一直转
             observation = webView.observe(\.isLoading, options: [.new]) { webView, _ in
                 guard !webView.isLoading else { return }
                 webView.scrollView.refreshControl?.endRefreshing()
+            }
+        }
+
+        func startObservingOffset() {
+            guard offsetObservation == nil, let webView else { return }
+
+            // contentOffset 的 KVO 回调在主线程投递，直接转给闭包即可（省去每帧派发的开销）
+            offsetObservation = webView.scrollView.observe(\.contentOffset, options: [.new]) { [weak self] scrollView, _ in
+                self?.onScroll(scrollView.contentOffset.y)
             }
         }
 
