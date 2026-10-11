@@ -841,6 +841,22 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록 삭제" } }
       }
     },
+    "重新解析" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Erneut analysieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Re-analyze" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réanalyser" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다시 분석" } }
+      }
+    },
+    "该视频当前不可播放。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieses Video ist derzeit nicht abspielbar." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This video is not playable right now." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cette vidéo n'est pas lisible pour le moment." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 동영상은 현재 재생할 수 없습니다." } }
+      }
+    },
     "仅视频" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Video" } },

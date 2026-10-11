@@ -154,7 +154,7 @@ struct VideoBrowserView: View {
 
     // MARK: - 顶部地址栏
 
-    /// 地址栏：胶囊形。左侧主页、中间输入框、右侧「清空」与书签。
+    /// 地址栏：中间是胶囊形输入框，主页与书签按钮各自独立浮在两侧。
     /// 页面向下滚动时高度收缩，回到顶部再展开。
     private var addressToolbar: some View {
         addressBar
@@ -164,50 +164,75 @@ struct VideoBrowserView: View {
     }
 
     private var addressBar: some View {
-        HStack(spacing: 6) {
-            Button {
-                goHome()
-            } label: {
-                Image(systemName: "house")
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(L("返回首页"))
+        HStack(spacing: 8) {
+            // 主页与书签各自是**独立**的悬浮按钮，不再塞进地址胶囊里。
+            barButton(
+                systemImage: "house",
+                label: L("返回首页"),
+                tint: .secondary,
+                action: goHome
+            )
 
-            TextField(L("输入网页地址"), text: $address)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .submitLabel(.go)
-                .focused($addressFocused)
-                .onSubmit {
-                    openAddress()
+            HStack(spacing: 6) {
+                TextField(L("输入网页地址"), text: $address)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .submitLabel(.go)
+                    .focused($addressFocused)
+                    .onSubmit {
+                        openAddress()
+                    }
+
+                if !address.isEmpty {
+                    Button {
+                        address = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L("清空地址栏"))
                 }
-
-            if !address.isEmpty {
-                Button {
-                    address = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L("清空地址栏"))
             }
+            .padding(.horizontal, 12)
+            .frame(height: barControlHeight)
+            .browserGlassBar(cornerRadius: nil)
 
-            Button {
-                toggleBookmark()
-            } label: {
-                Image(systemName: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark")
-                    .foregroundStyle(isCurrentPageBookmarked ? Color.accentColor : Color.secondary)
-            }
-            .buttonStyle(.plain)
-            .disabled(!canBookmarkCurrentPage)
-            .accessibilityLabel(isCurrentPageBookmarked ? L("移除书签") : L("加入书签"))
+            barButton(
+                systemImage: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
+                label: isCurrentPageBookmarked ? L("移除书签") : L("加入书签"),
+                tint: isCurrentPageBookmarked ? Color.accentColor : Color.secondary,
+                disabled: !canBookmarkCurrentPage,
+                action: toggleBookmark
+            )
         }
-        .padding(.horizontal, 12)
-        .frame(height: isScrolledDown ? collapsedControlHeight : controlHeight)
+    }
+
+    /// 地址栏展开 / 收起时，三个控件共用的高度。
+    private var barControlHeight: CGFloat {
+        isScrolledDown ? collapsedControlHeight : controlHeight
+    }
+
+    /// 地址栏两侧独立的圆形按钮（主页 / 书签）。
+    private func barButton(
+        systemImage: String,
+        label: String,
+        tint: Color,
+        disabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: barControlHeight, height: barControlHeight)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
         .browserGlassBar(cornerRadius: nil)
+        .accessibilityLabel(label)
     }
 
     /// 加载中 / 加载失败的页面内提示。
@@ -497,6 +522,17 @@ struct VideoBrowserView: View {
                         showParseSheet = false
                     }
                 }
+
+                // 解析失败或结果过期时，不必退回页面重开面板，直接在这里重试。
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task { await reparse() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .disabled(isParsing || !parser.canParseCurrentPage)
+                    .accessibilityLabel(L("重新解析"))
+                }
             }
         }
     }
@@ -553,6 +589,22 @@ struct VideoBrowserView: View {
             ) {
                 await download(variant)
             }
+        } catch {
+            parsedVideo = nil
+            parseError = error.localizedDescription
+        }
+    }
+
+    /// 「重新解析」：只刷新面板里的清晰度列表，**不会**因为设置了下载偏好就自动开下。
+    private func reparse() async {
+        guard parser.canParseCurrentPage, !isParsing else { return }
+
+        isParsing = true
+        parseError = nil
+        defer { isParsing = false }
+
+        do {
+            parsedVideo = try await parser.parseCurrentPage()
         } catch {
             parsedVideo = nil
             parseError = error.localizedDescription

@@ -3,12 +3,16 @@ import Foundation
 /// YouTube 的解析实现。
 ///
 /// 取流逻辑取自根目录的 `youtube.js`（威软 YouTube 视频下载工具 v1.2.0）：
-/// 先读页面里现成的 `ytInitialPlayerResponse`，拿不到再回退到 InnerTube
-/// `youtubei/v1/player` 接口（WEB 客户端，`clientVersion` 优先取页面 `ytcfg` 里的值）。
-/// 解析出 `streamingData.formats`（音视频合流）与 `adaptiveFormats`（分离流）后，
-/// 直接使用其中的 `url` 直链，交给 App 的分片下载管线本地下载 —— 不再经过任何第三方服务。
+/// 优先读页面里现成的播放器数据，拿不到再回退到 InnerTube `youtubei/v1/player` 接口，
+/// 然后用 `streamingData` 里的 `url` 直链交给 App 的分片下载管线本地下载。
 ///
-/// 与原脚本保持一致：只处理带 `url` 的格式（`signatureCipher` 的流会被跳过），
+/// 与原脚本的差别只在「怎么拿数据」：YouTube 会按客户端指纹 / 会话判定机器人，
+/// 返回 `LOGIN_REQUIRED`（「请登录，以便我们确认你不是聊天机器人」）。
+/// 原脚本跑在浏览器里、且只走 WEB 一条路；这里改成**依次尝试多个来源**，
+/// 页面数据被拦就换 App 端的 iOS / ANDROID 客户端，任何一条成功即可，
+/// 不再让单一来源的拦截拖垮整次解析。
+///
+/// 与原脚本一致：只处理带 `url` 的格式（`signatureCipher` 的流会被跳过），
 /// 也不做音视频合成。因此分离出来的视频流没有音轨，界面上会标注「仅视频」。
 @MainActor
 final class YouTubeParser: VideoSiteParser {
@@ -17,6 +21,11 @@ final class YouTubeParser: VideoSiteParser {
 
     /// 取不到页面 `ytcfg` 时的兜底 InnerTube 版本号，与 `youtube.js` 一致。
     private static let fallbackClientVersion = "2.20250101.00.00"
+
+    /// 页面 UA 取不到时的兜底：普通桌面 Chrome，避免用 CFNetwork 的默认 UA 去请求。
+    private static let fallbackUserAgent =
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        + "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
     private static let hosts = [
         "youtube.com",
@@ -41,33 +50,32 @@ final class YouTubeParser: VideoSiteParser {
             throw ParserError.unsupportedURL
         }
 
-        // 1) 与脚本一致：优先用页面现成的播放器数据（最可靠，且已带当前登录态）。
-        var player = await Self.pagePlayerResponse(page)
+        var blockedReason: String?
 
-        // 2) 页面里拿不到时，回退到 InnerTube player 接口。
-        if player == nil {
-            player = try await Self.fetchPlayerResponse(videoID: videoID, page: page)
+        for source in PlayerSource.allCases {
+            guard let response = await Self.playerResponse(from: source, videoID: videoID, page: page) else {
+                continue
+            }
+
+            // 被风控 / 需要登录：换下一个来源再试。
+            if let reason = Self.blockingReason(response) {
+                blockedReason = blockedReason ?? reason
+                continue
+            }
+
+            let variants = Self.variants(from: response)
+            guard !variants.isEmpty else { continue }
+
+            LogStore.shared.info("youtube parsed \(variants.count) variant(s) via \(source) for \(videoID)")
+            return variants
         }
 
-        guard let response = player else {
-            throw ParserError.noMediaDefinitions
+        // 所有来源都被拦：把官方给的原因抛出去，便于用户判断。
+        if let blockedReason {
+            throw ParserError.pageLoadFailed(blockedReason)
         }
 
-        // 不可播放（会员、地区限制、需要登录等）时带上官方给的原因，便于用户判断。
-        if let status = response["playabilityStatus"] as? [String: Any],
-           let state = status["status"] as? String,
-           state != "OK",
-           let reason = status["reason"] as? String,
-           !reason.isEmpty {
-            throw ParserError.pageLoadFailed(reason)
-        }
-
-        let variants = Self.variants(from: response)
-
-        guard !variants.isEmpty else { throw ParserError.noVideoVariants }
-
-        LogStore.shared.info("youtube parsed \(variants.count) variant(s) for \(videoID)")
-        return variants
+        throw ParserError.noVideoVariants
     }
 
     // MARK: - 视频 ID
@@ -120,92 +128,108 @@ final class YouTubeParser: VideoSiteParser {
 
     // MARK: - 播放器数据
 
-    /// 读取页面里的 `ytInitialPlayerResponse`（脚本的 Method 1）。
-    private static func pagePlayerResponse(_ page: WebPageContext) async -> [String: Any]? {
-        let script = "(function(){try{var p=window.ytInitialPlayerResponse;"
-            + "if(!p||!p.streamingData)return null;return JSON.stringify(p);}catch(e){return null;}})()"
+    /// 取播放器数据的来源，按「成功率从高到低」依次尝试。
+    private enum PlayerSource: CaseIterable {
+        /// 页面里**正在播放**的响应：最新，且已通过 YouTube 自己的校验
+        case pagePlayer
+        /// 页面首屏写入的 `ytInitialPlayerResponse`
+        case pageInitial
+        /// 页面 `ytplayer.config.args.raw_player_response`
+        case pageConfig
+        /// App 端发起的 WEB 客户端 InnerTube 请求（沿用页面的 UA / 版本号 / Cookie）
+        case innerTubeWeb
+        /// App 端发起的 iOS 客户端 InnerTube 请求（通常不要求 PO token）
+        case innerTubeIOS
+        /// App 端发起的 ANDROID 客户端 InnerTube 请求
+        case innerTubeAndroid
+    }
 
+    private static func playerResponse(
+        from source: PlayerSource,
+        videoID: String,
+        page: WebPageContext
+    ) async -> [String: Any]? {
+        switch source {
+        case .pagePlayer:
+            return await pageJSON(page, script: pagePlayerScript)
+        case .pageInitial:
+            return await pageJSON(page, script: pageInitialScript)
+        case .pageConfig:
+            return await pageJSON(page, script: pageConfigScript)
+        case .innerTubeWeb:
+            return await innerTubeResponse(profile: .web, videoID: videoID, page: page)
+        case .innerTubeIOS:
+            return await innerTubeResponse(profile: .ios, videoID: videoID, page: page)
+        case .innerTubeAndroid:
+            return await innerTubeResponse(profile: .android, videoID: videoID, page: page)
+        }
+    }
+
+    /// 在页面里执行脚本，把返回的 JSON 字符串解析成含 `streamingData` 的字典。
+    private static func pageJSON(_ page: WebPageContext, script: String) async -> [String: Any]? {
         guard let value = try? await page.evaluate(script),
               let text = value as? String,
               let data = text.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
-              let dictionary = object as? [String: Any] else {
+              let dictionary = object as? [String: Any],
+              dictionary["streamingData"] != nil else {
             return nil
         }
 
         return dictionary
     }
 
-    /// InnerTube player 请求（脚本的 fallback）。
-    private static func fetchPlayerResponse(
-        videoID: String,
-        page: WebPageContext
-    ) async throws -> [String: Any]? {
-        guard let endpoint = URL(string: "https://www.youtube.com/youtubei/v1/player?prettyPrint=false") else {
-            throw ParserError.invalidURL
+    /// 返回 `playabilityStatus` 里的拦截原因；可播放时返回 nil。
+    private static func blockingReason(_ response: [String: Any]) -> String? {
+        guard let status = response["playabilityStatus"] as? [String: Any],
+              let state = status["status"] as? String,
+              state != "OK" else {
+            return nil
         }
 
-        let clientVersion = await pageClientVersion(page) ?? fallbackClientVersion
-
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("https://www.youtube.com", forHTTPHeaderField: "Origin")
-        request.setValue("https://www.youtube.com/watch?v=\(videoID)", forHTTPHeaderField: "Referer")
-
-        if let userAgent = page.userAgent, !userAgent.isEmpty {
-            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-        }
-        if let cookie = await page.cookieHeader(matching: page.pageURL), !cookie.isEmpty {
-            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        if let reason = status["reason"] as? String, !reason.isEmpty {
+            return reason
         }
 
-        let payload: [String: Any] = [
-            "videoId": videoID,
-            "context": [
-                "client": [
-                    "clientName": "WEB",
-                    "clientVersion": clientVersion,
-                    "hl": Self.languageHint
-                ]
-            ]
-        ]
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        } catch {
-            throw ParserError.scriptFailed(error.localizedDescription)
-        }
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            throw ParserError.manifestRequestFailed(error.localizedDescription)
-        }
-
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw ParserError.manifestRequestFailed("HTTP \(http.statusCode)")
-        }
-
-        guard let object = try? JSONSerialization.jsonObject(with: data),
-              let dictionary = object as? [String: Any] else {
-            throw ParserError.invalidManifest
-        }
-
-        return dictionary
+        return L("该视频当前不可播放。")
     }
 
-    /// 页面当前的 InnerTube 版本号；取不到返回 nil，用兜底值。
-    private static func pageClientVersion(_ page: WebPageContext) async -> String? {
-        let script = "(function(){try{return (window.ytcfg&&window.ytcfg.get)"
-            + "?window.ytcfg.get('INNERTUBE_CLIENT_VERSION'):null;}catch(e){return null;}})()"
+    // MARK: - 页面内脚本
+
+    /// 页面里正在播放的响应，比首屏的 `ytInitialPlayerResponse` 更新。
+    private static let pagePlayerScript =
+        "(function(){try{var el=document.getElementById('movie_player');"
+        + "if(!el||typeof el.getPlayerResponse!=='function')return null;"
+        + "var r=el.getPlayerResponse();if(!r||!r.streamingData)return null;"
+        + "return JSON.stringify(r);}catch(e){return null;}})()"
+
+    private static let pageInitialScript =
+        "(function(){try{var p=window.ytInitialPlayerResponse;"
+        + "if(!p||!p.streamingData)return null;return JSON.stringify(p);}catch(e){return null;}})()"
+
+    private static let pageConfigScript =
+        "(function(){try{var a=window.ytplayer&&window.ytplayer.config&&window.ytplayer.config.args;"
+        + "var raw=a&&a.raw_player_response;if(!raw)return null;"
+        + "var r=JSON.parse(raw);if(!r||!r.streamingData)return null;"
+        + "return JSON.stringify(r);}catch(e){return null;}})()"
+
+    private static let clientVersionScript =
+        "(function(){try{return (window.ytcfg&&window.ytcfg.get)"
+        + "?String(window.ytcfg.get('INNERTUBE_CLIENT_VERSION')||''):'';}catch(e){return '';}})()"
+
+    private static let userAgentScript =
+        "(function(){try{return navigator.userAgent||'';}catch(e){return '';}})()"
+
+    private static let visitorDataScript =
+        "(function(){try{return (window.ytcfg&&window.ytcfg.get)"
+        + "?String(window.ytcfg.get('VISITOR_DATA')||''):'';}catch(e){return '';}})()"
+
+    private static func pageString(_ page: WebPageContext, script: String, fallback: String) async -> String {
         guard let value = try? await page.evaluate(script),
-              let version = value as? String, !version.isEmpty else {
-            return nil
+              let text = value as? String, !text.isEmpty else {
+            return fallback
         }
-        return version
+        return text
     }
 
     private static var languageHint: String {
@@ -214,6 +238,129 @@ final class YouTubeParser: VideoSiteParser {
             return code
         }
         return "en"
+    }
+
+    // MARK: - InnerTube 客户端
+
+    /// 一个 InnerTube 客户端指纹。
+    private struct ClientProfile {
+        let name: String
+        let version: String
+        /// `X-Youtube-Client-Name` 头用的数字 ID
+        let numericID: String
+        let userAgent: String
+        let androidSdkVersion: Int?
+        let deviceModel: String?
+        let osName: String?
+        let osVersion: String?
+
+        /// WEB 客户端：版本号 / UA 都取页面里的值。
+        static let web = ClientProfile(
+            name: "WEB",
+            version: "",
+            numericID: "1",
+            userAgent: "",
+            androidSdkVersion: nil,
+            deviceModel: nil,
+            osName: nil,
+            osVersion: nil
+        )
+
+        /// iOS 客户端：返回可直接下载的直链，且通常不要求 PO token。
+        static let ios = ClientProfile(
+            name: "IOS",
+            version: "19.29.1",
+            numericID: "5",
+            userAgent: "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)",
+            androidSdkVersion: nil,
+            deviceModel: "iPhone16,2",
+            osName: "iPhone",
+            osVersion: "18.1.0.22B83"
+        )
+
+        /// Android 客户端：同上，作为最后一条退路。
+        static let android = ClientProfile(
+            name: "ANDROID",
+            version: "19.35.36",
+            numericID: "3",
+            userAgent: "com.google.android.youtube/19.35.36 (Linux; U; Android 14) gzip",
+            androidSdkVersion: 34,
+            deviceModel: nil,
+            osName: nil,
+            osVersion: nil
+        )
+    }
+
+    /// 从 App 端发起一次 InnerTube player 请求；任何失败都返回 nil，交给下一个来源。
+    private static func innerTubeResponse(
+        profile: ClientProfile,
+        videoID: String,
+        page: WebPageContext
+    ) async -> [String: Any]? {
+        guard let endpoint = URL(string: "https://www.youtube.com/youtubei/v1/player?prettyPrint=false") else {
+            return nil
+        }
+
+        let isWeb = profile.name == "WEB"
+
+        // WEB 沿用页面里的版本号与 UA；官方客户端用各自固定的指纹。
+        let version = isWeb
+            ? await pageString(page, script: clientVersionScript, fallback: fallbackClientVersion)
+            : profile.version
+
+        let userAgent = isWeb
+            ? await pageString(page, script: userAgentScript, fallback: fallbackUserAgent)
+            : profile.userAgent
+
+        // 带上页面的 visitorData / 登录 Cookie，请求才像同一个会话。
+        let visitorData = await pageString(page, script: visitorDataScript, fallback: "")
+
+        var client: [String: Any] = [
+            "clientName": profile.name,
+            "clientVersion": version,
+            "hl": Self.languageHint
+        ]
+        if !isWeb {
+            client["userAgent"] = profile.userAgent
+            if let model = profile.deviceModel { client["deviceModel"] = model }
+            if let osName = profile.osName { client["osName"] = osName }
+            if let osVersion = profile.osVersion { client["osVersion"] = osVersion }
+            if let sdk = profile.androidSdkVersion { client["androidSdkVersion"] = sdk }
+        }
+        if !visitorData.isEmpty { client["visitorData"] = visitorData }
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("https://www.youtube.com", forHTTPHeaderField: "Origin")
+        request.setValue("https://www.youtube.com/watch?v=\(videoID)", forHTTPHeaderField: "Referer")
+        request.setValue(profile.numericID, forHTTPHeaderField: "X-Youtube-Client-Name")
+        request.setValue(version, forHTTPHeaderField: "X-Youtube-Client-Version")
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        if !visitorData.isEmpty {
+            request.setValue(visitorData, forHTTPHeaderField: "X-Goog-Visitor-Id")
+        }
+        if let cookie = await page.cookieHeader(matching: page.pageURL), !cookie.isEmpty {
+            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        }
+
+        let payload: [String: Any] = [
+            "videoId": videoID,
+            "contentCheckOk": true,
+            "racyCheckOk": true,
+            "context": ["client": client]
+        ]
+
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
+        request.httpBody = body
+
+        guard let (data, _) = try? await URLSession.shared.data(for: request),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let dictionary = object as? [String: Any] else {
+            return nil
+        }
+
+        return dictionary
     }
 
     // MARK: - 取流
