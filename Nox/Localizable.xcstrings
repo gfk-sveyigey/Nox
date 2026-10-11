@@ -857,6 +857,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 동영상은 현재 재생할 수 없습니다." } }
       }
     },
+    "页面里的视频流需要签名解密，暂时无法直接下载。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der Videostream dieser Seite ist signaturverschlüsselt und kann derzeit nicht direkt geladen werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This page's video stream is signature-encrypted and cannot be downloaded directly right now." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le flux vidéo de cette page est chiffré par signature et ne peut pas être téléchargé directement pour le moment." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 페이지의 동영상 스트림은 서명으로 암호화되어 지금은 바로 다운로드할 수 없습니다." } }
+      }
+    },
     "仅视频" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Video" } },

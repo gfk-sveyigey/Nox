@@ -26,6 +26,8 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     private(set) var lastLoadURL: URL?
 
     private let webView: WKWebView
+    /// 接收页面里 SPA 换页上报的地址（见 pageURLUserScript）。
+    private let pageURLBridge: PageURLBridge
     private let appState: AppState
     private let registry: VideoSiteParserRegistry
 
@@ -47,8 +49,20 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
             name: SnifferBridge.handlerName
         )
 
+        // 单页应用（典型是 YouTube）点链接走 history.pushState，**不触发任何导航回调**，
+        // 地址栏会一直停在旧地址上。注入脚本在 pushState / replaceState / popstate /
+        // hashchange（外加定时兜底）时把新地址 postMessage 上来。
+        configuration.userContentController.addUserScript(Self.pageURLUserScript())
+        let pageURLBridge = PageURLBridge()
+        configuration.userContentController.add(pageURLBridge, name: PageURLBridge.handlerName)
+
+        self.pageURLBridge = pageURLBridge
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
+
+        pageURLBridge.onURLChange = { [weak self] url in
+            self?.currentURL = url
+        }
 
         // 用完整的移动版 Safari UA。
         // WKWebView 的默认 UA 缺少 `Version/... Safari/...` 段，会被部分站点
@@ -219,6 +233,41 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         LogStore.shared.error("load failed \(lastLoadURL?.absoluteString ?? "-"): \(nsError.localizedDescription)")
     }
 
+    /// 注入到每个页面：把 SPA 换页后的新地址上报上来。
+    private static func pageURLUserScript() -> WKUserScript {
+        let source = [
+            "(function () {",
+            "  if (window.top !== window) { return; }",
+            "  if (window.__noxURLHook) { return; }",
+            "  window.__noxURLHook = true;",
+            "  var last = location.href;",
+            "  function report() {",
+            "    if (location.href === last) { return; }",
+            "    last = location.href;",
+            "    try { window.webkit.messageHandlers.\(PageURLBridge.handlerName).postMessage(String(location.href)); } catch (e) {}",
+            "  }",
+            "  ['pushState', 'replaceState'].forEach(function (name) {",
+            "    var original = history[name];",
+            "    if (typeof original !== 'function') { return; }",
+            "    history[name] = function () {",
+            "      var result = original.apply(this, arguments);",
+            "      report();",
+            "      return result;",
+            "    };",
+            "  });",
+            "  window.addEventListener('popstate', report);",
+            "  window.addEventListener('hashchange', report);",
+            "  setInterval(report, 800);",
+            "})();"
+        ].joined(separator: "\n")
+
+        return WKUserScript(
+            source: source,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+    }
+
     /// 移动版 Safari 的完整 User-Agent，供 WebView 使用。
     private static var safariUserAgent: String {
         let version = UIDevice.current.systemVersion
@@ -226,5 +275,24 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         return "Mozilla/5.0 (iPhone; CPU iPhone OS \(osVersion) like Mac OS X) "
             + "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/\(version) "
             + "Mobile/15E148 Safari/604.1"
+    }
+}
+/// 接收页面里 SPA 换页（pushState / replaceState / popstate）上报的地址。
+///
+/// WKUserContentController 会强持有它；onURLChange 用 [weak self] 回指
+/// VideoParser，不会造成循环引用。
+@MainActor
+final class PageURLBridge: NSObject, WKScriptMessageHandler {
+    static let handlerName = "noxPageURL"
+
+    var onURLChange: ((URL) -> Void)?
+
+    func userContentController(
+        _ controller: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        guard message.name == Self.handlerName else { return }
+        guard let raw = message.body as? String, let url = URL(string: raw) else { return }
+        onURLChange?(url)
     }
 }
