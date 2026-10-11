@@ -865,6 +865,34 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 페이지의 동영상 스트림은 서명으로 암호화되어 지금은 바로 다운로드할 수 없습니다." } }
       }
     },
+    "没能拿到可下载的直链。请先让当前网页播放 2～3 秒，再点「重新解析」。" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es konnte kein direkt herunterladbarer Link ermittelt werden. Lass die Seite 2\u20133 Sekunden abspielen und tippe dann erneut auf \u201eNeu analysieren\u201c."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't get a downloadable direct link. Let the page play for 2\u20133 seconds, then tap Re-analyze."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d'obtenir un lien direct t\u00e9l\u00e9chargeable. Laissez la page lire 2 \u00e0 3 secondes, puis appuyez sur \u00ab R\u00e9analyser \u00bb."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\ub2e4\uc6b4\ub85c\ub4dc \uac00\ub2a5\ud55c \uc9c1\uc811 \ub9c1\ud06c\ub97c \uac00\uc838\uc624\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4. \ud398\uc774\uc9c0\uc5d0\uc11c 2~3\ucd08\uac04 \uc7ac\uc0dd\ud55c \ub4a4 '\ub2e4\uc2dc \ubd84\uc11d'\uc744 \ub20c\ub7ec \uc8fc\uc138\uc694."
+          }
+        }
+      }
+    },
     "仅视频" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Video" } },

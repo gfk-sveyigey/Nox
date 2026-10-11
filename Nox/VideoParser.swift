@@ -53,6 +53,8 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         // 地址栏会一直停在旧地址上。注入脚本在 pushState / replaceState / popstate /
         // hashchange（外加定时兜底）时把新地址 postMessage 上来。
         configuration.userContentController.addUserScript(Self.pageURLUserScript())
+        // YouTube 播放时抓已签名的 googlevideo 直链（详见 youtubeMediaUserScript）。
+        configuration.userContentController.addUserScript(Self.youtubeMediaUserScript())
         let pageURLBridge = PageURLBridge()
         configuration.userContentController.add(pageURLBridge, name: PageURLBridge.handlerName)
 
@@ -114,7 +116,6 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         pageMatchesRule = activeParser(for: url) != nil
         lastLoadURL = url
         isUserInitiatedLoad = true
-        applyUserAgent(for: url)
         LogStore.shared.info("open \(url.absoluteString)")
         webView.load(URLRequest(url: url))
     }
@@ -269,30 +270,101 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         )
     }
 
-    /// 让 YouTube 走桌面 UA、其他站点走移动 Safari UA。
+    /// 注入到每个页面：抓 YouTube 播放时请求的 googlevideo 直链。
     ///
-    /// 移动版 YouTube 的服务端渲染页在 `ytInitialPlayerResponse` 里只给
-    /// `signatureCipher`（没有可直链的 `url`）；桌面版才会内联好签名的直链。
-    /// 根目录的 `youtube.js` 从不做解密、只挑带 `url` 的格式，它能在浏览器里
-    /// 工作靠的就是这一点。这里只对 YouTube 换 UA，其他站点保持移动版，
-    /// 免得又被判定成机器人。
-    private func applyUserAgent(for url: URL) {
-        let userAgent = Self.isYouTubeHost(url) ? Self.desktopUserAgent : Self.safariUserAgent
-        if webView.customUserAgent != userAgent {
-            webView.customUserAgent = userAgent
-        }
-    }
+    /// YouTube 自己在播放时会去请求**已经签好名**的 `videoplayback` 地址，
+    /// 把这些地址记下来，就等于拿到了可以直接下载的直链 —— 不需要签名解密，
+    /// 也不需要 PO token。根目录新脚本（ytx-direct-downloader）在独立客户端的
+    /// 请求被风控时，靠的就是「让用户先播放几秒，再抓页面自己的媒体请求」这条路。
+    ///
+    /// 脚本只记 YouTube 域，其他站点上就是个空转的钩子。
+    private static func youtubeMediaUserScript() -> WKUserScript {
+        let source = #"""
+(function () {
+  if (window.top !== window) { return; }
+  if (window.__noxYTMediaHook) { return; }
+  window.__noxYTMediaHook = true;
 
-    private static func isYouTubeHost(_ url: URL) -> Bool {
-        guard let host = url.host?.lowercased() else { return false }
-        let domains = ["youtube.com", "youtube-nocookie.com", "youtu.be"]
-        return domains.contains { host == $0 || host.hasSuffix("." + $0) }
-    }
+  var list = window.__noxYTMedia = window.__noxYTMedia || [];
+  var seen = Object.create(null);
 
-    /// 桌面版 Chrome UA：YouTube 桌面页会内联带签名的直链。
-    private static let desktopUserAgent =
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-        + "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+  function remember(raw) {
+    if (!raw) { return; }
+    var url;
+    try { url = new URL(String(raw), location.href); } catch (e) { return; }
+    var host = url.hostname.toLowerCase();
+    if (host !== 'googlevideo.com' && host.slice(-16) !== '.googlevideo.com') { return; }
+    if (url.pathname.toLowerCase().indexOf('videoplayback') < 0) { return; }
+    if (url.searchParams.has('sq')) { return; }
+    var itag = Number(url.searchParams.get('itag') || url.searchParams.get('fmt') || 0);
+    if (!itag) { return; }
+    ['range', 'rn', 'rbuf'].forEach(function (name) { url.searchParams.delete(name); });
+    var xtags = url.searchParams.get('xtags') || '';
+    var id = url.searchParams.get('id') || url.pathname;
+    var key = itag + ':' + xtags + ':' + id;
+    var now = Date.now();
+    if (seen[key] && now - seen[key] < 8000) { return; }
+    seen[key] = now;
+    list.push({
+      url: url.href,
+      itag: itag,
+      xtags: xtags,
+      mime: String(url.searchParams.get('mime') || '').toLowerCase(),
+      clen: Number(url.searchParams.get('clen') || 0)
+    });
+    if (list.length > 300) { list.splice(0, list.length - 300); }
+  }
+
+  function hooked(fn) { return !!(fn && fn.__noxYTMediaHooked); }
+
+  try {
+    var originalFetch = window.fetch;
+    if (typeof originalFetch === 'function' && !hooked(originalFetch)) {
+      var wrappedFetch = function (input) {
+        try { remember(typeof input === 'string' ? input : (input && input.url)); } catch (e) {}
+        var result = originalFetch.apply(this, arguments);
+        try {
+          Promise.resolve(result).then(function (response) {
+            try { remember(response && response.url); } catch (e) {}
+            return response;
+          });
+        } catch (e) {}
+        return result;
+      };
+      wrappedFetch.__noxYTMediaHooked = true;
+      window.fetch = wrappedFetch;
+    }
+  } catch (e) {}
+
+  try {
+    var proto = window.XMLHttpRequest && window.XMLHttpRequest.prototype;
+    if (proto && typeof proto.open === 'function' && !hooked(proto.open)) {
+      var originalOpen = proto.open;
+      var wrappedOpen = function (method, url) {
+        try { remember(url); } catch (e) {}
+        return originalOpen.apply(this, arguments);
+      };
+      wrappedOpen.__noxYTMediaHooked = true;
+      proto.open = wrappedOpen;
+    }
+  } catch (e) {}
+
+  window.__noxYTMediaRead = function () {
+    try {
+      var entries = performance.getEntriesByType('resource');
+      for (var i = 0; i < entries.length; i++) { remember(entries[i].name); }
+    } catch (e) {}
+    return window.__noxYTMedia || [];
+  };
+})();
+"""#
+
+        return WKUserScript(
+            source: source,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+    }
 
     /// 移动版 Safari 的完整 User-Agent，供 WebView 使用。
     private static var safariUserAgent: String {
