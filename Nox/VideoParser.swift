@@ -52,6 +52,13 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         webView.allowsBackForwardNavigationGestures = true
         // 拖动页面即收起键盘
         webView.scrollView.keyboardDismissMode = .onDrag
+
+        // 深色模式：让 WebView 自身、以及页面内容之外的底色跟随系统，
+        // 而不是默认的死白。用系统动态色，切换外观时会自动重算。
+        webView.isOpaque = false
+        webView.backgroundColor = .systemBackground
+        webView.scrollView.backgroundColor = .systemBackground
+        webView.underPageBackgroundColor = .systemBackground
     }
 
     var browserWebView: WKWebView { webView }

@@ -36,6 +36,8 @@ final class AppState: ObservableObject {
     static let defaultHistoryDays = 30
 
     @Published var history: [HistoryItem] = []
+    /// 浏览页收藏的书签（最新在最前）
+    @Published var bookmarks: [Bookmark] = []
     @Published var downloads: [DownloadRecord] = []
     @Published var preferredQuality: PreferredQuality = .ask
     /// 实验性：多线程（分片）下载
@@ -61,6 +63,7 @@ final class AppState: ObservableObject {
     @Published private var disabledSiteIDs: Set<String> = []
 
     private let historyKey = "Nox.history"
+    private let bookmarksKey = "Nox.bookmarks"
     private let downloadsKey = "Nox.downloads"
     private let qualityKey = "Nox.quality"
     private let multiThreadKey = "Nox.multiThreadDownload"
@@ -152,6 +155,32 @@ final class AppState: ObservableObject {
         persist()
     }
 
+    // MARK: - 书签
+
+    /// 当前页面是否已收藏（按归一化后的页面身份判断）。
+    func isBookmarked(_ url: URL) -> Bool {
+        let identity = url.pageIdentity
+        return bookmarks.contains { $0.url.pageIdentity == identity }
+    }
+
+    /// 收藏 / 取消收藏当前页面。已在书签里则移除，否则插到最前。
+    func toggleBookmark(title: String, url: URL) {
+        let identity = url.pageIdentity
+
+        if let index = bookmarks.firstIndex(where: { $0.url.pageIdentity == identity }) {
+            bookmarks.remove(at: index)
+        } else {
+            bookmarks.insert(Bookmark(title: title, url: url), at: 0)
+        }
+
+        persist()
+    }
+
+    func removeBookmark(_ bookmark: Bookmark) {
+        bookmarks.removeAll { $0.id == bookmark.id }
+        persist()
+    }
+
     // MARK: - 下载
 
     func addDownload(_ record: DownloadRecord) {
@@ -210,6 +239,10 @@ final class AppState: ObservableObject {
             defaults.set(data, forKey: historyKey)
         }
 
+        if let data = try? JSONEncoder().encode(bookmarks) {
+            defaults.set(data, forKey: bookmarksKey)
+        }
+
         if let data = try? JSONEncoder().encode(downloads) {
             defaults.set(data, forKey: downloadsKey)
         }
@@ -232,6 +265,11 @@ final class AppState: ObservableObject {
         if let data = defaults.data(forKey: historyKey),
            let value = try? JSONDecoder().decode([HistoryItem].self, from: data) {
             history = value
+        }
+
+        if let data = defaults.data(forKey: bookmarksKey),
+           let value = try? JSONDecoder().decode([Bookmark].self, from: data) {
+            bookmarks = value
         }
 
         if let data = defaults.data(forKey: downloadsKey),

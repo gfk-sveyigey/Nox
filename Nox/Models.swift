@@ -292,6 +292,29 @@ struct HistoryItem: Identifiable, Codable {
     let visitedAt: Date
 }
 
+/// 浏览页收藏的书签。
+struct Bookmark: Identifiable, Codable, Equatable {
+    let id: UUID
+    /// 收藏时的页面标题
+    let title: String
+    let url: URL
+    let createdAt: Date
+
+    init(id: UUID = UUID(), title: String, url: URL, createdAt: Date = .now) {
+        self.id = id
+        self.title = title
+        self.url = url
+        self.createdAt = createdAt
+    }
+
+    /// 列表标题：优先用页面标题，为空时回退到主机名。
+    var displayTitle: String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        return url.host ?? url.absoluteString
+    }
+}
+
 extension URL {
     /// 常见的跟踪参数：同一页面往往带不同的一串，逐字比较会误判成不同页。
     private static let trackingParameterNames: Set<String> = [
