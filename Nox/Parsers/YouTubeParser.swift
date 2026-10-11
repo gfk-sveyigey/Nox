@@ -13,9 +13,13 @@ import Foundation
 /// 页面数据被拦就换 App 端的 iOS / ANDROID 客户端，任何一条成功即可，
 /// 不再让单一来源的拦截拖垮整次解析。
 ///
-/// 与原脚本的差别：原脚本只挑带 `url` 的格式；这里在拿不到直链时，
-/// 会尝试用播放器脚本（base.js）把 `signatureCipher` 解密成直链，仍失败才跳过。
-/// 也不做音视频合成，因此分离出来的视频流没有音轨，界面上会标注「仅视频」。
+/// 取流顺序（对齐根目录新脚本 ytx-direct-downloader 的做法）：
+/// 1. 优先读页面/InnerTube 里的现成直链；格式带 `signatureCipher` 时用播放器
+///    base.js 在页面里解密。
+/// 2. 都拿不到就退回**页面自己播放时抓到的已签名 googlevideo 直链**
+///    （见 VideoParser.youtubeMediaUserScript）—— 独立客户端被风控时这条最稳。
+/// 3. 仍然为空就提示用户先播放 2～3 秒再重新解析。
+/// 不做音视频合成，因此分离出来的视频流没有音轨，界面上会标注「仅视频」。
 @MainActor
 final class YouTubeParser: VideoSiteParser {
     let identifier = "youtube"
@@ -63,6 +67,7 @@ final class YouTubeParser: VideoSiteParser {
         var sawEncryptedStream = false
         // base.js 解密只做一次（在页面里是同一个播放器脚本）。
         var triedDecipher = false
+        var fromSources: [VideoVariant] = []
 
         for source in PlayerSource.allCases {
             guard let response = await Self.playerResponse(from: source, videoID: videoID, page: page) else {
@@ -86,7 +91,8 @@ final class YouTubeParser: VideoSiteParser {
                         let variants = Self.variants(from: upgraded)
                         if !variants.isEmpty {
                             LogStore.shared.info("youtube deciphered \(variants.count) variant(s) via \(source) for \(videoID)")
-                            return variants
+                            fromSources = variants
+                            break
                         }
                     }
                 }
@@ -99,17 +105,23 @@ final class YouTubeParser: VideoSiteParser {
             guard !variants.isEmpty else { continue }
 
             LogStore.shared.info("youtube parsed \(variants.count) variant(s) via \(source) for \(videoID)")
-            return variants
+            fromSources = variants
+            break
         }
 
-        // 拿到了播放数据却下不了：直说「需要签名解密」，比含糊的「找不到清晰度」更有用。
-        if sawEncryptedStream {
-            throw ParserError.pageLoadFailed(L("页面里的视频流需要签名解密，暂时无法直接下载。"))
+        // 页面播放时抓到的已签名直链：不用解密、也不用 PO token，是最稳的一条。
+        let captured = await Self.capturedVariants(page: page)
+
+        let merged = Self.merged(fromSources, captured)
+        if !merged.isEmpty {
+            LogStore.shared.info("youtube \(videoID): source=\(fromSources.count) captured=\(captured.count)")
+            return merged
         }
 
-        // 所有来源都被拦：把官方给的原因抛出去，便于用户判断。
-        if let blockedReason {
-            throw ParserError.pageLoadFailed(blockedReason)
+        // 两条路都没结果。原脚本在这种情况下的提示也是「先播放几秒再重试」，
+        // 这里给出同样可操作的指引，而不是一句无从下手的「需要签名解密」。
+        if sawEncryptedStream || blockedReason != nil {
+            throw ParserError.pageLoadFailed(L("没能拿到可下载的直链。请先让当前网页播放 2～3 秒，再点「重新解析」。"))
         }
 
         throw ParserError.noVideoVariants
@@ -784,6 +796,128 @@ try {
 
         return cipher
     }
+
+    // MARK: - 抓取页面播放时的直链
+
+    /// 读取页面上抓到的 googlevideo 直链，转成清晰度列表。
+    ///
+    /// 见 VideoParser.youtubeMediaUserScript()：YouTube 播放时自己会去请求
+    /// 已经签好名的 videoplayback 地址，把它们记下来就等于拿到了可直接下载的
+    /// 直链 —— 既不需要签名解密，也不需要 PO token。根目录新脚本
+    /// （ytx-direct-downloader）在独立客户端被风控时，靠的正是这条路。
+    private static func capturedVariants(page: WebPageContext) async -> [VideoVariant] {
+        guard let raw = try? await page.evaluate(capturedMediaScript),
+              let items = raw as? [[String: Any]], !items.isEmpty else {
+            return []
+        }
+
+        var seenURLs = Set<String>()
+        var variants: [VideoVariant] = []
+
+        for item in items {
+            guard let urlString = item["url"] as? String,
+                  let url = URL(string: urlString),
+                  seenURLs.insert(urlString).inserted else { continue }
+
+            let itag = (item["itag"] as? Int) ?? 0
+            let mime = ((item["mime"] as? String) ?? "").lowercased()
+            let fallback = itagFallbacks[itag]
+
+            let isAudio = mime.hasPrefix("audio/") || (mime.isEmpty && fallback?.kind == "audio")
+            let isMuxed = fallback?.kind == "muxed"
+
+            let mimeContainer = Self.container(from: mime)
+            let container = mimeContainer.isEmpty
+                ? (fallback?.container ?? (isAudio ? "m4a" : "mp4"))
+                : mimeContainer
+
+            let quality: String
+            if isAudio {
+                quality = L("音频")
+            } else {
+                let height = fallback?.height ?? 0
+                let fps = fallback?.fps ?? 0
+                var label = height > 0 ? "\(height)p" : L("视频")
+                if fps > 30 { label += "\(fps)" }
+                if !isMuxed { label += " · " + L("仅视频") }
+                quality = label
+            }
+
+            variants.append(VideoVariant(quality: quality, format: container, url: url))
+        }
+
+        return variants
+    }
+
+    /// 合并两条来源的结果，按地址去重；来源解析出来的排在前面。
+    private static func merged(_ primary: [VideoVariant], _ extra: [VideoVariant]) -> [VideoVariant] {
+        var seen = Set(primary.map { $0.url.absoluteString })
+        var result = primary
+
+        for variant in extra where seen.insert(variant.url.absoluteString).inserted {
+            result.append(variant)
+        }
+
+        return result
+    }
+
+    /// 页面里抓到的直链只有 itag、没有分辨率信息时用它兜底（与脚本里的表一致）。
+    private struct ItagFallback {
+        let kind: String
+        let container: String
+        let height: Int
+        let fps: Int
+    }
+
+    private static let itagFallbacks: [Int: ItagFallback] = [
+        18: ItagFallback(kind: "muxed", container: "mp4", height: 360, fps: 30),
+        22: ItagFallback(kind: "muxed", container: "mp4", height: 720, fps: 30),
+        133: ItagFallback(kind: "video", container: "mp4", height: 240, fps: 30),
+        134: ItagFallback(kind: "video", container: "mp4", height: 360, fps: 30),
+        135: ItagFallback(kind: "video", container: "mp4", height: 480, fps: 30),
+        136: ItagFallback(kind: "video", container: "mp4", height: 720, fps: 30),
+        137: ItagFallback(kind: "video", container: "mp4", height: 1080, fps: 30),
+        138: ItagFallback(kind: "video", container: "mp4", height: 2160, fps: 30),
+        160: ItagFallback(kind: "video", container: "mp4", height: 144, fps: 30),
+        264: ItagFallback(kind: "video", container: "mp4", height: 1440, fps: 30),
+        266: ItagFallback(kind: "video", container: "mp4", height: 2160, fps: 30),
+        298: ItagFallback(kind: "video", container: "mp4", height: 720, fps: 60),
+        299: ItagFallback(kind: "video", container: "mp4", height: 1080, fps: 60),
+        399: ItagFallback(kind: "video", container: "mp4", height: 1080, fps: 30),
+        400: ItagFallback(kind: "video", container: "mp4", height: 1440, fps: 30),
+        401: ItagFallback(kind: "video", container: "mp4", height: 2160, fps: 30),
+        139: ItagFallback(kind: "audio", container: "m4a", height: 0, fps: 0),
+        140: ItagFallback(kind: "audio", container: "m4a", height: 0, fps: 0),
+        141: ItagFallback(kind: "audio", container: "m4a", height: 0, fps: 0),
+        242: ItagFallback(kind: "video", container: "webm", height: 240, fps: 30),
+        243: ItagFallback(kind: "video", container: "webm", height: 360, fps: 30),
+        244: ItagFallback(kind: "video", container: "webm", height: 480, fps: 30),
+        247: ItagFallback(kind: "video", container: "webm", height: 720, fps: 30),
+        248: ItagFallback(kind: "video", container: "webm", height: 1080, fps: 30),
+        271: ItagFallback(kind: "video", container: "webm", height: 1440, fps: 30),
+        272: ItagFallback(kind: "video", container: "webm", height: 2160, fps: 30),
+        278: ItagFallback(kind: "video", container: "webm", height: 144, fps: 30),
+        302: ItagFallback(kind: "video", container: "webm", height: 720, fps: 60),
+        303: ItagFallback(kind: "video", container: "webm", height: 1080, fps: 60),
+        308: ItagFallback(kind: "video", container: "webm", height: 1440, fps: 60),
+        313: ItagFallback(kind: "video", container: "webm", height: 2160, fps: 30),
+        315: ItagFallback(kind: "video", container: "webm", height: 2160, fps: 60),
+        330: ItagFallback(kind: "video", container: "webm", height: 144, fps: 60),
+        331: ItagFallback(kind: "video", container: "webm", height: 240, fps: 60),
+        332: ItagFallback(kind: "video", container: "webm", height: 360, fps: 60),
+        333: ItagFallback(kind: "video", container: "webm", height: 480, fps: 60),
+        334: ItagFallback(kind: "video", container: "webm", height: 720, fps: 60),
+        335: ItagFallback(kind: "video", container: "webm", height: 1080, fps: 60),
+        336: ItagFallback(kind: "video", container: "webm", height: 1440, fps: 60),
+        337: ItagFallback(kind: "video", container: "webm", height: 2160, fps: 60),
+        249: ItagFallback(kind: "audio", container: "webm", height: 0, fps: 0),
+        250: ItagFallback(kind: "audio", container: "webm", height: 0, fps: 0),
+        251: ItagFallback(kind: "audio", container: "webm", height: 0, fps: 0)
+    ]
+
+    /// 页面里读取抓取结果的脚本（见 VideoParser.youtubeMediaUserScript()）。
+    private static let capturedMediaScript =
+        "(function(){try{return (window.__noxYTMediaRead?window.__noxYTMediaRead():[])}catch(e){return []}})()"
 
     // MARK: - 取流
 
