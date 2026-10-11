@@ -29,6 +29,13 @@ protocol VideoSiteParser: AnyObject {
     func parse(page: WebPageContext) async throws -> [VideoVariant]
 }
 
+extension WebPageContext {
+    /// 默认退回同步执行；支持异步通道的实现（`WKWebPageContext`）会覆盖它。
+    func evaluateAsync(_ body: String, arguments: [String: Any] = [:]) async throws -> Any? {
+        try await evaluate(body)
+    }
+}
+
 /// 站点解析器需要的页面能力。用协议隔开，解析规则不必知道 WKWebView 的存在。
 @MainActor
 protocol WebPageContext: AnyObject {
@@ -37,6 +44,12 @@ protocol WebPageContext: AnyObject {
 
     /// 在页面里执行 JS
     func evaluate(_ script: String) async throws -> Any?
+
+    /// 在页面里执行一段**可返回 Promise** 的 JS 并等它完成。
+    ///
+    /// `evaluate` 走的是同步通道，拿到 Promise 只会得到空值（不能 await），
+    /// 像「在页面里 fetch 播放器脚本再解密」这种异步逻辑就必须用它。
+    func evaluateAsync(_ body: String, arguments: [String: Any]) async throws -> Any?
 
     /// 取与某个地址相关的 Cookie 头
     func cookieHeader(matching url: URL?) async -> String?
@@ -59,6 +72,19 @@ final class WKWebPageContext: WebPageContext {
     func evaluate(_ script: String) async throws -> Any? {
         do {
             return try await webView.evaluateJavaScript(script)
+        } catch {
+            throw ParserError.scriptFailed(error.localizedDescription)
+        }
+    }
+
+    func evaluateAsync(_ body: String, arguments: [String: Any]) async throws -> Any? {
+        do {
+            // .page 内容世界 = 页面主世界；不然读不到 ytcfg / 播放器脚本这些页面全局。
+            return try await webView.callAsyncJavaScript(
+                body,
+                arguments: arguments,
+                contentWorld: .page
+            )
         } catch {
             throw ParserError.scriptFailed(error.localizedDescription)
         }
