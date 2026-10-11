@@ -13,8 +13,9 @@ import Foundation
 /// 页面数据被拦就换 App 端的 iOS / ANDROID 客户端，任何一条成功即可，
 /// 不再让单一来源的拦截拖垮整次解析。
 ///
-/// 与原脚本一致：只处理带 `url` 的格式（`signatureCipher` 的流会被跳过），
-/// 也不做音视频合成。因此分离出来的视频流没有音轨，界面上会标注「仅视频」。
+/// 与原脚本的差别：原脚本只挑带 `url` 的格式；这里在拿不到直链时，
+/// 会尝试用播放器脚本（base.js）把 `signatureCipher` 解密成直链，仍失败才跳过。
+/// 也不做音视频合成，因此分离出来的视频流没有音轨，界面上会标注「仅视频」。
 @MainActor
 final class YouTubeParser: VideoSiteParser {
     let identifier = "youtube"
@@ -22,6 +23,9 @@ final class YouTubeParser: VideoSiteParser {
 
     /// 取不到页面 `ytcfg` 时的兜底 InnerTube 版本号，与 `youtube.js` 一致。
     private static let fallbackClientVersion = "2.20250101.00.00"
+
+    /// 取不到页面 API Key 时的兜底：YouTube 网页端固定的 InnerTube Key。
+    private static let fallbackAPIKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
 
     /// YouTube 网页端 API 的 Origin，SAPISIDHASH 也要按它计算。
     private static let origin = "https://www.youtube.com"
@@ -57,6 +61,8 @@ final class YouTubeParser: VideoSiteParser {
         var blockedReason: String?
         // 某个来源拿到了播放数据，但里面的格式全是签名加密的（没有可直接下载的直链）。
         var sawEncryptedStream = false
+        // base.js 解密只做一次（在页面里是同一个播放器脚本）。
+        var triedDecipher = false
 
         for source in PlayerSource.allCases {
             guard let response = await Self.playerResponse(from: source, videoID: videoID, page: page) else {
@@ -72,7 +78,18 @@ final class YouTubeParser: VideoSiteParser {
             }
 
             // 有播放数据、却没有一条可直接下载的直链：格式都被签名加密了。
+            // 先在页面里用播放器的 base.js 解密试试，成功就不用再换来源。
             if Self.hasStreamingData(response), !Self.hasDirectURL(response) {
+                if !triedDecipher {
+                    triedDecipher = true
+                    if let upgraded = await Self.responseAddingDecipheredURLs(response, page: page) {
+                        let variants = Self.variants(from: upgraded)
+                        if !variants.isEmpty {
+                            LogStore.shared.info("youtube deciphered \(variants.count) variant(s) via \(source) for \(videoID)")
+                            return variants
+                        }
+                    }
+                }
                 sawEncryptedStream = true
                 LogStore.shared.warning("youtube source \(source): 只有签名加密的流")
                 continue
@@ -206,17 +223,25 @@ final class YouTubeParser: VideoSiteParser {
 
     /// 返回 `playabilityStatus` 里的拦截原因；可播放时返回 nil。
     private static func blockingReason(_ response: [String: Any]) -> String? {
-        guard let status = response["playabilityStatus"] as? [String: Any],
-              let state = status["status"] as? String,
-              state != "OK" else {
-            return nil
+        if let status = response["playabilityStatus"] as? [String: Any] {
+            let state = status["status"] as? String
+            if state == "OK" { return nil }
+
+            if let reason = status["reason"] as? String, !reason.isEmpty {
+                return reason
+            }
+
+            return L("该视频当前不可播放。")
         }
 
-        if let reason = status["reason"] as? String, !reason.isEmpty {
-            return reason
+        // 没有 playabilityStatus：多半是 InnerTube 返回的错误体（例如 API Key 无效）。
+        // 把错误信息带回去，比笼统的「视频无法播放」有用。
+        if let error = response["error"] as? [String: Any],
+           let message = error["message"] as? String, !message.isEmpty {
+            return message
         }
 
-        return L("该视频当前不可播放。")
+        return nil
     }
 
     // MARK: - 页面内脚本
@@ -259,6 +284,11 @@ final class YouTubeParser: VideoSiteParser {
     private static let visitorDataScript =
         "(function(){try{return (window.ytcfg&&window.ytcfg.get)"
         + "?String(window.ytcfg.get('VISITOR_DATA')||''):'';}catch(e){return '';}})()"
+
+    /// 页面 ytcfg 里的 InnerTube API Key（youtubei/v1/player 的 key= 参数）。
+    private static let apiKeyScript =
+        "(function(){try{return (window.ytcfg&&window.ytcfg.get)"
+        + "?String(window.ytcfg.get('INNERTUBE_API_KEY')||''):'';}catch(e){return '';}})()"
 
     private static func pageString(_ page: WebPageContext, script: String, fallback: String) async -> String {
         guard let value = try? await page.evaluate(script),
@@ -346,10 +376,6 @@ final class YouTubeParser: VideoSiteParser {
         videoID: String,
         page: WebPageContext
     ) async -> [String: Any]? {
-        guard let endpoint = URL(string: "https://www.youtube.com/youtubei/v1/player?prettyPrint=false") else {
-            return nil
-        }
-
         let isWeb = profile.name == "WEB"
 
         // WEB 沿用页面里的版本号与 UA；官方客户端用各自固定的指纹。
@@ -363,6 +389,16 @@ final class YouTubeParser: VideoSiteParser {
 
         // 带上页面的 visitorData / 登录 Cookie，请求才像同一个会话。
         let visitorData = await pageString(page, script: visitorDataScript, fallback: "")
+
+        // 关键：youtubei/v1/player 必须带 key=，否则 YouTube 直接返回 400。
+        // 少了它，App 端的 iOS / ANDROID VR / TV 来源全都拿不到数据，
+        // 只能退回页面里那份带 signatureCipher 的响应，于是报「需要签名解密」。
+        let apiKey = await pageString(page, script: apiKeyScript, fallback: fallbackAPIKey)
+
+        guard let endpoint = URL(string:
+            "https://www.youtube.com/youtubei/v1/player?prettyPrint=false&key=" + apiKey) else {
+            return nil
+        }
 
         var client: [String: Any] = [
             "clientName": profile.name,
@@ -382,7 +418,7 @@ final class YouTubeParser: VideoSiteParser {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("https://www.youtube.com", forHTTPHeaderField: "Origin")
-        request.setValue("https://www.youtube.com/watch?v=\(videoID)", forHTTPHeaderField: "Referer")
+        request.setValue("https://www.youtube.com/watch?v=" + videoID, forHTTPHeaderField: "Referer")
         request.setValue(profile.numericID, forHTTPHeaderField: "X-Youtube-Client-Name")
         request.setValue(version, forHTTPHeaderField: "X-Youtube-Client-Version")
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
@@ -393,7 +429,7 @@ final class YouTubeParser: VideoSiteParser {
         if isWeb, let cookie = await page.cookieHeader(matching: page.pageURL), !cookie.isEmpty {
             request.setValue(cookie, forHTTPHeaderField: "Cookie")
 
-            // 关键：带上 SAPISIDHASH。YouTube 的网页端 API 靠它确认「请求来自已登录的网页」；
+            // 关键：带上 SAPISIDHASH。YouTube 的网页端 API 靠它确认请求来自已登录的网页；
             // 只带 Cookie 不带这个头，会被当成未登录，弹「请登录，以便我们确认你不是聊天机器人」。
             if let authorization = Self.sapisidAuthorization(cookieHeader: cookie) {
                 request.setValue(authorization, forHTTPHeaderField: "Authorization")
@@ -417,8 +453,17 @@ final class YouTubeParser: VideoSiteParser {
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
         request.httpBody = body
 
-        guard let (data, _) = try? await URLSession.shared.data(for: request),
-              let object = try? JSONSerialization.jsonObject(with: data),
+        guard let (data, response) = try? await URLSession.shared.data(for: request) else {
+            LogStore.shared.warning("youtube innertube " + profile.name + ": 请求失败")
+            return nil
+        }
+
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            LogStore.shared.warning("youtube innertube " + profile.name + ": HTTP " + String(http.statusCode))
+            return nil
+        }
+
+        guard let object = try? JSONSerialization.jsonObject(with: data),
               let dictionary = object as? [String: Any] else {
             return nil
         }
@@ -498,6 +543,229 @@ final class YouTubeParser: VideoSiteParser {
         }
 
         return url
+    }
+
+    /// 在页面里执行：用播放器脚本（base.js）把 signatureCipher 解密成直链。
+    ///
+    /// 解密函数必须从 base.js 里按结构抽出来（签名函数 + 它调用的辅助对象），
+    /// 用 JS 的正则和花括号配对来做，比在 Swift 里容易得多；而且这段跑在页面里
+    /// 可以直接命中浏览器已缓存的 base.js。
+    private static let decipherScript = #"""
+var debug = [];
+var out = [];
+
+function isIdentChar(ch) {
+  return /[A-Za-z0-9_$]/.test(ch);
+}
+
+function braceBlock(src, start) {
+  var depth = 0;
+  for (var i = start; i < src.length && i < start + 300000; i++) {
+    var ch = src.charAt(i);
+    if (ch === "{") { depth++; }
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) { return src.substring(start, i + 1); }
+    }
+  }
+  return null;
+}
+
+function objectTexts(src, name) {
+  var found = [];
+  var from = 0;
+  while (found.length < 60) {
+    var idx = src.indexOf(name, from);
+    if (idx < 0) { break; }
+    from = idx + 1;
+    if (idx > 0 && isIdentChar(src.charAt(idx - 1))) { continue; }
+    var j = idx + name.length;
+    while (j < src.length && /\s/.test(src.charAt(j))) { j++; }
+    if (src.charAt(j) !== "=") { continue; }
+    j++;
+    while (j < src.length && /\s/.test(src.charAt(j))) { j++; }
+    if (src.charAt(j) !== "{") { continue; }
+    var text = braceBlock(src, j);
+    if (text) { found.push(text); }
+  }
+  return found;
+}
+
+function hasMethods(text, names) {
+  for (var i = 0; i < names.length; i++) {
+    var esc = names[i].replace(/[^A-Za-z0-9_]/g, "\\$&");
+    var re = new RegExp("(?:^|[,{\\s])" + esc + "\\s*[:(]");
+    if (!re.test(text)) { return false; }
+  }
+  return true;
+}
+
+function candidateFunctions(src) {
+  var list = [];
+  var patterns = [
+    /(?:^|[^A-Za-z0-9_$])([A-Za-z0-9_$]{1,6})\s*=\s*function\s*\(\s*([A-Za-z0-9_$]+)\s*\)\s*\{([\s\S]{0,8000}?)return\s+\2\.join\(\s*""\s*\)/g,
+    /function\s+([A-Za-z0-9_$]{1,6})\s*\(\s*([A-Za-z0-9_$]+)\s*\)\s*\{([\s\S]{0,8000}?)return\s+\2\.join\(\s*""\s*\)/g
+  ];
+  for (var p = 0; p < patterns.length && list.length < 40; p++) {
+    var re = patterns[p];
+    var m;
+    while ((m = re.exec(src)) !== null) {
+      list.push({ name: m[1], arg: m[2], body: m[3] });
+      if (list.length >= 40) { break; }
+    }
+  }
+  return list;
+}
+
+function buildFromCandidate(cand, src) {
+  var callRe = /([A-Za-z0-9_$]+)\s*\.\s*([A-Za-z0-9_$]+)\s*\(\s*[A-Za-z0-9_$]+\s*(?:,\s*(\d+)\s*)?\)/g;
+  var calls = [];
+  var objName = null;
+  var c;
+  while ((c = callRe.exec(cand.body)) !== null) {
+    if (objName === null) { objName = c[1]; }
+    else if (objName !== c[1]) { continue; }
+    calls.push([c[2], c[3] ? parseInt(c[3], 10) : 0]);
+  }
+  if (!objName || !calls.length) { return null; }
+
+  var names = [];
+  for (var i = 0; i < calls.length; i++) {
+    if (names.indexOf(calls[i][0]) < 0) { names.push(calls[i][0]); }
+  }
+
+  var candidates = objectTexts(src, objName);
+  for (var k = 0; k < candidates.length; k++) {
+    if (!hasMethods(candidates[k], names)) { continue; }
+    try {
+      var obj = eval("(" + candidates[k] + ")");
+      if (obj) { return { obj: obj, calls: calls }; }
+    } catch (e) {}
+  }
+  return null;
+}
+
+function decipherOne(cipher, dec) {
+  var params;
+  try { params = new URLSearchParams(cipher); } catch (e) { return null; }
+  var sig = params.get("s");
+  var url = params.get("url");
+  var sp = params.get("sp") || "signature";
+  if (!url) { return null; }
+  if (!sig) { return url; }
+  var chars = sig.split("");
+  for (var i = 0; i < dec.calls.length; i++) {
+    var fn = dec.obj[dec.calls[i][0]];
+    if (typeof fn === "function") { fn(chars, dec.calls[i][1]); }
+  }
+  return url + "&" + sp + "=" + encodeURIComponent(chars.join(""));
+}
+
+if (!ciphers || !ciphers.length) { return { urls: [], debug: "no ciphers" }; }
+
+var jsUrl = null;
+try {
+  if (window.ytcfg && typeof window.ytcfg.get === "function") {
+    jsUrl = window.ytcfg.get("PLAYER_JS_URL");
+  }
+  if (!jsUrl && window.ytInitialPlayerResponse && window.ytInitialPlayerResponse.assets) {
+    jsUrl = window.ytInitialPlayerResponse.assets.js;
+  }
+} catch (e) { jsUrl = null; }
+if (!jsUrl) { return { urls: [], debug: "player js url not found" }; }
+
+var srcText = null;
+try {
+  srcText = await fetch(new URL(jsUrl, location.origin).href).then(function (r) { return r.text(); });
+} catch (e) { srcText = null; }
+if (!srcText) { return { urls: [], debug: "player js fetch failed" }; }
+
+var cands = candidateFunctions(srcText);
+debug.push("signature candidates=" + cands.length);
+var dec = null;
+for (var ci = 0; ci < cands.length; ci++) {
+  dec = buildFromCandidate(cands[ci], srcText);
+  if (dec) { debug.push("using " + cands[ci].name); break; }
+}
+if (!dec) { return { urls: out, debug: debug.join(" | ") }; }
+
+for (var k = 0; k < ciphers.length; k++) {
+  out.push(decipherOne(ciphers[k], dec));
+}
+return { urls: out, debug: debug.join(" | ") };
+"""#
+    /// 把响应里带 signatureCipher 的格式在页面里解密成直链，返回补好 url 的新响应。
+    ///
+    /// 解密在页面里完成（见 decipherScript）；这段是收集 cipher、调用、再写回结果。
+    private static func responseAddingDecipheredURLs(
+        _ response: [String: Any],
+        page: WebPageContext
+    ) async -> [String: Any]? {
+        guard let streaming = response["streamingData"] as? [String: Any] else { return nil }
+
+        var groups: [[[String: Any]]] = [
+            streaming["formats"] as? [[String: Any]] ?? [],
+            streaming["adaptiveFormats"] as? [[String: Any]] ?? []
+        ]
+
+        // 收集需要解密的 cipher，并记住它在哪个数组的哪一项。
+        var ciphers: [String] = []
+        var slots: [(group: Int, index: Int)] = []
+
+        for group in groups.indices {
+            for index in groups[group].indices {
+                guard let cipher = cipherString(from: groups[group][index]) else { continue }
+                ciphers.append(cipher)
+                slots.append((group, index))
+            }
+        }
+
+        guard !ciphers.isEmpty else { return nil }
+
+        guard let raw = try? await page.evaluateAsync(decipherScript, arguments: ["ciphers": ciphers]),
+              let result = raw as? [String: Any],
+              let results = result["urls"] as? [Any] else {
+            return nil
+        }
+
+        if let debug = result["debug"] as? String, !debug.isEmpty {
+            LogStore.shared.info("youtube decipher: " + debug)
+        }
+
+        guard results.count == ciphers.count else { return nil }
+
+        var resolved = 0
+        for (offset, slot) in slots.enumerated() {
+            guard let value = results[offset] as? String, !value.isEmpty else { continue }
+            groups[slot.group][slot.index]["url"] = value
+            resolved += 1
+        }
+
+        guard resolved > 0 else { return nil }
+
+        var newStreaming = streaming
+        newStreaming["formats"] = groups[0]
+        newStreaming["adaptiveFormats"] = groups[1]
+
+        var newResponse = response
+        newResponse["streamingData"] = newStreaming
+        return newResponse
+    }
+
+    /// 取格式里**需要解密**的签名串；不需要解密时返回 nil。
+    ///
+    /// JSON 的 null 会变成 NSNull，所以不能直接判断 format["url"] == nil：
+    /// 页面来源的响应里 url 恒为 null，那种写法会让解密永远收不到 cipher
+    /// （解密分支被跳过，最后只报「需要签名解密」）。
+    private static func cipherString(from format: [String: Any]) -> String? {
+        if let url = format["url"] as? String, !url.isEmpty { return nil }
+
+        guard let cipher = (format["signatureCipher"] as? String) ?? (format["cipher"] as? String),
+              !cipher.isEmpty else {
+            return nil
+        }
+
+        return cipher
     }
 
     // MARK: - 取流
