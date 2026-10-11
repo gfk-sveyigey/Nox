@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// YouTube 的解析实现。
@@ -21,6 +22,9 @@ final class YouTubeParser: VideoSiteParser {
 
     /// 取不到页面 `ytcfg` 时的兜底 InnerTube 版本号，与 `youtube.js` 一致。
     private static let fallbackClientVersion = "2.20250101.00.00"
+
+    /// YouTube 网页端 API 的 Origin，SAPISIDHASH 也要按它计算。
+    private static let origin = "https://www.youtube.com"
 
     /// 页面 UA 取不到时的兜底：普通桌面 Chrome，避免用 CFNetwork 的默认 UA 去请求。
     private static let fallbackUserAgent =
@@ -60,6 +64,7 @@ final class YouTubeParser: VideoSiteParser {
             // 被风控 / 需要登录：换下一个来源再试。
             if let reason = Self.blockingReason(response) {
                 blockedReason = blockedReason ?? reason
+                LogStore.shared.warning("youtube source \(source) blocked: \(reason)")
                 continue
             }
 
@@ -340,8 +345,17 @@ final class YouTubeParser: VideoSiteParser {
         if !visitorData.isEmpty {
             request.setValue(visitorData, forHTTPHeaderField: "X-Goog-Visitor-Id")
         }
-        if let cookie = await page.cookieHeader(matching: page.pageURL), !cookie.isEmpty {
+        // 只有 WEB 客户端用浏览器 Cookie 认证：官方客户端走各自的凭证，混用反而可能被拒。
+        if isWeb, let cookie = await page.cookieHeader(matching: page.pageURL), !cookie.isEmpty {
             request.setValue(cookie, forHTTPHeaderField: "Cookie")
+
+            // 关键：带上 SAPISIDHASH。YouTube 的网页端 API 靠它确认「请求来自已登录的网页」；
+            // 只带 Cookie 不带这个头，会被当成未登录，弹「请登录，以便我们确认你不是聊天机器人」。
+            if let authorization = Self.sapisidAuthorization(cookieHeader: cookie) {
+                request.setValue(authorization, forHTTPHeaderField: "Authorization")
+                request.setValue(Self.origin, forHTTPHeaderField: "X-Origin")
+                request.setValue("0", forHTTPHeaderField: "X-Goog-AuthUser")
+            }
         }
 
         let payload: [String: Any] = [
@@ -361,6 +375,38 @@ final class YouTubeParser: VideoSiteParser {
         }
 
         return dictionary
+    }
+
+    /// 由 SAPISID Cookie 生成网页端用的 `Authorization: SAPISIDHASH <时间戳>_<sha1>`。
+    ///
+    /// 算法：`sha1("<unix 秒> <SAPISID> https://www.youtube.com")`，时间戳与哈希用下划线连接。
+    /// 优先用 `SAPISID`（对应 `SAPISIDHASH`），退而用 `__Secure-3PAPISID`（对应 `SAPISID3HASH`）；
+    /// 两者都没有时返回 nil，退化为未登录请求。
+    private static func sapisidAuthorization(cookieHeader: String) -> String? {
+        var cookieValues: [String: String] = [:]
+        for pair in cookieHeader.split(separator: ";") {
+            let parts = pair.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let name = parts[0].trimmingCharacters(in: .whitespaces)
+            cookieValues[name] = String(parts[1])
+        }
+
+        let candidates: [(header: String, cookie: String)] = [
+            ("SAPISIDHASH", "SAPISID"),
+            ("SAPISID3HASH", "__Secure-3PAPISID")
+        ]
+
+        guard let match = candidates.first(where: { !(cookieValues[$0.cookie] ?? "").isEmpty }),
+              let secret = cookieValues[match.cookie] else {
+            return nil
+        }
+
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let input = "\(timestamp) \(secret) \(origin)"
+        let digest = Insecure.SHA1.hash(data: Data(input.utf8))
+        let hex = digest.map { String(format: "%02x", $0) }.joined()
+
+        return "\(match.header) \(timestamp)_\(hex)"
     }
 
     // MARK: - 取流
