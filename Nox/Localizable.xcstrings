@@ -1,6 +1,134 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "Cookie 管理" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cookie-Verwaltung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cookie Management" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gestion des cookies" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "쿠키 관리" } }
+      }
+    },
+    "暂无 Cookie" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Cookies" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No Cookies" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun cookie" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "쿠키 없음" } }
+      }
+    },
+    "浏览网页并登录后，这里会显示保存的登录状态。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach dem Surfen und Anmelden werden hier die gespeicherten Anmeldungen angezeigt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "After you browse and sign in, saved logins will appear here." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Après avoir navigué et vous être connecté, les connexions enregistrées apparaîtront ici." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "웹을 탐색하고 로그인하면 저장된 로그인 상태가 여기에 표시됩니다." } }
+      }
+    },
+    "共计" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesamt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Total" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "합계" } }
+      }
+    },
+    "%d 个" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%d" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%d" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%d" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%d개" } }
+      }
+    },
+    "Cookie 用于保存网站登录状态。删除后，相关网站需要重新登录。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cookies speichern den Anmeldestatus von Websites. Nach dem Löschen müssen Sie sich bei den betroffenen Websites erneut anmelden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cookies keep you signed in to websites. After deleting them, you'll need to sign in again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les cookies conservent votre connexion aux sites web. Après leur suppression, vous devrez vous reconnecter." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "쿠키는 웹사이트 로그인 상태를 유지합니다. 삭제하면 해당 사이트에 다시 로그인해야 합니다." } }
+      }
+    },
+    "清空 Cookie" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cookies löschen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear Cookies" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer les cookies" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "쿠키 지우기" } }
+      }
+    },
+    "清空 Cookie？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cookies löschen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear cookies?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer les cookies ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "쿠키를 지울까요?" } }
+      }
+    },
+    "所有网站保存的 Cookie 将被删除，相关网站需要重新登录。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle gespeicherten Cookies werden gelöscht; Sie müssen sich bei den betroffenen Websites erneut anmelden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All saved cookies will be deleted, and you'll need to sign in again on the affected websites." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tous les cookies enregistrés seront supprimés et vous devrez vous reconnecter aux sites concernés." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장된 모든 쿠키가 삭제되며, 해당 사이트에 다시 로그인해야 합니다." } }
+      }
+    },
+    "视频链接可能已失效（HTTP %d），请重新解析后再下载。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der Videolink ist möglicherweise abgelaufen (HTTP %d). Bitte erneut analysieren und dann herunterladen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The video link may have expired (HTTP %d). Please re-analyze and download again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le lien vidéo a peut-être expiré (HTTP %d). Veuillez analyser à nouveau avant de télécharger." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 링크가 만료되었을 수 있습니다(HTTP %d). 다시 분석한 뒤 다운로드하세요." } }
+      }
+    },
+    "视频链接可能已失效，请重新解析后再下载。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der Videolink ist möglicherweise abgelaufen. Bitte erneut analysieren und dann herunterladen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The video link may have expired. Please re-analyze and download again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le lien vidéo a peut-être expiré. Veuillez analyser à nouveau avant de télécharger." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 링크가 만료되었을 수 있습니다. 다시 분석한 뒤 다운로드하세요." } }
+      }
+    },
+    "服务器返回了无法识别的响应。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der Server hat eine nicht erkannte Antwort zurückgegeben." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The server returned an unrecognized response." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le serveur a renvoyé une réponse non reconnue." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "서버가 인식할 수 없는 응답을 반환했습니다." } }
+      }
+    },
+    "无法获取文件信息：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dateiinformationen konnten nicht abgerufen werden: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't get file information: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible d'obtenir les informations du fichier : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 정보를 가져올 수 없습니다: %@" } }
+      }
+    },
+    "服务器返回错误：HTTP %d" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Serverfehler: HTTP %d" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Server error: HTTP %d" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur du serveur : HTTP %d" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "서버 오류: HTTP %d" } }
+      }
+    },
+    "合并后的文件大小与预期不符，请重新下载。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Größe der zusammengeführten Datei stimmt nicht mit der erwarteten überein. Bitte erneut herunterladen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The merged file size doesn't match the expected size. Please download again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La taille du fichier fusionné ne correspond pas à la taille attendue. Veuillez télécharger à nouveau." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "병합된 파일 크기가 예상과 다릅니다. 다시 다운로드하세요." } }
+      }
+    },
+    "合并后的文件为空，请重新下载。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die zusammengeführte Datei ist leer. Bitte erneut herunterladen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The merged file is empty. Please download again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le fichier fusionné est vide. Veuillez télécharger à nouveau." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "병합된 파일이 비어 있습니다. 다시 다운로드하세요." } }
+      }
+    },
     "日志保留" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll-Aufbewahrung" } },
