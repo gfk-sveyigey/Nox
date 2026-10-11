@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import WebKit
 
 /// 浏览器宿主 + 解析调度。具体站点的规则由 `VideoSiteParser` 实现。
@@ -7,6 +8,8 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     @Published private(set) var isLoading = false
     @Published private(set) var pageMatchesRule = false
     @Published private(set) var pageReady = false
+    /// WebView 当前地址。地址栏用它同步「页面内跳转 / 重定向」后的新地址。
+    @Published private(set) var currentURL: URL?
     /// 最近一次导航失败的原因。
     ///
     /// 加载失败时 `WKWebView` 会继续显示上一个页面，用户完全看不出「新地址没打开」，
@@ -47,6 +50,10 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
+        // 用完整的移动版 Safari UA。
+        // WKWebView 的默认 UA 缺少 `Version/... Safari/...` 段，会被部分站点
+        // （典型是 YouTube）判定成机器人，要求「请登录，以便我们确认你不是聊天机器人」。
+        webView.customUserAgent = Self.safariUserAgent
         webView.navigationDelegate = self
         // 边缘左右滑动 = 后退 / 前进
         webView.allowsBackForwardNavigationGestures = true
@@ -163,7 +170,13 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         isLoading = true
         pageReady = false
         loadErrorMessage = nil
+        currentURL = webView.url
         pageMatchesRule = activeParser(for: webView.url) != nil
+    }
+
+    /// 页面开始渲染时地址已基本确定（含重定向后的地址），此时同步地址栏。
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        currentURL = webView.url
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -171,6 +184,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         pageReady = true
         pageMatchesRule = activeParser(for: webView.url) != nil
         isUserInitiatedLoad = false
+        currentURL = webView.url
         if let url = webView.url {
             LogStore.shared.info("loaded \(url.absoluteString)")
         }
@@ -203,5 +217,14 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
 
         loadErrorMessage = nsError.localizedDescription
         LogStore.shared.error("load failed \(lastLoadURL?.absoluteString ?? "-"): \(nsError.localizedDescription)")
+    }
+
+    /// 移动版 Safari 的完整 User-Agent，供 WebView 使用。
+    private static var safariUserAgent: String {
+        let version = UIDevice.current.systemVersion
+        let osVersion = version.replacingOccurrences(of: ".", with: "_")
+        return "Mozilla/5.0 (iPhone; CPU iPhone OS \(osVersion) like Mac OS X) "
+            + "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/\(version) "
+            + "Mobile/15E148 Safari/604.1"
     }
 }

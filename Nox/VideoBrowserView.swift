@@ -108,6 +108,10 @@ struct VideoBrowserView: View {
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()
             }
+            // 地址栏跟随 WebView 的实际地址：页面内点链接、重定向、后退/前进都会更新。
+            .onChange(of: parser.currentURL) { _, newValue in
+                syncAddress(with: newValue)
+            }
             .alert(
                 L("解析失败"),
                 isPresented: Binding(
@@ -538,6 +542,17 @@ struct VideoBrowserView: View {
     }
 
     // MARK: - 行为
+
+    /// 让地址栏跟随 WebView 当前地址。
+    ///
+    /// 用户正在编辑地址时不覆盖（否则打字会被导航事件打断）。
+    private func syncAddress(with url: URL?) {
+        guard !addressFocused, let url else { return }
+
+        let text = url.absoluteString
+        guard text != address else { return }
+        address = text
+    }
 
     private func loadRequestedURLIfNeeded() {
         guard let url = requestedURL else { return }
