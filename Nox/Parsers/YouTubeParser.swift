@@ -55,16 +55,26 @@ final class YouTubeParser: VideoSiteParser {
         }
 
         var blockedReason: String?
+        // 某个来源拿到了播放数据，但里面的格式全是签名加密的（没有可直接下载的直链）。
+        var sawEncryptedStream = false
 
         for source in PlayerSource.allCases {
             guard let response = await Self.playerResponse(from: source, videoID: videoID, page: page) else {
+                LogStore.shared.info("youtube source \(source): no data")
                 continue
             }
 
-            // 被风控 / 需要登录：换下一个来源再试。
+            // 被风控 / 需要登录 / 不可播放：换下一个来源再试。
             if let reason = Self.blockingReason(response) {
                 blockedReason = blockedReason ?? reason
                 LogStore.shared.warning("youtube source \(source) blocked: \(reason)")
+                continue
+            }
+
+            // 有播放数据、却没有一条可直接下载的直链：格式都被签名加密了。
+            if Self.hasStreamingData(response), !Self.hasDirectURL(response) {
+                sawEncryptedStream = true
+                LogStore.shared.warning("youtube source \(source): 只有签名加密的流")
                 continue
             }
 
@@ -73,6 +83,11 @@ final class YouTubeParser: VideoSiteParser {
 
             LogStore.shared.info("youtube parsed \(variants.count) variant(s) via \(source) for \(videoID)")
             return variants
+        }
+
+        // 拿到了播放数据却下不了：直说「需要签名解密」，比含糊的「找不到清晰度」更有用。
+        if sawEncryptedStream {
+            throw ParserError.pageLoadFailed(L("页面里的视频流需要签名解密，暂时无法直接下载。"))
         }
 
         // 所有来源都被拦：把官方给的原因抛出去，便于用户判断。
@@ -145,8 +160,10 @@ final class YouTubeParser: VideoSiteParser {
         case innerTubeWeb
         /// App 端发起的 iOS 客户端 InnerTube 请求（通常不要求 PO token）
         case innerTubeIOS
-        /// App 端发起的 ANDROID 客户端 InnerTube 请求
-        case innerTubeAndroid
+        /// App 端发起的 ANDROID VR 客户端请求（返回直链，通常无需 PO token）
+        case innerTubeAndroidVR
+        /// App 端发起的 TV 内嵌客户端请求
+        case innerTubeTV
     }
 
     private static func playerResponse(
@@ -156,32 +173,35 @@ final class YouTubeParser: VideoSiteParser {
     ) async -> [String: Any]? {
         switch source {
         case .pagePlayer:
-            return await pageJSON(page, script: pagePlayerScript)
+            return await pageJSON(page, script: pageExtractScript(getter: pagePlayerGetter))
         case .pageInitial:
-            return await pageJSON(page, script: pageInitialScript)
+            return await pageJSON(page, script: pageExtractScript(getter: pageInitialGetter))
         case .pageConfig:
-            return await pageJSON(page, script: pageConfigScript)
+            return await pageJSON(page, script: pageExtractScript(getter: pageConfigGetter))
         case .innerTubeWeb:
             return await innerTubeResponse(profile: .web, videoID: videoID, page: page)
         case .innerTubeIOS:
             return await innerTubeResponse(profile: .ios, videoID: videoID, page: page)
-        case .innerTubeAndroid:
-            return await innerTubeResponse(profile: .android, videoID: videoID, page: page)
+        case .innerTubeAndroidVR:
+            return await innerTubeResponse(profile: .androidVR, videoID: videoID, page: page)
+        case .innerTubeTV:
+            return await innerTubeResponse(profile: .tv, videoID: videoID, page: page)
         }
     }
 
-    /// 在页面里执行脚本，把返回的 JSON 字符串解析成含 `streamingData` 的字典。
+    /// 在页面里执行脚本，把返回的 JSON 字符串解析成字典。
+    ///
+    /// 不要求一定有 streamingData：视频不可播放时同样要把 playabilityStatus 带回来。
     private static func pageJSON(_ page: WebPageContext, script: String) async -> [String: Any]? {
         guard let value = try? await page.evaluate(script),
               let text = value as? String,
-              let data = text.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data),
-              let dictionary = object as? [String: Any],
-              dictionary["streamingData"] != nil else {
+              let data = text.data(using: .utf8) else {
             return nil
         }
 
-        return dictionary
+        guard let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
+
+        return object as? [String: Any]
     }
 
     /// 返回 `playabilityStatus` 里的拦截原因；可播放时返回 nil。
@@ -201,22 +221,33 @@ final class YouTubeParser: VideoSiteParser {
 
     // MARK: - 页面内脚本
 
-    /// 页面里正在播放的响应，比首屏的 `ytInitialPlayerResponse` 更新。
-    private static let pagePlayerScript =
-        "(function(){try{var el=document.getElementById('movie_player');"
-        + "if(!el||typeof el.getPlayerResponse!=='function')return null;"
-        + "var r=el.getPlayerResponse();if(!r||!r.streamingData)return null;"
-        + "return JSON.stringify(r);}catch(e){return null;}})()"
+    /// 页面里正在播放的响应 getter（比首屏的 ytInitialPlayerResponse 更新）。
+    private static let pagePlayerGetter =
+        "(function(){var el=document.getElementById('movie_player');"
+        + "return (el&&typeof el.getPlayerResponse==='function')?el.getPlayerResponse():null;})()"
 
-    private static let pageInitialScript =
-        "(function(){try{var p=window.ytInitialPlayerResponse;"
-        + "if(!p||!p.streamingData)return null;return JSON.stringify(p);}catch(e){return null;}})()"
+    private static let pageInitialGetter = "window.ytInitialPlayerResponse"
 
-    private static let pageConfigScript =
-        "(function(){try{var a=window.ytplayer&&window.ytplayer.config&&window.ytplayer.config.args;"
-        + "var raw=a&&a.raw_player_response;if(!raw)return null;"
-        + "var r=JSON.parse(raw);if(!r||!r.streamingData)return null;"
-        + "return JSON.stringify(r);}catch(e){return null;}})()"
+    private static let pageConfigGetter =
+        "(function(){var a=window.ytplayer&&window.ytplayer.config&&window.ytplayer.config.args;"
+        + "var r=a&&a.raw_player_response;return r?JSON.parse(r):null;})()"
+
+    /// 把播放器响应压缩成只含需要字段的 JSON 再带回 Swift。
+    ///
+    /// 完整响应动辄一两 MB（还带字幕、videoDetails 等），整份 stringify 既慢又容易在
+    /// 桥接时出错；这里只挑 formats / adaptiveFormats 的直链相关字段，同时保留
+    /// playabilityStatus —— 视频不可播放时也能把页面的真实原因带回来看。
+    private static func pageExtractScript(getter: String) -> String {
+        return "(function(){try{var p=" + getter + ";if(!p)return null;"
+            + "var pick=function(f){return {itag:f.itag,url:f.url||null,"
+            + "signatureCipher:f.signatureCipher||f.cipher||null,mimeType:f.mimeType,"
+            + "bitrate:f.bitrate,height:f.height,qualityLabel:f.qualityLabel,quality:f.quality};};"
+            + "var sd=p.streamingData;"
+            + "var out={playabilityStatus:p.playabilityStatus,streamingData:null};"
+            + "if(sd){out.streamingData={formats:(sd.formats||[]).map(pick),"
+            + "adaptiveFormats:(sd.adaptiveFormats||[]).map(pick)};}"
+            + "return JSON.stringify(out);}catch(e){return null;}})()"
+    }
 
     private static let clientVersionScript =
         "(function(){try{return (window.ytcfg&&window.ytcfg.get)"
@@ -283,13 +314,26 @@ final class YouTubeParser: VideoSiteParser {
             osVersion: "18.1.0.22B83"
         )
 
-        /// Android 客户端：同上，作为最后一条退路。
-        static let android = ClientProfile(
-            name: "ANDROID",
-            version: "19.35.36",
-            numericID: "3",
-            userAgent: "com.google.android.youtube/19.35.36 (Linux; U; Android 14) gzip",
-            androidSdkVersion: 34,
+        /// Android VR 客户端：返回直链、且通常不要求 PO token，是最稳的一条。
+        static let androidVR = ClientProfile(
+            name: "ANDROID_VR",
+            version: "1.60.19",
+            numericID: "28",
+            userAgent: "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; GB) gzip",
+            androidSdkVersion: 32,
+            deviceModel: "Quest 3",
+            osName: "Android",
+            osVersion: "12"
+        )
+
+        /// 电视内嵌客户端：同样常返回直链。
+        static let tv = ClientProfile(
+            name: "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+            version: "2.0",
+            numericID: "85",
+            userAgent: "Mozilla/5.0 (PlayStation; PlayStation 4/12.00) AppleWebKit/605.1.15 "
+                + "(KHTML, like Gecko) Version/16.0 Safari/605.1.15",
+            androidSdkVersion: nil,
             deviceModel: nil,
             osName: nil,
             osVersion: nil
@@ -358,11 +402,16 @@ final class YouTubeParser: VideoSiteParser {
             }
         }
 
+        var context: [String: Any] = ["client": client]
+        if profile.name.hasPrefix("TVHTML5") {
+            context["thirdParty"] = ["embedUrl": "https://www.youtube.com/"]
+        }
+
         let payload: [String: Any] = [
             "videoId": videoID,
             "contentCheckOk": true,
             "racyCheckOk": true,
-            "context": ["client": client]
+            "context": context
         ]
 
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
@@ -409,6 +458,48 @@ final class YouTubeParser: VideoSiteParser {
         return "\(match.header) \(timestamp)_\(hex)"
     }
 
+    /// 响应里是否有 streamingData（有就说明视频本身可播放）。
+    private static func hasStreamingData(_ response: [String: Any]) -> Bool {
+        // 注意 JSON 的 null 会变成 NSNull：必须判断真的是字典，否则 null 会被当成「有数据」。
+        response["streamingData"] is [String: Any]
+    }
+
+    /// streamingData 里是否至少有一条能直接用（带 url，或 signatureCipher 不含 s）。
+    private static func hasDirectURL(_ response: [String: Any]) -> Bool {
+        guard let streaming = response["streamingData"] as? [String: Any] else { return false }
+
+        let all = (streaming["formats"] as? [[String: Any]] ?? [])
+            + (streaming["adaptiveFormats"] as? [[String: Any]] ?? [])
+
+        return all.contains { ($0["mimeType"] as? String) != nil && mediaURL(from: $0) != nil }
+    }
+
+    /// 取格式的直链。
+    ///
+    /// - 优先用 url；
+    /// - signatureCipher / cipher 只有在**不含 s 参数**时才等价于直链，可以直接用；
+    /// - 带 s 的签名需要用播放器脚本解密，本实现没有引入那段逻辑，返回 nil 跳过。
+    private static func mediaURL(from format: [String: Any]) -> URL? {
+        if let value = format["url"] as? String, !value.isEmpty, let url = URL(string: value) {
+            return url
+        }
+
+        guard let cipher = (format["signatureCipher"] as? String) ?? (format["cipher"] as? String),
+              !cipher.isEmpty,
+              let components = URLComponents(string: "?" + cipher) else {
+            return nil
+        }
+
+        let items = components.queryItems ?? []
+        guard !items.contains(where: { $0.name == "s" }),
+              let raw = items.first(where: { $0.name == "url" })?.value,
+              let url = URL(string: raw) else {
+            return nil
+        }
+
+        return url
+    }
+
     // MARK: - 取流
 
     /// 一个候选项，附带排序 / 去重需要的信息。
@@ -431,10 +522,9 @@ final class YouTubeParser: VideoSiteParser {
         var best: [String: Candidate] = [:]
 
         for format in combined + adaptive {
-            guard let urlString = format["url"] as? String,
-                  let url = URL(string: urlString),
-                  let mime = format["mimeType"] as? String else {
-                // 与脚本一致：没有直链（例如只有 signatureCipher）的格式直接跳过。
+            guard let mime = format["mimeType"] as? String,
+                  let url = mediaURL(from: format) else {
+                // 与脚本一致：拿不到直链（例如只有带 s 的 signatureCipher）的格式跳过。
                 continue
             }
 
