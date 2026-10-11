@@ -12,6 +12,7 @@ final class VideoSiteParserRegistry {
     /// http(s) 地址都返回 true，放前面会把具名站点全部挡掉。
     static let all: [VideoSiteParser] = [
         PornhubParser(),
+        YouTubeParser(),
         GenericSnifferParser()
     ]
 

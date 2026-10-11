@@ -841,6 +841,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록 삭제" } }
       }
     },
+    "仅视频" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Video" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video Only" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vidéo uniquement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "영상만" } }
+      }
+    },
     "未知清晰度" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbekannte Qualität" } },

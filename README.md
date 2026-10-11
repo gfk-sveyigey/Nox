@@ -27,7 +27,7 @@
 ### 解析（可扩展的站点插件）
 
 - 解析规则按站点实现，通过注册表按 URL 匹配，`VideoBrowserView` 等调用方无需改动
-- 当前内置：Pornhub / Pornhub Premium
+- 当前内置：Pornhub / Pornhub Premium / YouTube
 - 每个站点在「设置 → 解析来源」里有独立开关；关闭后该站点的页面无法解析，解析入口不再出现
 - 通用兜底解析器在界面里直接显示为 Sniffer
 - 解析成功后可选清晰度，或按「设置 → 下载设置 → 下载清晰度」的偏好自动选择（每次询问 / 最佳 / 1080 / 720 / 480 / 360）
@@ -85,7 +85,8 @@
 │   ├── Parsers/
 │   │   ├── VideoSiteParser.swift           # 协议、页面上下文、通用请求与清单解析
 │   │   ├── VideoSiteParserRegistry.swift   # 站点注册表
-│   │   └── PornhubParser.swift             # Pornhub 解析实现
+│   │   ├── PornhubParser.swift             # Pornhub 解析实现
+│   │   └── YouTubeParser.swift             # YouTube 解析实现（页面/InnerTube 取直链）
 │   ├── DownloadManager.swift       # 分片下载、续传、合并、进度统计
 │   ├── VideoBrowserView.swift      # 浏览页
 │   ├── DownloadsView.swift         # 下载页
@@ -163,6 +164,7 @@ graph LR
     V[VideoBrowserView] --> P[VideoParser<br/>WKWebView 宿主 + 调度]
     P --> R[VideoSiteParserRegistry]
     R --> A[PornhubParser]
+    R --> Y[YouTubeParser]
     R -.-> B["新增站点…"]
     A --> C[WebPageContext<br/>WKWebPageContext]
     A --> L[MediaResourceLoader]
