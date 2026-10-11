@@ -114,6 +114,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         pageMatchesRule = activeParser(for: url) != nil
         lastLoadURL = url
         isUserInitiatedLoad = true
+        applyUserAgent(for: url)
         LogStore.shared.info("open \(url.absoluteString)")
         webView.load(URLRequest(url: url))
     }
@@ -267,6 +268,31 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
             forMainFrameOnly: true
         )
     }
+
+    /// 让 YouTube 走桌面 UA、其他站点走移动 Safari UA。
+    ///
+    /// 移动版 YouTube 的服务端渲染页在 `ytInitialPlayerResponse` 里只给
+    /// `signatureCipher`（没有可直链的 `url`）；桌面版才会内联好签名的直链。
+    /// 根目录的 `youtube.js` 从不做解密、只挑带 `url` 的格式，它能在浏览器里
+    /// 工作靠的就是这一点。这里只对 YouTube 换 UA，其他站点保持移动版，
+    /// 免得又被判定成机器人。
+    private func applyUserAgent(for url: URL) {
+        let userAgent = Self.isYouTubeHost(url) ? Self.desktopUserAgent : Self.safariUserAgent
+        if webView.customUserAgent != userAgent {
+            webView.customUserAgent = userAgent
+        }
+    }
+
+    private static func isYouTubeHost(_ url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        let domains = ["youtube.com", "youtube-nocookie.com", "youtu.be"]
+        return domains.contains { host == $0 || host.hasSuffix("." + $0) }
+    }
+
+    /// 桌面版 Chrome UA：YouTube 桌面页会内联带签名的直链。
+    private static let desktopUserAgent =
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        + "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
     /// 移动版 Safari 的完整 User-Agent，供 WebView 使用。
     private static var safariUserAgent: String {

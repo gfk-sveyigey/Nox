@@ -661,38 +661,47 @@ function decipherOne(cipher, dec) {
   return url + "&" + sp + "=" + encodeURIComponent(chars.join(""));
 }
 
-if (!ciphers || !ciphers.length) { return { urls: [], debug: "no ciphers" }; }
-
-var jsUrl = null;
 try {
-  if (window.ytcfg && typeof window.ytcfg.get === "function") {
-    jsUrl = window.ytcfg.get("PLAYER_JS_URL");
+  if (!ciphers || !ciphers.length) { return { urls: [], debug: "no ciphers" }; }
+
+  var jsUrl = null;
+  try {
+    if (window.ytcfg && typeof window.ytcfg.get === "function") {
+      jsUrl = window.ytcfg.get("PLAYER_JS_URL");
+    }
+    if (!jsUrl && window.ytInitialPlayerResponse && window.ytInitialPlayerResponse.assets) {
+      jsUrl = window.ytInitialPlayerResponse.assets.js;
+    }
+  } catch (e) { jsUrl = null; }
+  debug.push("jsUrl=" + (jsUrl ? "ok" : "missing"));
+  if (!jsUrl) { return { urls: [], debug: debug.join(" | ") }; }
+
+  var srcText = null;
+  try {
+    srcText = await fetch(new URL(jsUrl, location.origin).href).then(function (r) { return r.text(); });
+  } catch (e) {
+    debug.push("fetch error: " + (e && e.message ? e.message : String(e)));
+    srcText = null;
   }
-  if (!jsUrl && window.ytInitialPlayerResponse && window.ytInitialPlayerResponse.assets) {
-    jsUrl = window.ytInitialPlayerResponse.assets.js;
+  if (!srcText) { return { urls: [], debug: debug.join(" | ") }; }
+  debug.push("base.js len=" + srcText.length);
+
+  var cands = candidateFunctions(srcText);
+  debug.push("signature candidates=" + cands.length);
+  var dec = null;
+  for (var ci = 0; ci < cands.length; ci++) {
+    dec = buildFromCandidate(cands[ci], srcText);
+    if (dec) { debug.push("using " + cands[ci].name); break; }
   }
-} catch (e) { jsUrl = null; }
-if (!jsUrl) { return { urls: [], debug: "player js url not found" }; }
+  if (!dec) { return { urls: out, debug: debug.join(" | ") }; }
 
-var srcText = null;
-try {
-  srcText = await fetch(new URL(jsUrl, location.origin).href).then(function (r) { return r.text(); });
-} catch (e) { srcText = null; }
-if (!srcText) { return { urls: [], debug: "player js fetch failed" }; }
-
-var cands = candidateFunctions(srcText);
-debug.push("signature candidates=" + cands.length);
-var dec = null;
-for (var ci = 0; ci < cands.length; ci++) {
-  dec = buildFromCandidate(cands[ci], srcText);
-  if (dec) { debug.push("using " + cands[ci].name); break; }
+  for (var k = 0; k < ciphers.length; k++) {
+    out.push(decipherOne(ciphers[k], dec));
+  }
+  return { urls: out, debug: debug.join(" | ") };
+} catch (err) {
+  return { urls: [], debug: "exception: " + (err && err.message ? err.message : String(err)) };
 }
-if (!dec) { return { urls: out, debug: debug.join(" | ") }; }
-
-for (var k = 0; k < ciphers.length; k++) {
-  out.push(decipherOne(ciphers[k], dec));
-}
-return { urls: out, debug: debug.join(" | ") };
 """#
     /// 把响应里带 signatureCipher 的格式在页面里解密成直链，返回补好 url 的新响应。
     ///
@@ -722,15 +731,23 @@ return { urls: out, debug: debug.join(" | ") };
 
         guard !ciphers.isEmpty else { return nil }
 
-        guard let raw = try? await page.evaluateAsync(decipherScript, arguments: ["ciphers": ciphers]),
-              let result = raw as? [String: Any],
-              let results = result["urls"] as? [Any] else {
+        let raw: Any?
+        do {
+            raw = try await page.evaluateAsync(decipherScript, arguments: ["ciphers": ciphers])
+        } catch {
+            LogStore.shared.warning("youtube decipher: 页面执行失败 " + error.localizedDescription)
             return nil
         }
 
+        guard let result = raw as? [String: Any] else {
+            LogStore.shared.warning("youtube decipher: 页面没有返回结果")
+            return nil
+        }
         if let debug = result["debug"] as? String, !debug.isEmpty {
             LogStore.shared.info("youtube decipher: " + debug)
         }
+
+        guard let results = result["urls"] as? [Any] else { return nil }
 
         guard results.count == ciphers.count else { return nil }
 
