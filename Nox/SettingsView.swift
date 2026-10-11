@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import WebKit
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
@@ -94,6 +95,12 @@ struct SettingsView: View {
                         L("解析来源"),
                         value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
                     )
+                }
+
+                NavigationLink {
+                    CookiesView()
+                } label: {
+                    Text(L("Cookie 管理"))
                 }
 
                 NavigationLink {
@@ -439,7 +446,7 @@ struct StorageSettingsView: View {
 
     private func refresh() {
         sizes = [
-            .videos: manager.documentsSize(),
+            .videos: manager.videosSize(),
             .parts: manager.partsSize(),
             .staging: manager.stagingSize(),
             .networkCache: manager.networkCacheSize(),
@@ -656,6 +663,175 @@ struct LogsView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             SharePresenter.present(items: [url])
+        }
+    }
+}
+
+/// Cookie 的读取 / 删除封装。
+///
+/// WKWebView 用的是持久化数据存储，登录状态（Cookie）本来就会跨启动保存；
+/// 这里给设置页提供「查看 + 清理」的能力（换账号、怀疑登录态串了时用得上）。
+enum CookieManager {
+    struct Group: Identifiable {
+        let domain: String
+        let count: Int
+
+        var id: String { domain }
+    }
+
+    /// 读取全部 Cookie，按站点域名归组（去掉前导点，`.a.com` 与 `a.com` 归为一组）。
+    static func groups() async -> [Group] {
+        let cookies = await allCookies()
+        var counts: [String: Int] = [:]
+
+        for cookie in cookies {
+            counts[displayDomain(cookie.domain), default: 0] += 1
+        }
+
+        return counts
+            .map { Group(domain: $0.key, count: $0.value) }
+            .sorted { $0.domain < $1.domain }
+    }
+
+    /// 只删除某个站点的 Cookie。
+    static func delete(domain: String) async {
+        let store = WKWebsiteDataStore.default()
+        let cookies = await allCookies().filter { displayDomain($0.domain) == domain }
+
+        for cookie in cookies {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                store.httpCookieStore.delete(cookie) {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    /// 清空所有 Cookie（不影响本地存储、网页缓存等其它网站数据）。
+    static func clearAll() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            WKWebsiteDataStore.default().removeData(
+                ofTypes: [WKWebsiteDataTypeCookies],
+                modifiedSince: .distantPast
+            ) {
+                continuation.resume()
+            }
+        }
+    }
+
+    private static func allCookies() async -> [HTTPCookie] {
+        await withCheckedContinuation { continuation in
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                continuation.resume(returning: cookies)
+            }
+        }
+    }
+
+    private static func displayDomain(_ domain: String) -> String {
+        var value = domain
+        while value.hasPrefix(".") { value.removeFirst() }
+        return value.isEmpty ? domain : value
+    }
+}
+
+/// 「Cookie 管理」二级页：按站点列出已保存的 Cookie，可单独删除或整体清空。
+struct CookiesView: View {
+    @ObservedObject private var localization = LocalizationManager.shared
+
+    @State private var groups: [CookieManager.Group] = []
+    @State private var isLoading = true
+    @State private var showingClearConfirmation = false
+
+    private var totalCount: Int { groups.reduce(0) { $0 + $1.count } }
+
+    var body: some View {
+        List {
+            if isLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+            } else if groups.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "shield")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                    Text(L("暂无 Cookie"))
+                        .foregroundStyle(.secondary)
+                    Text(L("浏览网页并登录后，这里会显示保存的登录状态。"))
+                        .font(.footnote)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            } else {
+                Section {
+                    LabeledContent(L("共计"), value: String(format: L("%d 个"), totalCount))
+                }
+
+                Section {
+                    ForEach(groups) { group in
+                        HStack {
+                            Text(group.domain)
+                            Spacer()
+                            Text(String(format: L("%d 个"), group.count))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                Task {
+                                    await CookieManager.delete(domain: group.domain)
+                                    groups = await CookieManager.groups()
+                                }
+                            } label: {
+                                Label(L("删除"), systemImage: "trash")
+                            }
+                        }
+                    }
+                } footer: {
+                    Text(L("Cookie 用于保存网站登录状态。删除后，相关网站需要重新登录。"))
+                }
+            }
+        }
+        .navigationTitle(L("Cookie 管理"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task { groups = await CookieManager.groups() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .accessibilityLabel(L("刷新"))
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(role: .destructive) {
+                    showingClearConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .disabled(groups.isEmpty)
+                .accessibilityLabel(L("清空 Cookie"))
+            }
+        }
+        .task {
+            groups = await CookieManager.groups()
+            isLoading = false
+        }
+        .alert(L("清空 Cookie？"), isPresented: $showingClearConfirmation) {
+            Button(L("取消"), role: .cancel) {}
+            Button(L("清空"), role: .destructive) {
+                Task {
+                    await CookieManager.clearAll()
+                    groups = await CookieManager.groups()
+                }
+            }
+        } message: {
+            Text(L("所有网站保存的 Cookie 将被删除，相关网站需要重新登录。"))
         }
     }
 }

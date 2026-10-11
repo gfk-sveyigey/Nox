@@ -30,6 +30,12 @@ enum DownloadStorage {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
+    /// App 沙盒的缓存目录。网络 / 接口缓存实际落在这里，
+    /// 而不是 `URLCache.shared`（本 App 的请求几乎都绕开了它）。
+    static var cachesDirectory: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+    }
+
     /// WebKit 的数据目录（网站数据、网页缓存落在这里）。
     ///
     /// 没有公开 API 能取到 `WKWebsiteDataStore` 的占用，只能按目录估算；
@@ -137,6 +143,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
     private let appState: AppState
     private var cancellingIDs = Set<UUID>()
+    /// 正在拼接分片的任务。合并要读写整份文件、可能持续很久，
+    /// 期间若被再次触发就会各写一份成品 —— 表现为「同一任务冒出多个大小/时长不同的文件」。
+    private var assemblingIDs = Set<UUID>()
     private var speedSamples: [UUID: (bytes: Int64, date: Date, speed: Double)] = [:]
     private var progressTimer: Timer?
 
@@ -294,7 +303,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         appState.updateDownload(updated)
 
-        // 取消时历史已被清掉，重试相当于重新入队，补回一条。
+        // 取消后历史会保留，这里只是把它重新排到最前（addHistory 按页面去重）。
         appState.addHistory(title: updated.displayTitle, url: updated.refererURL ?? updated.sourceURL)
         LogStore.shared.info("retry \(updated.displayFilename)")
 
@@ -349,25 +358,8 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         LogStore.shared.info("cancel \(updated.displayFilename)")
 
-        // 被取消的任务不该留在历史里；但同一页面若还有其它未取消的下载，则保留。
-        removeHistoryIfUnused(for: updated)
-    }
-
-    /// 取消 / 删除后，若该页面已没有任何仍在队列、下载中或已完成的记录，
-    /// 就把它的历史条目一并清掉。
-    private func removeHistoryIfUnused(for record: DownloadRecord) {
-        let pageURL = record.refererURL ?? record.sourceURL
-        let identity = pageURL.pageIdentity
-
-        let hasOther = appState.downloads.contains { other in
-            other.id != record.id
-                && (other.refererURL ?? other.sourceURL).pageIdentity == identity
-                && other.status != .cancelled
-                && other.status != .failed
-        }
-
-        guard !hasOther else { return }
-        appState.removeHistory(matching: pageURL)
+        // 取消后保留历史记录：取消只是想停下来，不代表这次访问没发生过。
+        // 真正要清掉历史时，用下载页 / 历史页的「清空」或左滑删除。
     }
 
     /// 清空：删除记录 + 本地文件 + 未完成的分片。
@@ -453,10 +445,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         Self.directorySize(DownloadStorage.stagingRoot)
     }
 
-    /// HTTP 网络缓存占用（探测 / 清单请求留下的响应）
+    /// 网络缓存占用。
+    ///
+    /// 原先读 `URLCache.shared`，但本 App 的探测请求用 `.reloadIgnoringLocalCacheData`、
+    /// 下载走独立的 background session、WebView 又用自己的缓存 —— 于是它永远显示 0，
+    /// 和「网络缓存」这个名字对不上。改为按沙盒的 `Library/Caches` 目录统计。
     func networkCacheSize() -> Int64 {
-        let cache = URLCache.shared
-        return Int64(cache.currentDiskUsage + cache.currentMemoryUsage)
+        Self.directorySize(DownloadStorage.cachesDirectory)
     }
 
     /// 网站数据占用（Cookie、本地存储、网页缓存），按 WebKit 数据目录估算。
@@ -464,10 +459,15 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         Self.directorySize(DownloadStorage.webKitDirectory)
     }
 
-    /// 已下载视频占用的空间（`Documents` 目录）。
-    /// 与缓存分开统计，方便在「储存空间」里告诉用户「删掉这些能省多少」。
-    func documentsSize() -> Int64 {
-        Self.directorySize(DownloadStorage.documentsDirectory)
+    /// 已下载视频占用的空间。
+    ///
+    /// 只统计「记录仍在且文件确实存在」的成品，而不是整个 `Documents` 目录 ——
+    /// 后者会把用户自己通过「文件」App 放进来的东西一起算上，数值对不上。
+    func videosSize() -> Int64 {
+        appState.downloads.reduce(into: Int64(0)) { total, record in
+            guard record.status == .finished, let url = shareableFileURL(for: record) else { return }
+            total += DownloadStorage.fileSize(at: url)
+        }
     }
 
     /// App 回到前台时调用：丢弃后台期间的速度采样。
@@ -515,9 +515,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         )
     }
 
-    /// 清理 HTTP 网络缓存
+    /// 清理网络缓存：内存中的 URLCache + 沙盒 `Library/Caches` 目录。
     func clearNetworkCache() {
         URLCache.shared.removeAllCachedResponses()
+        Self.removeContents(of: DownloadStorage.cachesDirectory)
     }
 
     /// 清理网站数据（Cookie / 本地存储 / 网页缓存）。
@@ -552,6 +553,22 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
 
         return total
+    }
+
+    /// 删除目录下的所有内容（保留目录本身）
+    private static func removeContents(of directory: URL) {
+        let fileManager = FileManager.default
+
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else {
+            return
+        }
+
+        for entry in entries {
+            try? fileManager.removeItem(at: entry)
+        }
     }
 
     /// 删除目录下的一级子目录，`keep` 中的 UUID 目录除外。
@@ -665,10 +682,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         guard !cancellingIDs.contains(id) else { return }
 
-        // 探测本身失败（网络抖动 / 超时）时**不要**动分片目录：
-        // 已经下好的分片仍然是有效的，清掉就等于让用户白白重下。
-        if probe.failed {
-            abort(id: id, message: L("无法获取文件信息，请稍后重试。"))
+        // 探测失败时**不要**动分片目录：已经下好的分片仍然是有效的，
+        // 清掉就等于让用户白白重下。error 里已区分「链接失效」与「网络抖动」。
+        if let probeError = probe.error {
+            abort(id: id, message: probeError)
             return
         }
 
@@ -996,6 +1013,18 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             return
         }
 
+        // 服务器用 4xx/5xx 响应时，URLSession 仍会把响应体落成临时文件。
+        // 不检查状态码就会把错误页当成视频存下来 —— 表现就是「任务成功但文件不对」。
+        if let http = downloadTask.response as? HTTPURLResponse, http.statusCode >= 400 {
+            Task { @MainActor in
+                self.abort(
+                    id: recordID,
+                    message: String(format: L("服务器返回错误：HTTP %d"), http.statusCode)
+                )
+            }
+            return
+        }
+
         // URLSession 的临时文件必须在本回调内消费掉，
         // 所以这里同步搬到 Staging，再回主线程追加到分片文件。
         let stagingDirectory = DownloadStorage.stagingDirectory(for: recordID)
@@ -1087,19 +1116,33 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         segments: [DownloadSegment],
         partsDirectory: URL
     ) async {
+        // 同一任务只允许合并一次。合并要读写整份文件、可能持续很久，
+        // 期间若被再次触发（多个分片几乎同时收尾、或重试）就会各写一份成品，
+        // 于是同一个任务冒出多个大小、时长都不同的文件。
+        guard assemblingIDs.insert(recordID).inserted else { return }
+
         defer {
+            assemblingIDs.remove(recordID)
             resetScheduling(for: recordID)
             releaseSlot(recordID)
         }
 
         guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
-        guard record.status != .cancelled else { return }
+        // 已取消 / 已完成都不该再合并
+        guard record.status != .cancelled, record.status != .finished else { return }
 
         let documentsDirectory = DownloadStorage.documentsDirectory
+        let stagingDirectory = DownloadStorage.stagingDirectory(for: recordID)
+
+        var failure: String?
 
         do {
             try FileManager.default.createDirectory(
                 at: documentsDirectory,
+                withIntermediateDirectories: true
+            )
+            try FileManager.default.createDirectory(
+                at: stagingDirectory,
                 withIntermediateDirectories: true
             )
 
@@ -1113,25 +1156,58 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                 .sorted { $0.index < $1.index }
                 .map { DownloadStorage.partURL(in: partsDirectory, index: $0.index) }
 
+            // 先拼到暂存目录，再整体移到 Documents：
+            // 中途进程被杀时留下的只是暂存文件，不会残留半截成品 ——
+            // 否则下次合并会另生成一个新文件，看起来就是「重复合片」。
+            let temporary = stagingDirectory
+                .appendingPathComponent("merged-\(UUID().uuidString).tmp")
+
             try await Task.detached(priority: .utility) {
-                try DownloadStorage.concatenate(parts, into: destination)
+                try DownloadStorage.concatenate(parts, into: temporary)
             }.value
 
-            record.fileName = filename
-            record.fileURL = destination
-            record.status = .finished
-            record.progress = 1
-            record.errorMessage = nil
-            if let total = record.totalBytes {
-                record.receivedBytes = total
+            // 合并期间用户取消了：不要再写成「已完成」，避免覆盖取消状态
+            guard !cancellingIDs.contains(recordID) else {
+                try? FileManager.default.removeItem(at: temporary)
+                return
+            }
+
+            // 分片齐全但拼出来的大小对不上，说明磁盘上的分片已经和远端不一致
+            // （链接过期、文件被替换等），不能当成成功。
+            if let total = record.totalBytes, total > 0,
+               DownloadStorage.fileSize(at: temporary) != total {
+                try? FileManager.default.removeItem(at: temporary)
+                failure = L("合并后的文件大小与预期不符，请重新下载。")
+            } else {
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.moveItem(at: temporary, to: destination)
+
+                record.fileName = filename
+                record.fileURL = destination
+                record.status = .finished
+                record.progress = 1
+                record.errorMessage = nil
+                if let total = record.totalBytes {
+                    record.receivedBytes = total
+                }
             }
         } catch {
+            failure = String(format: L("保存文件失败：%@"), error.localizedDescription)
+        }
+
+        if let failure {
             record.status = .failed
-            record.errorMessage = String(format: L("保存文件失败：%@"), error.localizedDescription)
+            record.errorMessage = failure
+            // 失败时保留分片，方便重试续传；只清掉暂存
+            try? FileManager.default.removeItem(at: stagingDirectory)
+            clearTransferStats(for: recordID)
+            appState.updateDownload(record)
+            logCompletion(record)
+            return
         }
 
         try? FileManager.default.removeItem(at: partsDirectory)
-        try? FileManager.default.removeItem(at: DownloadStorage.stagingDirectory(for: recordID))
+        try? FileManager.default.removeItem(at: stagingDirectory)
 
         clearTransferStats(for: recordID)
         appState.updateDownload(record)
@@ -1207,7 +1283,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
 
         guard var record = appState.downloads.first(where: { $0.id == recordID }) else { return }
-        guard record.status != .cancelled else { return }
+        guard record.status != .cancelled, record.status != .finished else { return }
 
         do {
             let directory = DownloadStorage.documentsDirectory
@@ -1225,12 +1301,19 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             try? FileManager.default.removeItem(at: destination)
             try FileManager.default.moveItem(at: mergedFile, to: destination)
 
-            record.fileName = filename
-            record.fileURL = destination
-            record.status = .finished
-            record.progress = 1
-            record.errorMessage = nil
-            record.receivedBytes = DownloadStorage.fileSize(at: destination)
+            // 合并结果是 0 字节说明清单/分片早就失效了，不能当成成功
+            let mergedSize = DownloadStorage.fileSize(at: destination)
+            if mergedSize == 0 {
+                record.status = .failed
+                record.errorMessage = L("合并后的文件为空，请重新下载。")
+            } else {
+                record.fileName = filename
+                record.fileURL = destination
+                record.status = .finished
+                record.progress = 1
+                record.errorMessage = nil
+                record.receivedBytes = mergedSize
+            }
         } catch {
             record.status = .failed
             record.errorMessage = String(format: L("保存文件失败：%@"), error.localizedDescription)
@@ -1249,12 +1332,19 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     private struct ProbeResult {
         var supportsRanges: Bool
         var totalBytes: Int64?
-        /// 探测本身失败（网络错误 / 超时 / 非 HTTP 响应），与「服务器不支持 Range」是两回事
-        var failed: Bool
+        /// 探测失败的原因；nil = 成功拿到可用的响应。
+        ///
+        /// 链接失效（HTTP 4xx/5xx、返回网页）与网络抖动都归到这里，
+        /// 由调用方决定提示文案 —— 关键是**不能**在失败时清掉已下载的分片。
+        var error: String?
     }
 
     /// 用 `Range: bytes=0-0` 探一次：拿到 206 + Content-Range 就说明支持续传，
     /// 顺便取得文件总大小；返回 200 说明服务器忽略了 Range，只能整文件重下。
+    ///
+    /// **链接失效也算探测失败**：很久以前创建的任务，链接往往早已过期，服务器会回
+    /// 403/404（或一个 200 的错误网页）。若把它当成「可下载的 200」，就会把错误页
+    /// 当成视频存下来，任务还显示成功。
     private static func probe(
         url: URL,
         referer: URL?,
@@ -1278,19 +1368,42 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             let (_, response) = try await URLSession.shared.data(for: request)
 
             guard let http = response as? HTTPURLResponse else {
-                return ProbeResult(supportsRanges: false, totalBytes: nil, failed: true)
+                return ProbeResult(supportsRanges: false, totalBytes: nil, error: L("服务器返回了无法识别的响应。"))
+            }
+
+            // 4xx / 5xx：链接失效、需要重新登录、被拒绝访问……继续只会得到错误页
+            if http.statusCode >= 400 {
+                return ProbeResult(
+                    supportsRanges: false,
+                    totalBytes: nil,
+                    error: String(format: L("视频链接可能已失效（HTTP %d），请重新解析后再下载。"), http.statusCode)
+                )
+            }
+
+            // 200 却返回网页：多半是登录态失效后的跳转页，同样不能当视频保存
+            let contentType = (http.value(forHTTPHeaderField: "Content-Type") ?? "").lowercased()
+            if contentType.contains("text/html") {
+                return ProbeResult(
+                    supportsRanges: false,
+                    totalBytes: nil,
+                    error: L("视频链接可能已失效，请重新解析后再下载。")
+                )
             }
 
             if http.statusCode == 206,
                let contentRange = http.value(forHTTPHeaderField: "Content-Range"),
                let total = totalBytes(fromContentRange: contentRange) {
-                return ProbeResult(supportsRanges: true, totalBytes: total, failed: false)
+                return ProbeResult(supportsRanges: true, totalBytes: total, error: nil)
             }
 
             let length = http.value(forHTTPHeaderField: "Content-Length").flatMap { Int64($0) }
-            return ProbeResult(supportsRanges: false, totalBytes: length, failed: false)
+            return ProbeResult(supportsRanges: false, totalBytes: length, error: nil)
         } catch {
-            return ProbeResult(supportsRanges: false, totalBytes: nil, failed: true)
+            return ProbeResult(
+                supportsRanges: false,
+                totalBytes: nil,
+                error: String(format: L("无法获取文件信息：%@"), error.localizedDescription)
+            )
         }
     }
 
