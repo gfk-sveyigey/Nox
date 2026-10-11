@@ -26,6 +26,8 @@ struct VideoBrowserView: View {
     @State private var filenameInput = ""
     /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
     @State private var isScrolledDown = false
+    /// 是否显示原生「首页」（尚未打开任何页面，或用户点了主页按钮）
+    @State private var showingHome = true
     @FocusState private var addressFocused: Bool
 
     /// 地址栏展开 / 收起时的高度
@@ -65,28 +67,39 @@ struct VideoBrowserView: View {
                     WebViewContainer(webView: parser.browserWebView) { offset in
                         updateCollapsedState(for: offset)
                     }
+                    .background(Color(.systemBackground))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    webStateOverlay
-
-                    VStack(alignment: .trailing, spacing: 10) {
-                        if isParseBadgeVisible {
-                            parseBadge
-                                .transition(.opacity)
-                        }
-
-                        if isSnifferBadgeVisible {
-                            snifferBadge
-                                .transition(.opacity)
-                        }
+                    // 原生首页：盖在 WebView 上，不往网页里塞占位页。
+                    // 既让深色模式下「还没打开网页」时不再是白底，也是「主页」入口。
+                    if showingHome {
+                        homeScreen
+                            .transition(.opacity)
                     }
-                    .padding(16)
+
+                    if !showingHome {
+                        webStateOverlay
+
+                        VStack(alignment: .trailing, spacing: 10) {
+                            if isParseBadgeVisible {
+                                parseBadge
+                                    .transition(.opacity)
+                            }
+
+                            if isSnifferBadgeVisible {
+                                snifferBadge
+                                    .transition(.opacity)
+                            }
+                        }
+                        .padding(16)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.easeInOut(duration: 0.2), value: isParseBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
+            .animation(.easeInOut(duration: 0.2), value: showingHome)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -141,7 +154,7 @@ struct VideoBrowserView: View {
 
     // MARK: - 顶部地址栏
 
-    /// 地址栏：胶囊形，只保留输入框与「清空」。
+    /// 地址栏：胶囊形。左侧主页、中间输入框、右侧「清空」与书签。
     /// 页面向下滚动时高度收缩，回到顶部再展开。
     private var addressToolbar: some View {
         addressBar
@@ -152,6 +165,15 @@ struct VideoBrowserView: View {
 
     private var addressBar: some View {
         HStack(spacing: 6) {
+            Button {
+                goHome()
+            } label: {
+                Image(systemName: "house")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L("返回首页"))
+
             TextField(L("输入网页地址"), text: $address)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -172,6 +194,16 @@ struct VideoBrowserView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(L("清空地址栏"))
             }
+
+            Button {
+                toggleBookmark()
+            } label: {
+                Image(systemName: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark")
+                    .foregroundStyle(isCurrentPageBookmarked ? Color.accentColor : Color.secondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(!canBookmarkCurrentPage)
+            .accessibilityLabel(isCurrentPageBookmarked ? L("移除书签") : L("加入书签"))
         }
         .padding(.horizontal, 12)
         .frame(height: isScrolledDown ? collapsedControlHeight : controlHeight)
@@ -213,6 +245,98 @@ struct VideoBrowserView: View {
         withAnimation(.easeInOut(duration: 0.2)) {
             isScrolledDown = collapsed
         }
+    }
+
+    // MARK: - 首页与书签
+
+    /// 首页：还没打开任何页面、或点地址栏左侧主页按钮时显示。
+    ///
+    /// 用原生 SwiftUI 而不是加载一个空白网页：深色模式下背景才会跟随系统，
+    /// 不会出现「整个浏览区域还是白底」的问题。
+    private var homeScreen: some View {
+        ZStack {
+            Color(.systemBackground)
+
+            if appState.bookmarks.isEmpty {
+                ContentUnavailableView(
+                    L("还没有书签"),
+                    systemImage: "book",
+                    description: Text(L("打开网页后，点地址栏右侧的书签按钮即可收藏。"))
+                )
+            } else {
+                List {
+                    Section {
+                        ForEach(appState.bookmarks) { bookmark in
+                            Button {
+                                openBookmark(bookmark)
+                            } label: {
+                                bookmarkRow(bookmark)
+                            }
+                            .buttonStyle(.plain)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    appState.removeBookmark(bookmark)
+                                } label: {
+                                    Label(L("删除"), systemImage: "trash")
+                                }
+                            }
+                        }
+                    } header: {
+                        Text(L("书签"))
+                    }
+                }
+                .listStyle(.insetGrouped)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func bookmarkRow(_ bookmark: Bookmark) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(bookmark.displayTitle)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+
+            Text(bookmark.url.absoluteString)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var currentPageURL: URL? { parser.currentPageURL }
+
+    /// 有页面、且不在首页时，才允许收藏。
+    private var canBookmarkCurrentPage: Bool {
+        !showingHome && currentPageURL != nil
+    }
+
+    private var isCurrentPageBookmarked: Bool {
+        guard let url = currentPageURL else { return false }
+        return appState.isBookmarked(url)
+    }
+
+    private func toggleBookmark() {
+        guard let url = currentPageURL else { return }
+
+        let title = parser.currentPageTitle ?? url.host ?? url.absoluteString
+        withAnimation { appState.toggleBookmark(title: title, url: url) }
+    }
+
+    private func openBookmark(_ bookmark: Bookmark) {
+        addressFocused = false
+        address = bookmark.url.absoluteString
+        showingHome = false
+        parser.load(bookmark.url)
+    }
+
+    /// 回到首页。不卸载当前页面，从书签 / 地址栏再前进即可。
+    private func goHome() {
+        addressFocused = false
+        parser.clearLoadError()
+        withAnimation(.easeInOut(duration: 0.2)) { showingHome = true }
     }
 
     // MARK: - 悬浮入口（解析 / 嗅探）
@@ -384,6 +508,7 @@ struct VideoBrowserView: View {
 
         requestedURL = nil
         address = url.absoluteString
+        showingHome = false
         parser.load(url)
     }
 
@@ -404,6 +529,7 @@ struct VideoBrowserView: View {
         }
 
         address = url.absoluteString
+        showingHome = false
         parser.load(url)
     }
 

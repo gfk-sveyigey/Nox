@@ -1,6 +1,54 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "返回首页" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zur Startseite" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back to Home" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Retour à l'accueil" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "홈으로 돌아가기" } }
+      }
+    },
+    "书签" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lesezeichen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bookmarks" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Signets" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "북마크" } }
+      }
+    },
+    "加入书签" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Als Lesezeichen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add Bookmark" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ajouter un signet" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "북마크 추가" } }
+      }
+    },
+    "移除书签" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lesezeichen entfernen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove Bookmark" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer le signet" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "북마크 제거" } }
+      }
+    },
+    "还没有书签" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Noch keine Lesezeichen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No bookmarks yet" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun signet pour l'instant" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "아직 북마크가 없습니다" } }
+      }
+    },
+    "打开网页后，点地址栏右侧的书签按钮即可收藏。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Öffne eine Webseite und tippe rechts in der Adressleiste auf das Lesezeichen-Symbol." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open a page, then tap the bookmark button on the right of the address bar." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrez une page, puis touchez le bouton signet à droite de la barre d'adresse." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "웹페이지를 연 뒤 주소 표시줄 오른쪽의 북마크 버튼을 누르세요." } }
+      }
+    },
     "Cookie 管理" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Cookie-Verwaltung" } },
