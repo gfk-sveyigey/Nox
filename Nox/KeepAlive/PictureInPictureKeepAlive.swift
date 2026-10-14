@@ -34,7 +34,15 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
 
     /// 是否以最小化方式显示 PiP：开启时高度压到 0.1pt（视觉隐藏），
     /// 关闭时显示为普通可见小窗。由设置页切换。
-    var isMinimized = true
+    ///
+    /// 切换时**不重建** PiP 会话：刚停掉就立刻重启常被系统拒绝，
+    /// 会导致保活直接失效；这里只更新宿主视图尺寸并即时生效。
+    var isMinimized = true {
+        didSet {
+            guard isMinimized != oldValue else { return }
+            applySizeToRunningPiP()
+        }
+    }
 
     /// PiP 悬浮窗尺寸。最小化时高 0.1pt（不可见），否则 12:9 的普通小窗。
     private var pipSize: CGSize {
@@ -179,6 +187,18 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         sourceView = nil
         contentController = nil
         controller = nil
+    }
+
+    /// 把当前尺寸即时应用到已启动的 PiP：更新宿主视图约束与内容尺寸。
+    ///
+    /// 只调整几何，不重建会话 —— 重建会打断保活。窗口由系统在下次布局时跟随。
+    private func applySizeToRunningPiP() {
+        guard isActive else { return }
+        let size = pipSize
+        sourceWidth?.constant = size.width
+        sourceHeight?.constant = size.height
+        contentController?.preferredContentSize = size
+        sourceView?.superview?.layoutIfNeeded()
     }
 
     /// 在 key window 上挂一个透明、高度 0.1pt 的 source view，作为 PiP 的几何来源。
