@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import WebKit
 
@@ -146,8 +147,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     /// 正在拼接分片的任务。合并要读写整份文件、可能持续很久，
     /// 期间若被再次触发就会各写一份成品 —— 表现为「同一任务冒出多个大小/时长不同的文件」。
     private var assemblingIDs = Set<UUID>()
-    private var speedSamples: [UUID: (bytes: Int64, date: Date, speed: Double)] = [:]
+    /// 每个任务一个速度估算器；取代原先的「逐帧瞬时值 + 指数平滑」。
+    private var speedMeters: [UUID: SpeedMeter] = [:]
     private var progressTimer: Timer?
+
+    /// 后台保活：有活跃下载时启动，全部结束 / 取消时停止。
+    let keepAlive: KeepAliveCoordinator
+    private var keepAliveObservation: AnyCancellable?
 
     // MARK: - 全局并发调度
 
@@ -215,6 +221,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
     init(appState: AppState) {
         self.appState = appState
+        keepAlive = KeepAliveCoordinator()
         super.init()
         try? FileManager.default.createDirectory(
             at: DownloadStorage.documentsDirectory,
@@ -232,6 +239,21 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         // 启动时扫一遍：上次运行留下的「已完成」记录，文件可能已被系统清理或用户删除。
         refreshMissingFiles()
+
+        keepAlive.preferredMode = appState.keepAliveMode
+        keepAlive.onLog = { message in LogStore.shared.info(message) }
+
+        // 用下载记录的「排队中 / 下载中」驱动保活启停。
+        // 直接订阅 `downloads`，而不是在每个状态迁移点手写调用：漏一处就会出现
+        // 「任务已经全部结束，保活却还开着」的情况。
+        keepAliveObservation = appState.$downloads
+            .map { $0.contains { $0.status == .queued || $0.status == .downloading } }
+            .removeDuplicates()
+            .sink { [weak self] hasActive in
+                Task { @MainActor in
+                    self?.keepAlive.update(hasActiveTasks: hasActive)
+                }
+            }
     }
 
     /// 重新扫描「已完成但文件缺失」的记录。
@@ -249,6 +271,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         if !missing.isEmpty {
             LogStore.shared.warning("missing files: \(missing.count)")
         }
+    }
+
+    /// 设置页切换保活方式。
+    func setKeepAliveMode(_ mode: KeepAliveMode) {
+        appState.keepAliveMode = mode
+        appState.persist()
+        keepAlive.preferredMode = mode
     }
 
     // MARK: - 对外接口
@@ -306,6 +335,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         // 取消后历史会保留，这里只是把它重新排到最前（addHistory 按页面去重）。
         appState.addHistory(title: updated.displayTitle, url: updated.refererURL ?? updated.sourceURL)
         LogStore.shared.info("retry \(updated.displayFilename)")
+
+        // 重新开始：丢弃旧采样，速度从头累积。
+        speedMeters[updated.id] = nil
 
         start(updated)
     }
@@ -470,22 +502,27 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
     }
 
-    /// App 回到前台时调用：丢弃后台期间的速度采样。
+    /// App 回到前台时调用：丢弃后台期间的速度采样，并把列表里的速度清零。
     ///
-    /// 后台时进度定时器不会触发，若沿用暂停前的采样点，第一帧会拿「跨越整个后台的时间差」
-    /// 去算瞬时速度，得到明显偏离真实值的数字。重置后从当前字节数重新起算。
+    /// 后台时进度定时器不会触发。恢复后的第一帧无论是沿用旧基准点（把跨越整个后台的
+    /// 时间差当分母），还是把后台累积的字节塞进 1 秒里，都会得到明显偏离真实值的数字；
+    /// 直接把估算器重置，等新的采样窗口建立即可。
     func resetSpeedSamples() {
-        let now = Date()
-
-        for id in Array(speedSamples.keys) {
-            let bytes = speedSamples[id]?.bytes ?? 0
-            speedSamples[id] = (bytes, now, 0)
+        for id in Array(speedMeters.keys) {
+            speedMeters[id]?.reset()
 
             if var stats = transfers[id] {
                 stats.bytesPerSecond = 0
                 transfers[id] = stats
             }
         }
+    }
+
+    /// 场景切换：回前台重算速度采样，并让保活自愈（例如 PiP 被系统结束后重建）。
+    func handleScenePhase(isActive: Bool) {
+        guard isActive else { return }
+        resetSpeedSamples()
+        keepAlive.didEnterForeground()
     }
 
     /// 清空缓存：删除未完成下载的分片与暂存文件，以及 HTTP 网络缓存。
@@ -670,7 +707,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             bytesReceived: resumeBytes,
             totalBytes: record.totalBytes ?? 0
         )
-        speedSamples[id] = (resumeBytes, Date(), 0)
+        speedMeters[id] = nil
 
         startProgressTimerIfNeeded()
 
@@ -801,7 +838,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             bytesReceived: onDisk,
             totalBytes: max(totalBytes, 0)
         )
-        speedSamples[id] = (onDisk, Date(), 0)
+        speedMeters[id] = nil
 
         pumpSegments(recordID: id)
         startProgressTimerIfNeeded()
@@ -912,8 +949,6 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             return
         }
 
-        let now = Date()
-
         // 本次运行中、尚未追加到分片文件的字节数
         var inFlightBytes: [UUID: Int64] = [:]
         for context in contexts.values {
@@ -949,25 +984,12 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             // 速度统一在 1 秒节拍上算，而不是每次分片回调都算：
             // m3u8 的分片会在同一秒内成批完成，按回调时间戳算会得到一串
             // 极短的采样区间，速度因此剧烈抖动（表现为数字乱跳、明显偏大）。
-            var speed: Double = 0
-            if let previous = speedSamples[id] {
-                let interval = now.timeIntervalSince(previous.date)
-
-                // 采样区间过长（App 刚从后台返回、计时器被系统暂停）时不参与计算：
-                // 用旧基准点算出的「瞬时速度」会明显偏离真实值。
-                if interval > 0, interval <= 5 {
-                    let delta = received - previous.bytes
-
-                    if delta >= 0 {
-                        let instantaneous = Double(delta) / interval
-                        speed = previous.speed > 0
-                            ? previous.speed * 0.6 + instantaneous * 0.4
-                            : instantaneous
-                    }
-                }
-            }
-
-            speedSamples[id] = (received, now, speed)
+            //
+            // 具体数值交给 SpeedMeter：它用「累计字节 + 单调时钟」在滑动窗口内做首尾差分，
+            // 并对时间断层（切回前台 / 长期无数据）与计数器回退自动重置。
+            var meter = speedMeters[id] ?? SpeedMeter()
+            let speed = meter.update(totalBytes: received, at: SpeedMeter.now())
+            speedMeters[id] = meter
 
             transfers[id] = TransferStats(
                 bytesReceived: received,
@@ -996,7 +1018,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
     private func clearTransferStats(for id: UUID) {
         transfers.removeValue(forKey: id)
-        speedSamples.removeValue(forKey: id)
+        speedMeters.removeValue(forKey: id)
     }
 
     // MARK: - URLSessionDownloadDelegate
@@ -1244,7 +1266,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.updateDownload(updated)
 
         transfers[id] = TransferStats()
-        speedSamples[id] = (0, Date(), 0)
+        speedMeters[id] = nil
         hlsProgress.removeValue(forKey: id)
         startProgressTimerIfNeeded()
 
