@@ -23,8 +23,9 @@ func noxKeepAliveLog(_ message: String) {
 ///   签名会先用 `method(_:selector:result:arguments:)` 校验（`v@:@?`），校验不过就跳过。
 ///
 /// 机制（对齐参考实现 PiPCoexistenceExperiment）：
-/// 1. 构造阶段在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:`，
-///    让系统询问内容类型时得到共存值；
+/// 1. **先**在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:` 并挂上实例配置，
+///    **再**惰性取得 `pegasusProxy` —— 系统在创建 proxy 时会依据响应能力 / 内容类型决定实现，
+///    顺序反了这次会话就仍是普通 PiP（表现为启动保活时把其他 App 的画中画挤掉）；
 /// 2. 首次启动用 4，`didStart` 后延迟 1 秒提交 6（一次，不轮询）。
 final class PiPCoexistenceProtection {
 
@@ -49,6 +50,8 @@ final class PiPCoexistenceProtection {
     private final class Configuration {
         weak var proxy: NSObject?
         var providedType: Int
+        /// 正处于「惰性取得 proxy」的过程中，provider 借此机会补记 proxy 身份。
+        var isObtainingProxy = false
 
         init(proxy: NSObject?, providedType: Int) {
             self.proxy = proxy
@@ -74,17 +77,38 @@ final class PiPCoexistenceProtection {
 
     // MARK: - 生命周期
 
-    /// 构造阶段：定位内部适配对象、校验签名并安装内容类型 provider。
+    /// 构造阶段：定位内部适配对象，**先装 provider 再取 proxy**，最后校验签名并提交初始类型。
     func prepare() {
         guard Thread.isMainThread else { return }
         guard let adapter = Self.object(controller, selector: "platformAdapter"),
-              let proxy = Self.object(adapter, selector: "pegasusProxy"),
-              let expected = NSClassFromString("PGPictureInPictureProxy"),
-              proxy.isKind(of: expected) else {
+              let base = object_getClass(adapter),
+              Self.addScopedProvider(to: base) else {
             noxKeepAliveLog("画中画共存保护：未找到内部适配对象，跳过（仅使用公开 PiP）")
             return
         }
-        guard install(adapter: adapter, proxy: proxy) else {
+
+        // 关键顺序：provider 与其初始值必须在**惰性取得 pegasusProxy 之前**就位。
+        // 系统在创建 proxy 时会依据实例响应能力 / 内容类型决定实现；
+        // 先取 proxy 再装 provider，会让本次会话仍是普通 PiP ——
+        // 表现就是「启动保活时把其他 App 的画中画挤掉」。
+        let configuration = Configuration(proxy: nil, providedType: initialContentType)
+        objc_setAssociatedObject(adapter, &Self.associationKey, configuration, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        configuration.isObtainingProxy = true
+        let candidateProxy = Self.object(adapter, selector: "pegasusProxy")
+        configuration.isObtainingProxy = false
+
+        guard let proxy = candidateProxy,
+              let expected = NSClassFromString("PGPictureInPictureProxy"),
+              proxy.isKind(of: expected),
+              configuration.proxy == nil || configuration.proxy === proxy else {
+            objc_setAssociatedObject(adapter, &Self.associationKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            noxKeepAliveLog("画中画共存保护：未找到内部代理对象，跳过（仅使用公开 PiP）")
+            return
+        }
+        configuration.proxy = proxy
+
+        guard install(adapter: adapter, proxy: proxy, configuration: configuration) else {
+            objc_setAssociatedObject(adapter, &Self.associationKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             noxKeepAliveLog("画中画共存保护：内部签名不匹配，跳过（仅使用公开 PiP）")
             return
         }
@@ -103,6 +127,7 @@ final class PiPCoexistenceProtection {
         DispatchQueue.main.asyncAfter(deadline: .now() + postStartDelay) { [weak self] in
             guard let self, self.installationID == token else { return }
             guard self.controller === controller, controller.isPictureInPictureActive,
+                  !controller.isPictureInPictureSuspended,
                   let adapter = Self.object(controller, selector: "platformAdapter"),
                   let proxy = Self.object(adapter, selector: "pegasusProxy"),
                   adapter === self.adapter, proxy === self.proxy else {
@@ -137,32 +162,29 @@ final class PiPCoexistenceProtection {
 
     // MARK: - 安装与提交
 
-    /// 安装 provider 并把首次提交（内容类型 4）挂到播放状态更新上。
-    private func install(adapter candidate: NSObject, proxy candidateProxy: NSObject) -> Bool {
+    /// 校验运行时可用的内部签名，登记实例配置，并把首次提交（内容类型 4）挂到播放状态更新上。
+    private func install(adapter candidate: NSObject, proxy candidateProxy: NSObject, configuration: Configuration) -> Bool {
         guard Thread.isMainThread else { return false }
 
         let updateSelector = NSSelectorFromString("updatePlaybackStateUsingBlock:")
         let setterSelector = NSSelectorFromString("setContentType:")
-        guard let base = object_getClass(candidate),
-              let proxyClass = object_getClass(candidateProxy),
+        guard let proxyClass = object_getClass(candidateProxy),
               let update = Self.method(proxyClass, selector: updateSelector, result: "v", arguments: ["@?"]),
               let state = Self.object(candidateProxy, selector: "playbackState"),
               let stateClass = object_getClass(state),
               let setter = Self.method(stateClass, selector: setterSelector, result: "v", arguments: ["q"]),
               let previousType = Self.contentType(of: candidateProxy),
-              previousType == initialContentType,
-              Self.addScopedProvider(to: base) else {
+              previousType == initialContentType else {
             return false
         }
 
         let token = UUID()
-        let configuration = Configuration(proxy: candidateProxy, providedType: initialContentType)
         self.configuration = configuration
         installationID = token
         originalContentType = previousType
         adapter = candidate
         proxy = candidateProxy
-        objc_setAssociatedObject(candidate, &Self.associationKey, configuration, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        // 关联配置已在 prepare() 里挂好（必须早于 proxy 创建），这里不再重复设置。
 
         let setterIMP = unsafeBitCast(method_getImplementation(setter), to: IntegerSetter.self)
         let mutation: StateMutation = { [weak self, weak candidate] currentState in
@@ -172,7 +194,7 @@ final class PiPCoexistenceProtection {
             setterIMP(currentState, setterSelector, configuration.providedType)
         }
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(candidateProxy, updateSelector, mutation)
-        noxKeepAliveLog("画中画共存保护：已在构造阶段安装 provider（首次类型 4，启动后转 6）")
+        noxKeepAliveLog("画中画共存保护：已安装 provider（首次类型 4，启动后转 6）")
         return true
     }
 
@@ -228,6 +250,11 @@ final class PiPCoexistenceProtection {
         let providerBlock: @convention(block) (AnyObject, AnyObject?) -> Int = { object, queriedProxy in
             guard let configuration = objc_getAssociatedObject(object, &associationKey) as? Configuration else {
                 return (queriedProxy as? NSObject).flatMap { contentType(of: $0) } ?? 4
+            }
+            // 惰性取得 proxy 的这一次调用：把 queriedProxy 记成当前会话的代理。
+            if configuration.proxy == nil, configuration.isObtainingProxy, Thread.isMainThread,
+               let queried = queriedProxy as? NSObject {
+                configuration.proxy = queried
             }
             guard let proxy = configuration.proxy, queriedProxy === proxy else {
                 return (queriedProxy as? NSObject).flatMap { contentType(of: $0) } ?? 4
