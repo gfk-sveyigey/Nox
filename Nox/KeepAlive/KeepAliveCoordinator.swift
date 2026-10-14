@@ -31,6 +31,18 @@ final class KeepAliveCoordinator: ObservableObject {
         }
     }
 
+    /// 是否以最小化（视觉隐藏）方式显示画中画。改变时会在运行中重建画中画以立即生效。
+    var pipMinimized: Bool = true {
+        didSet {
+            guard pipMinimized != oldValue else { return }
+            pictureInPicture.isMinimized = pipMinimized
+            if activeMode == .pictureInPicture, pictureInPicture.isActive {
+                deactivate()
+                reconcile()
+            }
+        }
+    }
+
     /// 诊断信息出口，接到 App 日志。
     var onLog: ((String) -> Void)?
 
@@ -40,6 +52,7 @@ final class KeepAliveCoordinator: ObservableObject {
 
     init() {
         pictureInPicture.coexistenceFallback = piPCoexistenceFallback
+        pictureInPicture.isMinimized = pipMinimized
         // 回调可能来自非主线程（音频中断通知等），显式跳回主线程再改状态。
         silentAudio.onInterruption = { [weak self] in
             Task { @MainActor in self?.handleInterruption() }

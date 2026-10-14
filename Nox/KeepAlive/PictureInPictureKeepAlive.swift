@@ -32,8 +32,14 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private var sourceHeight: NSLayoutConstraint?
     private var coexistence: PiPCoexistenceProtection?
 
-    /// PiP 悬浮窗尺寸：宽 300pt、高 0.1pt，即视觉隐藏。
-    private let pipSize = CGSize(width: 300, height: 0.1)
+    /// 是否以最小化方式显示 PiP：开启时高度压到 0.1pt（视觉隐藏），
+    /// 关闭时显示为普通可见小窗。由设置页切换。
+    var isMinimized = true
+
+    /// PiP 悬浮窗尺寸。最小化时高 0.1pt（不可见），否则 12:9 的普通小窗。
+    private var pipSize: CGSize {
+        isMinimized ? CGSize(width: 300, height: 0.1) : CGSize(width: 300, height: 225)
+    }
 
     /// 启动后的「一次性」核对任务，确认 PiP 真的进入激活状态。
     private var startVerificationTask: Task<Void, Never>?
