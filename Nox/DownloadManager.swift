@@ -241,6 +241,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         refreshMissingFiles()
 
         keepAlive.preferredMode = appState.keepAliveMode
+        keepAlive.piPCoexistenceFallback = appState.pipCoexistenceFallback
         keepAlive.onLog = { message in LogStore.shared.info(message) }
 
         // 用下载记录的「排队中 / 下载中」驱动保活启停。
@@ -278,6 +279,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.keepAliveMode = mode
         appState.persist()
         keepAlive.preferredMode = mode
+    }
+
+    /// 设置页选择「画中画共存保护不可用」时的兜底方案。
+    func setPiPCoexistenceFallback(_ fallback: PiPCoexistenceFallback) {
+        appState.pipCoexistenceFallback = fallback
+        appState.persist()
+        keepAlive.piPCoexistenceFallback = fallback
     }
 
     // MARK: - 对外接口

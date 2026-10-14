@@ -18,6 +18,19 @@ final class KeepAliveCoordinator: ObservableObject {
         didSet { reconcile() }
     }
 
+    /// 画中画共存保护不可用时用户选择的兜底方案。
+    var piPCoexistenceFallback: PiPCoexistenceFallback = .keepAlive {
+        didSet {
+            pictureInPicture.coexistenceFallback = piPCoexistenceFallback
+            if activeMode == .pictureInPicture, pictureInPicture.isActive,
+               !pictureInPicture.isCoexistenceInstalled, piPCoexistenceFallback != .keepAlive {
+                // 用户把「继续用画中画」改成了别的，而当前这档并无共存保护：按新选择重建。
+                deactivate()
+                reconcile()
+            }
+        }
+    }
+
     /// 诊断信息出口，接到 App 日志。
     var onLog: ((String) -> Void)?
 
@@ -26,6 +39,7 @@ final class KeepAliveCoordinator: ObservableObject {
     private var hasActiveTasks = false
 
     init() {
+        pictureInPicture.coexistenceFallback = piPCoexistenceFallback
         // 回调可能来自非主线程（音频中断通知等），显式跳回主线程再改状态。
         silentAudio.onInterruption = { [weak self] in
             Task { @MainActor in self?.handleInterruption() }
@@ -92,11 +106,16 @@ final class KeepAliveCoordinator: ObservableObject {
             lastError = nil
             onLog?("保活已启动：\(mode.title)")
         } catch {
-            // 失败就停在这一档，不再自动改用别的保活方式：
-            // 静音音频会打断用户正在播放的其它音频，静默切换比「暂时没有保活」更意外。
             lastError = error.localizedDescription
             onLog?("保活启动失败：\(error.localizedDescription)")
             activeMode = .off
+            // 共存保护不可用时按用户选的兜底方案处理；其余失败就停在这一档，
+            // 不再自动改用别的保活方式（静音音频会打断用户正在播放的其它音频）。
+            if mode == .pictureInPicture,
+               (error as? KeepAliveError)?.isCoexistenceUnavailable == true,
+               piPCoexistenceFallback == .silentAudio {
+                activate(.silentAudio)
+            }
         }
     }
 

@@ -1676,6 +1676,46 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ ne peut pas être démarré pour le moment" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@을(를) 일시적으로 시작할 수 없습니다" } }
       }
+    },
+    "共存保护不可用时" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wenn Koexistenzschutz nicht verfügbar ist" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When coexistence protection is unavailable" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Si la protection de coexistence est indisponible" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공존 보호를 사용할 수 없을 때" } }
+      }
+    },
+    "继续用画中画" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Weiter Bild-in-Bild" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue with PiP" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Continuer l'image dans l'image" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면 계속 사용" } }
+      }
+    },
+    "改用静音音频" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zu stillem Ton wechseln" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Switch to silent audio" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Passer à un audio silencieux" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "무음 오디오로 전환" } }
+      }
+    },
+    "停止保活" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein Keep-Alive" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop keep-alive" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Arrêter le maintien" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "유지 중지" } }
+      }
+    },
+    "%@ 的共存保护不可用" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Koexistenzschutz für %@ nicht verfügbar" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Coexistence protection is unavailable for %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Protection de coexistence indisponible pour %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@의 공존 보호를 사용할 수 없습니다" } }
+      }
     }
   },
   "version" : "1.0"
