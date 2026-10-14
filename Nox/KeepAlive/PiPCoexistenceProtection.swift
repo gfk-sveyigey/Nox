@@ -120,9 +120,22 @@ final class PiPCoexistenceProtection {
     /// 延迟从「启动成功」开始计时，不会反复提交；期间会核对实例身份，
     /// 防止旧的延迟任务改到新的会话上。
     func schedulePostStartUpdate(for controller: AVPictureInPictureController) {
-        guard Thread.isMainThread, isPrepared, configuration != nil, !postStartScheduled else { return }
-        guard self.controller === controller, controller.isPictureInPictureActive else { return }
+        guard Thread.isMainThread else { return }
+        guard isPrepared, configuration != nil else {
+            noxKeepAliveLog("画中画共存保护：未安装 provider，跳过启动后提交")
+            return
+        }
+        guard !postStartScheduled else { return }
+        guard self.controller === controller else {
+            noxKeepAliveLog("画中画共存保护：controller 身份不一致，跳过启动后提交")
+            return
+        }
+        guard controller.isPictureInPictureActive else {
+            noxKeepAliveLog("画中画共存保护：didStart 时 PiP 未处于激活状态，跳过启动后提交")
+            return
+        }
         postStartScheduled = true
+        noxKeepAliveLog("画中画共存保护：已安排 1 秒后提交共存类型")
         let token = installationID
         DispatchQueue.main.asyncAfter(deadline: .now() + postStartDelay) { [weak self] in
             guard let self, self.installationID == token else { return }
@@ -194,7 +207,8 @@ final class PiPCoexistenceProtection {
             setterIMP(currentState, setterSelector, configuration.providedType)
         }
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(candidateProxy, updateSelector, mutation)
-        noxKeepAliveLog("画中画共存保护：已安装 provider（首次类型 4，启动后转 6）")
+        let localType = Self.contentType(of: candidateProxy).map(String.init) ?? "unknown"
+        noxKeepAliveLog("画中画共存保护：已安装 provider（首次类型 4，启动后转 6，本地 contentType=\(localType)）")
         return true
     }
 
@@ -221,7 +235,8 @@ final class PiPCoexistenceProtection {
             setterIMP(currentState, setterSelector, self.coexistingContentType)
         }
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(proxy, updateSelector, mutation)
-        noxKeepAliveLog("画中画共存保护：已提交共存内容类型 6")
+        let localType = Self.contentType(of: proxy).map(String.init) ?? "unknown"
+        noxKeepAliveLog("画中画共存保护：已提交共存内容类型 6（本地 contentType=\(localType)）")
     }
 
     // MARK: - 运行时校验
