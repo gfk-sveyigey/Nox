@@ -287,13 +287,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.pipCoexistenceFallback = fallback
         appState.persist()
         keepAlive.piPCoexistenceFallback = fallback
+    }
 
     /// 设置页切换「是否以最小化显示画中画」。
     func setPiPMinimized(_ minimized: Bool) {
         appState.pipMinimized = minimized
         appState.persist()
         keepAlive.pipMinimized = minimized
-    }
     }
 
     // MARK: - 对外接口
