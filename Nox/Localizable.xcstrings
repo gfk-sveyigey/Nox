@@ -1668,6 +1668,14 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ n'est pas disponible sur cet appareil" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@은(는) 이 기기에서 사용할 수 없습니다" } }
       }
+    },
+    "%@ 暂时无法启动" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ kann vorübergehend nicht gestartet werden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ is temporarily unavailable" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ ne peut pas être démarré pour le moment" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@을(를) 일시적으로 시작할 수 없습니다" } }
+      }
     }
   },
   "version" : "1.0"

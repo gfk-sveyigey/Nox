@@ -218,6 +218,7 @@ final class XxxParser: VideoSiteParser {
 
 - 抽成 `KeepAliveStrategy`（`SilentAudioKeepAlive` / `PictureInPictureKeepAlive`），由 `KeepAliveCoordinator` 统一调度：有「排队中 / 下载中」任务就开启，全部结束就停止；失败按 画中画 → 静音音频 → 关闭 的降级链回退
 - 画中画走 `AVPictureInPictureVideoCallViewController` + `activeVideoCallSourceView`，内容完全透明、高度压到 0.1pt，不申请音频会话，因此不打断其他 App 的音频；`PiPCoexistenceProtection` 在运行时校验内部接口后才做共存适配，校验不通过即静默跳过
+- 启动是异步的：画中画启动后做一次「一次性」核对，若长时间未进入激活状态会上报中断并按降级链回退；没有任何高频轮询或重复提交
 - 保活启停由 `DownloadManager` 订阅 `AppState.$downloads` 驱动，不在每个状态迁移点手写调用，避免漏掉而「任务都结束了保活还开着」
 - 需要在 `Info.plist` 开启 `UIBackgroundModes: audio`
 
