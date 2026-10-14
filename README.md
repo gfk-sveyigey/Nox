@@ -52,7 +52,7 @@
 - 顶部展示 App 图标与名称（随列表滚动）
 - 设置项按功能分成尽可能少的组：内容与下载（下载设置 / 储存空间 / 解析来源 / Cookie 管理 / 历史记录 / 日志）、通用（外观 / 语言）
 - 下载设置（二级页）：同时下载任务数、下载清晰度、多线程下载 / 下载线程数 / m3u8 分片并发
-- 后台保活：关闭 / 静音音频 / 画中画 (PiP)（默认画中画）。有「排队中 / 下载中」任务时自动开启、全部结束自动停止；画中画不占用音频会话，切回前台若发现保活已被系统结束会自动重建
+- 后台保活：关闭 / 静音音频 / 画中画 (PiP)（默认画中画），选中项即当前生效的保活方式。有「排队中 / 下载中」任务时自动开启、全部结束自动停止；画中画不占用音频会话，切回前台若发现保活已被系统结束会自动重建
 - 解析来源（二级页）：各站点与 Sniffer 的开关
 - 储存空间（二级页）：按「已下载视频 / 下载分片 / 临时文件 / 网络缓存 / 网站数据」分类列出各自占用；已下载视频只统计 App 实际下载且文件仍在的成品，网络缓存按沙盒 `Library/Caches` 统计（不再恒为 0）；双指下滑进入多选，进入后返回键位置变为「完成」，右上角为刷新按钮（多选态下变为红色「清理」）
 - Cookie 管理（二级页）：列出各站点保存的 Cookie 数量，可单独删除某个站点或一次清空；`WKWebView` 使用持久化数据存储，登录状态本就跨启动保留，这里用于查看与清理
@@ -216,7 +216,8 @@ final class XxxParser: VideoSiteParser {
 
 ### 后台保活
 
-- 抽成 `KeepAliveStrategy`（`SilentAudioKeepAlive` / `PictureInPictureKeepAlive`），由 `KeepAliveCoordinator` 统一调度：有「排队中 / 下载中」任务就开启，全部结束就停止；失败按 画中画 → 静音音频 → 关闭 的降级链回退
+- 抽成 `KeepAliveStrategy`（`SilentAudioKeepAlive` / `PictureInPictureKeepAlive`），由 `KeepAliveCoordinator` 统一调度：有「排队中 / 下载中」任务就开启，全部结束就停止；失败或被打断只记录原因，**不自动切换到别的保活方式**（避免静默改用会打断其它音频的静音音频），回到前台再重建
+- 画中画启动由 KVO 驱动：等 `isPictureInPicturePossible` 就绪后再 `startPictureInPicture()`（创建后立刻启动常被系统静默忽略）；另有一次性看门狗，长时间没激活才上报中断
 - 画中画走 `AVPictureInPictureVideoCallViewController` + `activeVideoCallSourceView`，内容完全透明、高度压到 0.1pt，不申请音频会话，因此不打断其他 App 的音频；`PiPCoexistenceProtection` 在运行时校验内部接口后才做共存适配，校验不通过即静默跳过
 - 启动是异步的：画中画启动后做一次「一次性」核对，若长时间未进入激活状态会上报中断并按降级链回退；没有任何高频轮询或重复提交
 - 保活启停由 `DownloadManager` 订阅 `AppState.$downloads` 驱动，不在每个状态迁移点手写调用，避免漏掉而「任务都结束了保活还开着」

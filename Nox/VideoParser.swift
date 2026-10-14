@@ -191,8 +191,12 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     }
 
     /// 页面开始渲染时地址已基本确定（含重定向后的地址），此时同步地址栏。
+    ///
+    /// 同时重算命中规则：手势后退 / 前进不一定走完整的 `didStartProvisional`
+    /// 流程，只靠 `didFinish` 容易出现「回到上一页后解析入口不出现」。
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
         currentURL = webView.url
+        pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -208,7 +212,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         isLoading = false
-        pageReady = false
+        pageReady = pageReadyAfterFailure(error)
         pageMatchesRule = activeParser(for: webView.url) != nil
         isUserInitiatedLoad = false
         recordLoadFailure(error)
@@ -216,10 +220,22 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         isLoading = false
-        pageReady = false
+        pageReady = pageReadyAfterFailure(error)
         pageMatchesRule = activeParser(for: webView.url) != nil
         isUserInitiatedLoad = false
         recordLoadFailure(error)
+    }
+
+    /// 失败 / 取消之后该不该认为页面仍然可用。
+    ///
+    /// 手势后退 / 前进常伴随一次「被取消的临时导航」：页面并没有真的离开。
+    /// 若一律把 `pageReady` 置 false，解析入口会一直不出现（直到下一次完整加载），
+    /// 表现为「返回上一页后不解析」。这里按 WebView 的真实状态恢复。
+    private func pageReadyAfterFailure(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        let cancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
+        guard cancelled else { return false }
+        return webView.url != nil && !webView.isLoading
     }
 
     /// 记录导航失败原因。
