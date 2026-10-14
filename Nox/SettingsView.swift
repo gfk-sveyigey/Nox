@@ -124,6 +124,18 @@ struct SettingsView: View {
                         Text(mode.title).tag(mode)
                     }
                 }
+
+                // 只有画中画需要共存保护；选了其它保活方式时这一项没有意义。
+                if appState.keepAliveMode == .pictureInPicture {
+                    Picker(L("共存保护不可用时"), selection: Binding(
+                        get: { appState.pipCoexistenceFallback },
+                        set: { manager.setPiPCoexistenceFallback($0) }
+                    )) {
+                        ForEach(PiPCoexistenceFallback.allCases) { fallback in
+                            Text(fallback.title).tag(fallback)
+                        }
+                    }
+                }
             }
 
             Section {

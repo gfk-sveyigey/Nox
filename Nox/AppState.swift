@@ -52,6 +52,8 @@ final class AppState: ObservableObject {
     /// 后台保活方式：关闭 / 静音音频 / 画中画。
     /// 默认走画中画：它不占用音频会话，不会打断其他 App 正在播放的音频。
     @Published var keepAliveMode: KeepAliveMode = .pictureInPicture
+    /// 画中画共存保护不可用时怎么办（继续用画中画 / 改用静音音频 / 停止保活）。
+    @Published var pipCoexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
     /// 历史记录的保留方式：按条数 / 按时间
     @Published var historyRetentionMode: HistoryRetentionMode = .count
@@ -75,6 +77,7 @@ final class AppState: ObservableObject {
     private let m3u8ConcurrencyKey = "Nox.m3u8SegmentConcurrency"
     private let maxConcurrentDownloadsKey = "Nox.maxConcurrentDownloads"
     private let keepAliveModeKey = "Nox.keepAliveMode"
+    private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let historyRetentionModeKey = "Nox.historyRetentionMode"
     private let historyRetentionCountKey = "Nox.historyRetentionCount"
     private let historyRetentionDaysKey = "Nox.historyRetentionDays"
@@ -258,6 +261,7 @@ final class AppState: ObservableObject {
         defaults.set(m3u8SegmentConcurrency, forKey: m3u8ConcurrencyKey)
         defaults.set(maxConcurrentDownloads, forKey: maxConcurrentDownloadsKey)
         defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
+        defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(historyRetentionMode.rawValue, forKey: historyRetentionModeKey)
         defaults.set(historyRetentionCount, forKey: historyRetentionCountKey)
         defaults.set(historyRetentionDays, forKey: historyRetentionDaysKey)
@@ -336,6 +340,10 @@ final class AppState: ObservableObject {
         keepAliveMode = KeepAliveMode(
             rawValue: defaults.string(forKey: keepAliveModeKey) ?? ""
         ) ?? .pictureInPicture
+
+        pipCoexistenceFallback = PiPCoexistenceFallback(
+            rawValue: defaults.string(forKey: pipCoexistenceFallbackKey) ?? ""
+        ) ?? .keepAlive
 
         disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
 

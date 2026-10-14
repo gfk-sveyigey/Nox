@@ -29,3 +29,24 @@ enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
         }
     }
 }
+
+/// 画中画「共存保护」不可用时的处理方式（用户在设置里选）。
+///
+/// 共存保护依赖系统内部接口；装不上时就只能做取舍：
+/// 要么继续用画中画保活（可能把其他 App 的画中画挤掉），
+/// 要么不打扰别人（改用静音音频 / 干脆不保活）。
+enum PiPCoexistenceFallback: String, CaseIterable, Identifiable, Codable {
+    case keepAlive
+    case silentAudio
+    case stop
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .keepAlive: return L("继续用画中画")
+        case .silentAudio: return L("改用静音音频")
+        case .stop: return L("停止保活")
+        }
+    }
+}

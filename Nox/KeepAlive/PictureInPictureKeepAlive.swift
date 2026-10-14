@@ -22,6 +22,9 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 诊断信息出口（内部适配是否可用等），由协调器转接到日志。
     var onLog: ((String) -> Void)?
 
+    /// 共存保护装不上时的处理方式，由协调器按用户在设置里选的值同步过来。
+    var coexistenceFallback: PiPCoexistenceFallback = .keepAlive
+
     private var controller: AVPictureInPictureController?
     private var contentController: AVPictureInPictureVideoCallViewController?
     private weak var sourceView: UIView?
@@ -73,9 +76,17 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         controller = pipController
 
         let protection = PiPCoexistenceProtection(controller: pipController)
-        protection.onLog = { [weak self] in self?.onLog?($0) }
         coexistence = protection
         protection.prepare()
+
+        // 共存保护装不上：按用户选的兜底方案处理。
+        // `.keepAlive` 时继续启动（可能挤掉其它 App 的 PiP），其余情况报错交给协调器。
+        if !protection.isSupported, coexistenceFallback != .keepAlive {
+            onLog?("画中画共存保护不可用，按设置\(coexistenceFallback.title)")
+            coexistence = nil
+            cleanup()
+            throw KeepAliveError.coexistenceUnavailable(name)
+        }
 
         isActive = true
         // 直接以 0.1pt 启动（不是先开大再缩小），避免闪一下可见窗口。
@@ -87,6 +98,9 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         // 兜底看门狗：若一段时间内始终没能激活（可能不可用），上报一次中断。
         scheduleStartVerification(for: pipController, delay: 5)
     }
+
+    /// 共存保护是否真的装上了（装不上时按 `coexistenceFallback` 处理）。
+    var isCoexistenceInstalled: Bool { coexistence?.isSupported ?? false }
 
     /// PiP 是否真的还在显示（回前台时用来判断保活是否被系统 / 用户结束）。
     var isLive: Bool { controller?.isPictureInPictureActive ?? false }
