@@ -31,15 +31,14 @@ final class KeepAliveCoordinator: ObservableObject {
         }
     }
 
-    /// 是否以最小化（视觉隐藏）方式显示画中画。改变时会在运行中重建画中画以立即生效。
+    /// 是否以最小化（视觉隐藏）方式显示画中画。
+    ///
+    /// 只把尺寸变化即时应用到正在运行的画中画，**不重建会话**：
+    /// 刚停掉就立刻重启常被系统拒绝，会让保活直接失效。
     var pipMinimized: Bool = true {
         didSet {
             guard pipMinimized != oldValue else { return }
             pictureInPicture.isMinimized = pipMinimized
-            if activeMode == .pictureInPicture, pictureInPicture.isActive {
-                deactivate()
-                reconcile()
-            }
         }
     }
 
