@@ -220,7 +220,7 @@ final class XxxParser: VideoSiteParser {
 - 画中画启动由 KVO 驱动：等 `isPictureInPicturePossible` 就绪后再 `startPictureInPicture()`（创建后立刻启动常被系统静默忽略）；另有一次性看门狗，长时间没激活才上报中断
 - 画中画走 `AVPictureInPictureVideoCallViewController` + `activeVideoCallSourceView`，内容完全透明，不申请音频会话，因此不打断其他 App 的音频；悬浮窗尺寸由「以最小化显示画中画」控制：开启时高度压到 0.1pt（视觉隐藏），关闭时显示为 300×225 的普通小窗；切换只即时更新宿主视图尺寸，**不重建画中画会话**（刚停掉就重启常被系统拒绝，会让保活失效）
 - 共存保护装不上时按用户在设置里的选择处理（继续用画中画 / 改用静音音频 / 停止保活），不再默认静默退回普通画中画
-- 共存保护 `PiPCoexistenceProtection` 对齐参考实现（GlobalRefresh-PiP 1.1.1）：按 `platformAdapter` / `pegasusProxy` 选择器找内部对象，在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:`（并 hook `respondsToSelector:`），首次启动用内容类型 4、`didStart` 后延迟 1 秒提交 6；所有调用都先做运行时签名校验，校验不通过即静默跳过
+- 共存保护 `PiPCoexistenceProtection` 对齐参考实现（GlobalRefresh-PiP 1.1.1）：按 `platformAdapter` / `pegasusProxy` 选择器找内部对象，在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:`（并 hook `respondsToSelector:`）并挂好实例配置，**必须在惰性取得 `pegasusProxy` 之前完成**（顺序反了，本次会话仍是普通 PiP —— 表现就是启动保活时挤掉其他 App 的画中画）；首次启动用内容类型 4、`didStart` 后延迟 1 秒提交 6；所有调用都先做运行时签名校验，校验不通过即静默跳过
 - 启动是异步的：画中画启动后做一次「一次性」核对，若长时间未进入激活状态会上报中断，由协调器按用户在「共存保护不可用时」里的选择处理；没有任何高频轮询或重复提交
 - 保活启停由 `DownloadManager` 订阅 `AppState.$downloads` 驱动，不在每个状态迁移点手写调用，避免漏掉而「任务都结束了保活还开着」
 - 需要在 `Info.plist` 开启 `UIBackgroundModes: audio`
