@@ -49,6 +49,10 @@ final class AppState: ObservableObject {
     /// 同时进行的下载任务数（见 `maxConcurrentDownloadsOptions`，0 = 无限制）。每个任务内部还会再开分片连接
     @Published var maxConcurrentDownloads: Int = AppState.defaultMaxConcurrentDownloads
 
+    /// 后台保活方式：关闭 / 静音音频 / 画中画。
+    /// 默认走画中画：它不占用音频会话，不会打断其他 App 正在播放的音频。
+    @Published var keepAliveMode: KeepAliveMode = .pictureInPicture
+
     /// 历史记录的保留方式：按条数 / 按时间
     @Published var historyRetentionMode: HistoryRetentionMode = .count
     /// 「按条数」保留时的上限（见 `historyCountOptions`）
@@ -70,6 +74,7 @@ final class AppState: ObservableObject {
     private let segmentCountKey = "Nox.multiThreadSegmentCount"
     private let m3u8ConcurrencyKey = "Nox.m3u8SegmentConcurrency"
     private let maxConcurrentDownloadsKey = "Nox.maxConcurrentDownloads"
+    private let keepAliveModeKey = "Nox.keepAliveMode"
     private let historyRetentionModeKey = "Nox.historyRetentionMode"
     private let historyRetentionCountKey = "Nox.historyRetentionCount"
     private let historyRetentionDaysKey = "Nox.historyRetentionDays"
@@ -252,6 +257,7 @@ final class AppState: ObservableObject {
         defaults.set(multiThreadSegmentCount, forKey: segmentCountKey)
         defaults.set(m3u8SegmentConcurrency, forKey: m3u8ConcurrencyKey)
         defaults.set(maxConcurrentDownloads, forKey: maxConcurrentDownloadsKey)
+        defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
         defaults.set(historyRetentionMode.rawValue, forKey: historyRetentionModeKey)
         defaults.set(historyRetentionCount, forKey: historyRetentionCountKey)
         defaults.set(historyRetentionDays, forKey: historyRetentionDaysKey)
@@ -326,6 +332,10 @@ final class AppState: ObservableObject {
         appearanceMode = AppearanceMode(
             rawValue: defaults.string(forKey: appearanceModeKey) ?? ""
         ) ?? .system
+
+        keepAliveMode = KeepAliveMode(
+            rawValue: defaults.string(forKey: keepAliveModeKey) ?? ""
+        ) ?? .pictureInPicture
 
         disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
 

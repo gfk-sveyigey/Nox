@@ -28,6 +28,13 @@
         A10000010000000000000020 /* MediaSniffer.js in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000020 /* MediaSniffer.js */; };
         A10000010000000000000021 /* SnifferSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000021 /* SnifferSheet.swift */; };
         A10000010000000000000022 /* YouTubeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000022 /* YouTubeParser.swift */; };
+        A10000010000000000000023 /* KeepAliveMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000023 /* KeepAliveMode.swift */; };
+        A10000010000000000000024 /* KeepAliveStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000024 /* KeepAliveStrategy.swift */; };
+        A10000010000000000000025 /* SilentAudioKeepAlive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000025 /* SilentAudioKeepAlive.swift */; };
+        A10000010000000000000026 /* PictureInPictureKeepAlive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000026 /* PictureInPictureKeepAlive.swift */; };
+        A10000010000000000000027 /* PiPCoexistenceProtection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000027 /* PiPCoexistenceProtection.swift */; };
+        A10000010000000000000028 /* KeepAliveCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000028 /* KeepAliveCoordinator.swift */; };
+        A10000010000000000000029 /* SpeedMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000029 /* SpeedMeter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +60,13 @@
         B10000010000000000000020 /* MediaSniffer.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = MediaSniffer.js; sourceTree = "<group>"; };
         B10000010000000000000021 /* SnifferSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnifferSheet.swift; sourceTree = "<group>"; };
         B10000010000000000000022 /* YouTubeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeParser.swift; sourceTree = "<group>"; };
+        B10000010000000000000023 /* KeepAliveMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepAliveMode.swift; sourceTree = "<group>"; };
+        B10000010000000000000024 /* KeepAliveStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepAliveStrategy.swift; sourceTree = "<group>"; };
+        B10000010000000000000025 /* SilentAudioKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilentAudioKeepAlive.swift; sourceTree = "<group>"; };
+        B10000010000000000000026 /* PictureInPictureKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PictureInPictureKeepAlive.swift; sourceTree = "<group>"; };
+        B10000010000000000000027 /* PiPCoexistenceProtection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiPCoexistenceProtection.swift; sourceTree = "<group>"; };
+        B10000010000000000000028 /* KeepAliveCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepAliveCoordinator.swift; sourceTree = "<group>"; };
+        B10000010000000000000029 /* SpeedMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedMeter.swift; sourceTree = "<group>"; };
         C10000010000000000000001 /* Nox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -84,8 +98,10 @@
                 B10000010000000000000008,
                 B10000010000000000000009,
                 B10000010000000000000010,
+                B10000010000000000000029,
                 E10000010000000000000004,
                 E10000010000000000000005,
+                E10000010000000000000006,
                 B10000010000000000000014,
                 B10000010000000000000015,
             );
@@ -120,6 +136,19 @@
                 B10000010000000000000021,
             );
             path = Sniffer;
+            sourceTree = "<group>";
+        };
+        E10000010000000000000006 /* KeepAlive */ = {
+            isa = PBXGroup;
+            children = (
+                B10000010000000000000023,
+                B10000010000000000000024,
+                B10000010000000000000025,
+                B10000010000000000000026,
+                B10000010000000000000027,
+                B10000010000000000000028,
+            );
+            path = KeepAlive;
             sourceTree = "<group>";
         };
 /* End PBXGroup section */
@@ -192,6 +221,13 @@
                 A10000010000000000000019,
                 A10000010000000000000021,
                 A10000010000000000000022,
+                A10000010000000000000023,
+                A10000010000000000000024,
+                A10000010000000000000025,
+                A10000010000000000000026,
+                A10000010000000000000027,
+                A10000010000000000000028,
+                A10000010000000000000029,
             );
             runOnlyForDeploymentPostprocessing = 0;
         };

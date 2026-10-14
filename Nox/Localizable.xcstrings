@@ -1588,6 +1588,94 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez les catégories à effacer, puis « Effacer la sélection » ci-dessous. Effacer les données des sites vous déconnecte des sites web." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "정리할 카테고리를 탭한 뒤 아래의 「선택 항목 정리」를 누르세요. 웹사이트 데이터를 정리하면 로그인 상태가 해제됩니다." } }
       }
+    },
+    "保活方式" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keep-Alive-Methode" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep-Alive Method" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Méthode de maintien en activité" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지 방식" } }
+      }
+    },
+    "后台保活" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hintergrund-Keep-Alive" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Background Keep-Alive" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Maintien en arrière-plan" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지" } }
+      }
+    },
+    "静音音频" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Stiller Ton" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Silent Audio" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Audio silencieux" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "무음 오디오" } }
+      }
+    },
+    "画中画 (PiP)" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bild-in-Bild (PiP)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Picture in Picture (PiP)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Image dans l'image (PiP)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면(PiP)" } }
+      }
+    },
+    "不保活，切后台可能被系统挂起，下载会暂停。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aus: Im Hintergrund kann die App angehalten werden und Downloads werden pausiert." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Off: when sent to the background the app may be suspended and downloads will pause." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Désactivé : en arrière-plan, l'app peut être suspendue et les téléchargements s'arrêtent." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "꺼짐: 백그라운드로 전환하면 시스템이 앱을 일시 중단해 다운로드가 멈출 수 있습니다." } }
+      }
+    },
+    "循环播放极短静音。可能打断其他 App 正在播放的音频。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Spielt einen sehr kurzen stillen Clip in Schleife. Kann Audio aus anderen Apps unterbrechen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loops a very short silent clip. May interrupt audio playing in other apps." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Joue en boucle un court extrait silencieux. Peut interrompre l'audio d'autres apps." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "아주 짧은 무음을 반복 재생합니다. 다른 앱에서 재생 중인 오디오를 중단시킬 수 있습니다." } }
+      }
+    },
+    "用系统画中画保活：不占用音频会话，不打断其他 App 的音频，也尽量减少与其他画中画的互相挤占。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hält die App über System-Bild-in-Bild am Leben: belegt keine Audio-Session, unterbricht kein Audio anderer Apps und minimiert Konflikte mit anderen PiP-Fenstern." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keeps the app alive via system Picture in Picture: it doesn't take over the audio session, doesn't interrupt other apps' audio, and minimizes conflicts with other PiP windows." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Maintient l'app active via l'image dans l'image du système : n'occupe pas la session audio, n'interrompt pas l'audio des autres apps et limite les conflits avec d'autres fenêtres PiP." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 화면 속 화면으로 앱을 유지합니다. 오디오 세션을 점유하지 않고 다른 앱의 오디오를 방해하지 않으며 다른 PiP 창과의 충돌도 최소화합니다." } }
+      }
+    },
+    "当前未保活" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein Keep-Alive aktiv" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not keeping alive" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun maintien actif" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "유지 중 아님" } }
+      }
+    },
+    "当前保活：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keep-Alive: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keeping alive: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Maintien : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "유지 중: %@" } }
+      }
+    },
+    "%@ 在当前设备上不可用" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ ist auf diesem Gerät nicht verfügbar" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ is unavailable on this device" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ n'est pas disponible sur cet appareil" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@은(는) 이 기기에서 사용할 수 없습니다" } }
+      }
+    },
+    "%@ 暂时无法启动" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ kann vorübergehend nicht gestartet werden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ is temporarily unavailable" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ ne peut pas être démarré pour le moment" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@을(를) 일시적으로 시작할 수 없습니다" } }
+      }
     }
   },
   "version" : "1.0"

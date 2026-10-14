@@ -45,10 +45,9 @@ struct ContentView: View {
             didLogSession = true
             LogStore.shared.recordSessionStart()
         }
-        // 回到前台时重置速度采样：后台期间定时器不触发，
-        // 直接沿用旧采样点会算出错误的速度。
+        // 回到前台：重置速度采样（后台期间定时器不触发），并让后台保活自愈。
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { downloadManager.resetSpeedSamples() }
+            downloadManager.handleScenePhase(isActive: phase == .active)
         }
     }
 }
