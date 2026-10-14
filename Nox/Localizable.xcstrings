@@ -1716,6 +1716,22 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Protection de coexistence indisponible pour %@" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@의 공존 보호를 사용할 수 없습니다" } }
       }
+    },
+    "以最小化显示画中画" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bild-in-Bild minimiert anzeigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show PiP minimized" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher l'image dans l'image réduite" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면 최소화 표시" } }
+      }
+    },
+    "画中画可能与其他 App 的画中画互相打断。这里选择共存保护不可用时如何处理。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das Bild-in-Bild kann Bild-in-Bild-Fenster anderer Apps unterbrechen. Legen Sie hier fest, was bei fehlendem Koexistenzschutz geschehen soll." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "PiP may interrupt PiP windows from other apps. Choose what to do when coexistence protection is unavailable." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'image dans l'image peut interrompre celle des autres apps. Choisissez le comportement lorsque la protection de coexistence est indisponible." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면이 다른 앱의 화면 속 화면을 중단시킬 수 있습니다. 공존 보호를 사용할 수 없을 때의 동작을 선택하세요." } }
+      }
     }
   },
   "version" : "1.0"

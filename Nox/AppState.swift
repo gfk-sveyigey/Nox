@@ -55,6 +55,9 @@ final class AppState: ObservableObject {
     /// 画中画共存保护不可用时怎么办（继续用画中画 / 改用静音音频 / 停止保活）。
     @Published var pipCoexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
+    /// 是否以最小化（视觉隐藏）方式显示画中画悬浮窗。关闭后显示为普通可见的小窗。
+    @Published var pipMinimized: Bool = true
+
     /// 历史记录的保留方式：按条数 / 按时间
     @Published var historyRetentionMode: HistoryRetentionMode = .count
     /// 「按条数」保留时的上限（见 `historyCountOptions`）
@@ -78,6 +81,7 @@ final class AppState: ObservableObject {
     private let maxConcurrentDownloadsKey = "Nox.maxConcurrentDownloads"
     private let keepAliveModeKey = "Nox.keepAliveMode"
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
+    private let pipMinimizedKey = "Nox.pipMinimized"
     private let historyRetentionModeKey = "Nox.historyRetentionMode"
     private let historyRetentionCountKey = "Nox.historyRetentionCount"
     private let historyRetentionDaysKey = "Nox.historyRetentionDays"
@@ -262,6 +266,7 @@ final class AppState: ObservableObject {
         defaults.set(maxConcurrentDownloads, forKey: maxConcurrentDownloadsKey)
         defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
+        defaults.set(pipMinimized, forKey: pipMinimizedKey)
         defaults.set(historyRetentionMode.rawValue, forKey: historyRetentionModeKey)
         defaults.set(historyRetentionCount, forKey: historyRetentionCountKey)
         defaults.set(historyRetentionDays, forKey: historyRetentionDaysKey)
@@ -344,6 +349,9 @@ final class AppState: ObservableObject {
         pipCoexistenceFallback = PiPCoexistenceFallback(
             rawValue: defaults.string(forKey: pipCoexistenceFallbackKey) ?? ""
         ) ?? .keepAlive
+
+        // 默认最小化；`bool(forKey:)` 缺键返回 false，用 object 区分「没存过」。
+        pipMinimized = defaults.object(forKey: pipMinimizedKey) as? Bool ?? true
 
         disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
 

@@ -115,26 +115,10 @@ struct SettingsView: View {
                     Text(L("日志"))
                 }
 
-                // 保活方式：选中项即当前使用的保活方式，不再单独显示「当前保活」。
-                Picker(L("保活方式"), selection: Binding(
-                    get: { appState.keepAliveMode },
-                    set: { manager.setKeepAliveMode($0) }
-                )) {
-                    ForEach(KeepAliveMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-
-                // 只有画中画需要共存保护；选了其它保活方式时这一项没有意义。
-                if appState.keepAliveMode == .pictureInPicture {
-                    Picker(L("共存保护不可用时"), selection: Binding(
-                        get: { appState.pipCoexistenceFallback },
-                        set: { manager.setPiPCoexistenceFallback($0) }
-                    )) {
-                        ForEach(PiPCoexistenceFallback.allCases) { fallback in
-                            Text(fallback.title).tag(fallback)
-                        }
-                    }
+                NavigationLink {
+                    KeepAliveSettingsView(manager: manager)
+                } label: {
+                    Text(L("后台保活"))
                 }
             }
 
@@ -266,6 +250,58 @@ struct DownloadSettingsView: View {
 
     private static func concurrentTitle(_ count: Int) -> String {
         count == AppState.unlimitedConcurrentDownloads ? L("无限制") : String(count)
+    }
+}
+
+/// 「后台保活」二级页：选择保活方式、画中画共存兜底，以及是否最小化显示画中画。
+struct KeepAliveSettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject private var localization = LocalizationManager.shared
+    @ObservedObject private var manager: DownloadManager
+
+    init(manager: DownloadManager) {
+        _manager = ObservedObject(wrappedValue: manager)
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(L("保活方式"), selection: Binding(
+                    get: { appState.keepAliveMode },
+                    set: { manager.setKeepAliveMode($0) }
+                )) {
+                    ForEach(KeepAliveMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+
+                // 只有画中画才有悬浮窗，其它保活方式下这个开关没有意义。
+                if appState.keepAliveMode == .pictureInPicture {
+                    Toggle(L("以最小化显示画中画"), isOn: Binding(
+                        get: { appState.pipMinimized },
+                        set: { manager.setPiPMinimized($0) }
+                    ))
+                }
+            }
+
+            // 只有画中画需要共存保护；选了其它保活方式时这一组整段隐藏。
+            if appState.keepAliveMode == .pictureInPicture {
+                Section {
+                    Picker(L("共存保护不可用时"), selection: Binding(
+                        get: { appState.pipCoexistenceFallback },
+                        set: { manager.setPiPCoexistenceFallback($0) }
+                    )) {
+                        ForEach(PiPCoexistenceFallback.allCases) { fallback in
+                            Text(fallback.title).tag(fallback)
+                        }
+                    }
+                } footer: {
+                    Text(L("画中画可能与其他 App 的画中画互相打断。这里选择共存保护不可用时如何处理。"))
+                }
+            }
+        }
+        .navigationTitle(L("后台保活"))
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
