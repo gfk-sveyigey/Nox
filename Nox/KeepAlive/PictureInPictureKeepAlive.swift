@@ -1,5 +1,6 @@
 import AVFoundation
 import AVKit
+import Foundation
 import UIKit
 
 /// 画中画保活（VideoCall 路线）。
@@ -33,6 +34,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
 
     /// 启动后的「一次性」核对任务，确认 PiP 真的进入激活状态。
     private var startVerificationTask: Task<Void, Never>?
+    /// 观察 `isPictureInPicturePossible`，就绪后再启动。
+    private var possibleObservation: NSKeyValueObservation?
 
     func start() throws {
         guard AVPictureInPictureController.isPictureInPictureSupported() else {
@@ -74,10 +77,15 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         coexistence = protection
         protection.prepare()
 
-        // 直接以 0.1pt 启动（不是先开大再缩小），避免闪一下可见窗口。
-        pipController.startPictureInPicture()
         isActive = true
-        scheduleStartVerification(for: pipController)
+        // 直接以 0.1pt 启动（不是先开大再缩小），避免闪一下可见窗口。
+        //
+        // 启动时机交给 KVO：`isPictureInPicturePossible` 是**异步**就绪的，
+        // 创建 controller 后立刻 `startPictureInPicture()` 往往会被系统静默忽略，
+        // 表现为「一直没进入激活状态」。等它就绪后再启动即可。
+        observeReadiness(for: pipController)
+        // 兜底看门狗：若一段时间内始终没能激活（可能不可用），上报一次中断。
+        scheduleStartVerification(for: pipController, delay: 5)
     }
 
     /// PiP 是否真的还在显示（回前台时用来判断保活是否被系统 / 用户结束）。
@@ -97,11 +105,11 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 启动是异步的：这里做一次「一次性」核对，确认 PiP 真的进入激活状态。
     ///
     /// 若长时间没进激活（被系统或其它 App 拒绝、设备处于不支持场景），
-    /// 上报一次中断，交给协调器按降级链处理。这里不是轮询，也不会重复提交。
-    private func scheduleStartVerification(for controller: AVPictureInPictureController) {
+    /// 上报一次中断，由协调器记录并从「未保活」开始重建。这里不是轮询，也不会重复提交。
+    private func scheduleStartVerification(for controller: AVPictureInPictureController, delay: Double) {
         startVerificationTask?.cancel()
         startVerificationTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(delay))
             guard let self, !Task.isCancelled, self.controller === controller else { return }
             guard !controller.isPictureInPictureActive else { return }
             self.onLog?("画中画启动后未进入激活状态（可能被系统或其他 App 拒绝）")
@@ -109,9 +117,40 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         }
     }
 
+    /// 观察 `isPictureInPicturePossible`；就绪后立即尝试启动。
+    ///
+    /// 回调里再包一层 `Task`：KVO 可能在非主线程 / 构造期间同步触发，
+    /// 异步派发可以避免重入。
+    private func observeReadiness(for controller: AVPictureInPictureController) {
+        possibleObservation?.invalidate()
+        possibleObservation = controller.observe(\.isPictureInPicturePossible, options: [.initial, .new]) { [weak self] controller, _ in
+            Task { @MainActor in
+                guard let self, self.controller === controller else { return }
+                self.attemptStartIfPossible(controller)
+            }
+        }
+    }
+
+    /// 就绪即启动；重复触发由 `isPictureInPictureActive` 兜住。
+    private func attemptStartIfPossible(_ controller: AVPictureInPictureController) {
+        guard !controller.isPictureInPictureActive else { return }
+        guard controller.isPictureInPicturePossible else {
+            // 用于排查「一直没激活」：说明系统始终没判定为可启动。
+            onLog?("画中画尚未就绪（isPictureInPicturePossible = false）")
+            return
+        }
+        onLog?("画中画已就绪，开始启动")
+        controller.startPictureInPicture()
+        scheduleStartVerification(for: controller, delay: 3)
+    }
+
     // MARK: - 内部
 
     private func cleanup() {
+        possibleObservation?.invalidate()
+        possibleObservation = nil
+        startVerificationTask?.cancel()
+        startVerificationTask = nil
         sourceWidth?.isActive = false
         sourceHeight?.isActive = false
         sourceWidth = nil

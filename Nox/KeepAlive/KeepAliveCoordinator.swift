@@ -1,7 +1,10 @@
 import Foundation
 import Combine
 
-/// 保活调度：有活跃下载时启动、全部结束 / 取消时停止，失败时按降级链回退。
+/// 保活调度：有活跃下载时启动、全部结束 / 取消时停止。
+///
+/// 失败或被打断时**不会**自动切换到别的保活方式（避免静默改用会打断其它音频的
+/// 静音音频），只记录原因，回到前台由 `didEnterForeground()` 重建。
 @MainActor
 final class KeepAliveCoordinator: ObservableObject {
 
@@ -89,15 +92,11 @@ final class KeepAliveCoordinator: ObservableObject {
             lastError = nil
             onLog?("保活已启动：\(mode.title)")
         } catch {
+            // 失败就停在这一档，不再自动改用别的保活方式：
+            // 静音音频会打断用户正在播放的其它音频，静默切换比「暂时没有保活」更意外。
             lastError = error.localizedDescription
             onLog?("保活启动失败：\(error.localizedDescription)")
-            // 降级链：PiP 失败 → 静音音频；静音音频失败 → 关闭。
-            if mode == .pictureInPicture {
-                activeMode = .off
-                activate(.silentAudio)
-            } else {
-                activeMode = .off
-            }
+            activeMode = .off
         }
     }
 
@@ -113,14 +112,16 @@ final class KeepAliveCoordinator: ObservableObject {
 
     private func handleInterruption() {
         guard hasActiveTasks, preferredMode != .off else { return }
-        if activeMode == .pictureInPicture {
-            // PiP 被关闭 / 启动失败 → 降级到静音音频。
-            activeMode = .off
+        let interrupted = activeMode
+        stopAll()
+        activeMode = .off
+        // 画中画被系统 / 用户结束：**不要**自动改用静音音频
+        // （那会打断用户正在听的其他音频）；等回到前台再由 didEnterForeground() 重建。
+        // 静音音频被打断（来电等）结束后，则按用户原本的选择重试。
+        if interrupted == .silentAudio, preferredMode == .silentAudio {
             activate(.silentAudio)
         } else {
-            stopAll()
-            activeMode = .off
-            reconcile()
+            onLog?("保活中断，将在回到前台后重建")
         }
     }
 }

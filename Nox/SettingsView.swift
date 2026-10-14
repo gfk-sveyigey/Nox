@@ -6,11 +6,9 @@ struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var localization = LocalizationManager.shared
     @ObservedObject private var manager: DownloadManager
-    @ObservedObject private var keepAlive: KeepAliveCoordinator
 
     init(manager: DownloadManager) {
         _manager = ObservedObject(wrappedValue: manager)
-        _keepAlive = ObservedObject(wrappedValue: manager.keepAlive)
     }
 
     var body: some View {
@@ -116,9 +114,8 @@ struct SettingsView: View {
                 } label: {
                     Text(L("日志"))
                 }
-            }
 
-            Section {
+                // 保活方式：选中项即当前使用的保活方式，不再单独显示「当前保活」。
                 Picker(L("保活方式"), selection: Binding(
                     get: { appState.keepAliveMode },
                     set: { manager.setKeepAliveMode($0) }
@@ -127,24 +124,6 @@ struct SettingsView: View {
                         Text(mode.title).tag(mode)
                     }
                 }
-
-                Text(appState.keepAliveMode.detail)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                Text(keepAlive.activeMode == .off
-                     ? L("当前未保活")
-                     : String(format: L("当前保活：%@"), keepAlive.activeMode.title))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                if let error = keepAlive.lastError {
-                    Text(verbatim: error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                }
-            } header: {
-                Text(L("后台保活"))
             }
 
             Section {

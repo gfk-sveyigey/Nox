@@ -364,6 +364,9 @@ struct VideoBrowserView: View {
     /// 回到首页。不卸载当前页面，从书签 / 地址栏再前进即可。
     private func goHome() {
         addressFocused = false
+        // 回到首页时地址栏也要清空：否则会残留上一个网址，
+        // 看起来像「首页其实还停在这个地址」。
+        address = ""
         parser.clearLoadError()
         withAnimation(.easeInOut(duration: 0.2)) { showingHome = true }
     }
