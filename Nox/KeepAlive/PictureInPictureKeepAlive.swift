@@ -18,6 +18,9 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     let name = L("画中画 (PiP)")
     private(set) var isActive = false
     var onInterruption: (() -> Void)?
+    /// 「始终没能启动」回调（区别于「启动后被系统/用户结束」）。
+    /// 用于在前台做有限次重试。
+    var onStartFailure: (() -> Void)?
 
     /// 诊断信息出口（内部适配是否可用等），由协调器转接到日志。
     var onLog: ((String) -> Void)?
@@ -53,6 +56,23 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private var startVerificationTask: Task<Void, Never>?
     /// 观察 `isPictureInPicturePossible`，就绪后再启动。
     private var possibleObservation: NSKeyValueObservation?
+
+    /// 启动重试 / 抖动确认的统一任务。
+    private var startTask: Task<Void, Never>?
+    /// 连续观察到 `isPictureInPicturePossible == true` 的次数（抖动确认用）。
+    private var readyStreak = 0
+    /// 已尝试启动的次数（有界重试，避免无限轮询抢占 System）。
+    private var attemptCount = 0
+
+    /// 抖动确认窗口：刚创建 controller 时 `isPictureInPicturePossible` 常是瞬时 true，
+    /// 之后系统才算出真值。要求它连续两次为 true 才真正启动。
+    private static let startSettleDelay: Double = 0.6
+    /// 未就绪时的重试间隔。
+    private static let startRetryDelay: Double = 0.8
+    /// 启动尝试次数上限（约 12 秒）。
+    private static let maxStartAttempts = 15
+    /// 启动后核对是否进入激活状态的延迟。
+    private static let startVerificationDelay: Double = 3
 
     func start() throws {
         guard AVPictureInPictureController.isPictureInPictureSupported() else {
@@ -104,13 +124,11 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
 
         isActive = true
         // 直接以 0.1pt 启动（不是先开大再缩小），避免闪一下可见窗口。
-        //
-        // 启动时机交给 KVO：`isPictureInPicturePossible` 是**异步**就绪的，
-        // 创建 controller 后立刻 `startPictureInPicture()` 往往会被系统静默忽略，
-        // 表现为「一直没进入激活状态」。等它就绪后再启动即可。
+        readyStreak = 0
+        attemptCount = 0
         observeReadiness(for: pipController)
-        // 兜底看门狗：若一段时间内始终没能激活（可能不可用），上报一次中断。
-        scheduleStartVerification(for: pipController, delay: 5)
+        // 立刻尝试一次；未就绪则交给有界重试（见 attemptStartIfPossible）。
+        attemptStartIfPossible(pipController)
     }
 
     /// 共存保护是否真的装上了（装不上时按 `coexistenceFallback` 处理）。
@@ -141,7 +159,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             guard let self, !Task.isCancelled, self.controller === controller else { return }
             guard !controller.isPictureInPictureActive else { return }
             self.onLog?("画中画启动后未进入激活状态（可能被系统或其他 App 拒绝）")
-            self.onInterruption?()
+            self.onStartFailure?()
         }
     }
 
@@ -159,17 +177,48 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         }
     }
 
-    /// 就绪即启动；重复触发由 `isPictureInPictureActive` 兜住。
+    /// 就绪才启动，且要求「连续两次为 true」以避免用瞬时值启动。
+    ///
+    /// 为什么不能见到一次 true 就启动：刚创建 controller 时 `isPictureInPicturePossible`
+    /// 可能是瞬时 true，随后系统才算出真值 false（例如其他 App 已经有画中画）。
+    /// 用瞬时值 `startPictureInPicture()` 会把对方挤掉、自己却起不来 ——
+    /// 表现就是「启动保活时中断了其他 App 的画中画，保活本身也没成功」。
     private func attemptStartIfPossible(_ controller: AVPictureInPictureController) {
-        guard !controller.isPictureInPictureActive else { return }
+        guard self.controller === controller, isActive, !controller.isPictureInPictureActive else { return }
+
         guard controller.isPictureInPicturePossible else {
-            // 用于排查「一直没激活」：说明系统始终没判定为可启动。
-            onLog?("画中画尚未就绪（isPictureInPicturePossible = false）")
+            readyStreak = 0
+            attemptCount += 1
+            guard attemptCount <= Self.maxStartAttempts else {
+                onLog?("画中画始终无法启动（长时间未就绪，可能被其他 App 的画中画占用）")
+                onStartFailure?()
+                return
+            }
+            scheduleStartAttempt(for: controller, delay: Self.startRetryDelay)
             return
         }
+
+        readyStreak += 1
+        guard readyStreak >= 2 else {
+            // 第一次看到 true 先不启动，隔一个很短的窗口再确认一次。
+            scheduleStartAttempt(for: controller, delay: Self.startSettleDelay)
+            return
+        }
+
         onLog?("画中画已就绪，开始启动")
+        readyStreak = 0
         controller.startPictureInPicture()
-        scheduleStartVerification(for: controller, delay: 3)
+        scheduleStartVerification(for: controller, delay: Self.startVerificationDelay)
+    }
+
+    /// 延迟后再试一次（抖动确认 / 未就绪重试共用同一个任务）。
+    private func scheduleStartAttempt(for controller: AVPictureInPictureController, delay: Double) {
+        startTask?.cancel()
+        startTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, !Task.isCancelled else { return }
+            self.attemptStartIfPossible(controller)
+        }
     }
 
     // MARK: - 内部
@@ -179,6 +228,10 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         possibleObservation = nil
         startVerificationTask?.cancel()
         startVerificationTask = nil
+        startTask?.cancel()
+        startTask = nil
+        readyStreak = 0
+        attemptCount = 0
         sourceWidth?.isActive = false
         sourceHeight?.isActive = false
         sourceWidth = nil
@@ -240,6 +293,9 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
     func pictureInPictureControllerDidStartPictureInPicture(_ controller: AVPictureInPictureController) {
         startVerificationTask?.cancel()
         startVerificationTask = nil
+        startTask?.cancel()
+        startTask = nil
+        readyStreak = 0
         // 启动成功后再延迟提交共存类型，避免与其他 PiP 争抢。
         coexistence?.schedulePostStartUpdate(for: controller)
     }
@@ -253,6 +309,6 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
         _ controller: AVPictureInPictureController,
         failedToStartPictureInPictureWithError error: Error
     ) {
-        Task { @MainActor in self.onInterruption?() }
+        Task { @MainActor in self.onStartFailure?() }
     }
 }
