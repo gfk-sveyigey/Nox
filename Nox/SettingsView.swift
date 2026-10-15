@@ -71,91 +71,89 @@ struct SettingsView: View {
 
     // MARK: - 设置项
 
-    /// 按功能分成尽可能少的组：内容与下载、通用。
-    /// 版本信息不占行，放在最后一组的页脚居中显示。
+    /// 所有设置项收在尽可能少的组里：下载与内容、外观与语言同属一组。
+    /// 版本与作者信息不占行，放在这一组的页脚居中显示。
     private var settingsSection: some View {
-        Group {
-            Section {
-                NavigationLink {
-                    DownloadSettingsView()
-                } label: {
-                    Text(L("下载设置"))
-                }
-
-                NavigationLink {
-                    StorageSettingsView(manager: manager)
-                } label: {
-                    Text(L("储存空间"))
-                }
-
-                NavigationLink {
-                    SiteSettingsView()
-                } label: {
-                    LabeledContent(
-                        L("解析来源"),
-                        value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
-                    )
-                }
-
-                NavigationLink {
-                    CookiesView()
-                } label: {
-                    Text(L("Cookie 管理"))
-                }
-
-                NavigationLink {
-                    HistorySettingsView()
-                } label: {
-                    Text(L("历史记录"))
-                }
-
-                NavigationLink {
-                    LogsView()
-                } label: {
-                    Text(L("日志"))
-                }
-
-                NavigationLink {
-                    KeepAliveSettingsView(manager: manager)
-                } label: {
-                    Text(L("后台保活"))
-                }
-
-                NavigationLink {
-                    LicensesView()
-                } label: {
-                    Text(L("开源许可与致谢"))
-                }
+        Section {
+            NavigationLink {
+                DownloadSettingsView()
+            } label: {
+                Text(L("下载设置"))
             }
 
-            Section {
-                Picker(L("外观"), selection: $appState.appearanceMode) {
-                    ForEach(AppearanceMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-                .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
-
-                Picker(L("语言"), selection: $localization.language) {
-                    ForEach(AppLanguage.allCases) { language in
-                        Text(language.title).tag(language)
-                    }
-                }
-            } footer: {
-                versionFooter
+            NavigationLink {
+                StorageSettingsView(manager: manager)
+            } label: {
+                Text(L("储存空间"))
             }
+
+            NavigationLink {
+                SiteSettingsView()
+            } label: {
+                LabeledContent(
+                    L("解析来源"),
+                    value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
+                )
+            }
+
+            NavigationLink {
+                CookiesView()
+            } label: {
+                Text(L("Cookie 管理"))
+            }
+
+            NavigationLink {
+                HistorySettingsView()
+            } label: {
+                Text(L("历史记录"))
+            }
+
+            NavigationLink {
+                LogsView()
+            } label: {
+                Text(L("日志"))
+            }
+
+            NavigationLink {
+                KeepAliveSettingsView(manager: manager)
+            } label: {
+                Text(L("后台保活"))
+            }
+
+            NavigationLink {
+                LicensesView()
+            } label: {
+                Text(L("开源许可与致谢"))
+            }
+
+            Picker(L("外观"), selection: $appState.appearanceMode) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
+
+            Picker(L("语言"), selection: $localization.language) {
+                ForEach(AppLanguage.allCases) { language in
+                    Text(language.title).tag(language)
+                }
+            }
+        } footer: {
+            versionFooter
         }
     }
 
     /// 页脚：居中显示版本与作者，形如「Nox v1.0.16 · Aholic」。
     ///
-    /// 不加额外上边距，让署名紧跟在最后一组设置下方，不会掉到屏幕很靠下的位置。
+    /// 上下留出比默认稍大一点的间距，签名不会贴着上方分组、也不至于太局促。
     private var versionFooter: some View {
         Text(verbatim: "\(Self.appName) v\(Self.appVersion) · Aholic")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .center)
             .multilineTextAlignment(.center)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
     }
 
     private var enabledSiteCount: Int {

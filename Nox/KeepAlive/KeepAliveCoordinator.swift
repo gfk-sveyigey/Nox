@@ -125,6 +125,17 @@ final class KeepAliveCoordinator: ObservableObject {
 
     private func activate(_ mode: KeepAliveMode) {
         guard activeMode != mode else { return }
+
+        // 目标策略其实还在运行（例如系统结束回调没送达、记录停在了 `.off`）：
+        // 只纠正记录、停掉另一个策略，**不**「停掉再立刻重启」——
+        // 画中画刚停就重启几乎必被系统拒绝，表现就是「拉不起保活」。
+        if isRunning(mode) {
+            stopOthers(than: mode)
+            activeMode = mode
+            lastError = nil
+            return
+        }
+
         stopAll()
         do {
             switch mode {
@@ -160,6 +171,21 @@ final class KeepAliveCoordinator: ObservableObject {
     private func stopAll() {
         if silentAudio.isActive { silentAudio.stop() }
         if pictureInPicture.isActive { pictureInPicture.stop() }
+    }
+
+    /// 策略是否真的还在运行（画中画把「正在建立中」也算活着）。
+    private func isRunning(_ mode: KeepAliveMode) -> Bool {
+        switch mode {
+        case .off: return false
+        case .silentAudio: return silentAudio.isLive
+        case .pictureInPicture: return pictureInPicture.isLive
+        }
+    }
+
+    /// 只停掉除 `mode` 以外的策略。
+    private func stopOthers(than mode: KeepAliveMode) {
+        if mode != .silentAudio, silentAudio.isActive { silentAudio.stop() }
+        if mode != .pictureInPicture, pictureInPicture.isActive { pictureInPicture.stop() }
     }
 
     private func handleInterruption() {
