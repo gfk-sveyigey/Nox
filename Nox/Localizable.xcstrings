@@ -1748,6 +1748,38 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'image dans l'image peut interrompre celle des autres apps. Choisissez le comportement lorsque la protection de coexistence est indisponible." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면이 다른 앱의 화면 속 화면을 중단시킬 수 있습니다. 공존 보호를 사용할 수 없을 때의 동작을 선택하세요." } }
       }
+    },
+    "保活模式" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keep-Alive-Modus" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep-Alive Mode" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mode de maintien en activité" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지 모드" } }
+      }
+    },
+    "跟随下载任务" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Aufgaben folgen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow download tasks" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre les tâches de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 작업에 따름" } }
+      }
+    },
+    "启动即常驻" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dauerhaft ab dem Start" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Persistent from launch" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Persistant dès le lancement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실행 시 상시 유지" } }
+      }
+    },
+    "跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到把保活方式设为「关闭」。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Aufgaben folgen: nur aktiv, solange Downloads laufen. Dauerhaft ab dem Start: startet beim Aktivwerden der App und bleibt aktiv, bis die Keep-Alive-Methode auf „Aus“ gesetzt wird." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow download tasks: keep alive only while downloads are active. Persistent from launch: start when the app becomes active and keep running until the keep-alive method is set to Off." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre les tâches de téléchargement : maintien actif uniquement pendant les téléchargements. Persistant dès le lancement : démarre à l'activation de l'app et reste actif jusqu'à ce que la méthode soit réglée sur « Désactivé »." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 작업에 따름: 다운로드가 있을 때만 유지합니다. 실행 시 상시 유지: 앱이 활성화될 때 시작해 유지 방식을 「끔」으로 설정할 때까지 계속 유지합니다." } }
+      }
     }
   },
   "version" : "1.0"

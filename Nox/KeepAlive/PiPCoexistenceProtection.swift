@@ -26,7 +26,7 @@ func noxKeepAliveLog(_ message: String) {
 /// 1. **先**在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:` 并挂上实例配置，
 ///    **再**惰性取得 `pegasusProxy` —— 系统在创建 proxy 时会依据响应能力 / 内容类型决定实现，
 ///    顺序反了这次会话就仍是普通 PiP（表现为启动保活时把其他 App 的画中画挤掉）；
-/// 2. 首次启动用 4，`didStart` 后延迟 1 秒提交 6（一次，不轮询）。
+/// 2. 首次启动用 4，`didStart` 后延迟一小段（当前 0.3 秒）提交 6（一次，不轮询）。
 final class PiPCoexistenceProtection {
 
     private typealias IntegerSetter = @convention(c) (AnyObject, Selector, Int) -> Void
@@ -41,7 +41,7 @@ final class PiPCoexistenceProtection {
     private let initialContentType = 4
     private let coexistingContentType = 6
     /// `didStart` 之后延迟提交共存类型的时长。
-    private let postStartDelay: TimeInterval = 1
+    private let postStartDelay: TimeInterval = 0.3
 
     private static var associationKey: UInt8 = 0
     private static var installedClasses: Set<ObjectIdentifier> = []
@@ -115,7 +115,7 @@ final class PiPCoexistenceProtection {
         isPrepared = true
     }
 
-    /// `didStart` 之后延迟 1 秒提交一次共存类型。
+    /// `didStart` 之后延迟一小段提交一次共存类型。
     ///
     /// 延迟从「启动成功」开始计时，不会反复提交；期间会核对实例身份，
     /// 防止旧的延迟任务改到新的会话上。
@@ -135,7 +135,7 @@ final class PiPCoexistenceProtection {
             return
         }
         postStartScheduled = true
-        noxKeepAliveLog("画中画共存保护：已安排 1 秒后提交共存类型")
+        noxKeepAliveLog("画中画共存保护：已安排 \(postStartDelay) 秒后提交共存类型")
         let token = installationID
         DispatchQueue.main.asyncAfter(deadline: .now() + postStartDelay) { [weak self] in
             guard let self, self.installationID == token else { return }

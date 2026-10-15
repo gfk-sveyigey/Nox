@@ -242,6 +242,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         keepAlive.preferredMode = appState.keepAliveMode
         keepAlive.piPCoexistenceFallback = appState.pipCoexistenceFallback
+        keepAlive.lifetime = appState.keepAliveLifetime
         keepAlive.pipWindowHeight = appState.pipWindowHeight
         keepAlive.onLog = { message in LogStore.shared.info(message) }
 
@@ -287,6 +288,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.pipCoexistenceFallback = fallback
         appState.persist()
         keepAlive.piPCoexistenceFallback = fallback
+    }
+
+    /// 设置页切换「保活模式」（跟随下载任务 / 启动即常驻）。
+    func setKeepAliveLifetime(_ lifetime: KeepAliveLifetime) {
+        appState.keepAliveLifetime = lifetime
+        appState.persist()
+        keepAlive.lifetime = lifetime
     }
 
     /// 设置页调节「画中画窗口大小」（高度，pt）。

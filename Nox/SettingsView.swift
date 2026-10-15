@@ -253,7 +253,7 @@ struct DownloadSettingsView: View {
     }
 }
 
-/// 「后台保活」二级页：选择保活方式、画中画共存兜底，以及是否最小化显示画中画。
+/// 「后台保活」二级页：选择保活方式、保活模式、画中画窗口大小与共存兜底。
 struct KeepAliveSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var localization = LocalizationManager.shared
@@ -299,6 +299,22 @@ struct KeepAliveSettingsView: View {
             } footer: {
                 if appState.keepAliveMode == .pictureInPicture {
                     Text(L("拖动到最左即最小：窗口高 0.1pt，视觉隐藏、不影响操作；越往右窗口越大。"))
+                }
+            }
+
+            // 保活方式为「关闭」时不需要选生命周期。
+            if appState.keepAliveMode != .off {
+                Section {
+                    Picker(L("保活模式"), selection: Binding(
+                        get: { appState.keepAliveLifetime },
+                        set: { manager.setKeepAliveLifetime($0) }
+                    )) {
+                        ForEach(KeepAliveLifetime.allCases) { lifetime in
+                            Text(lifetime.title).tag(lifetime)
+                        }
+                    }
+                } footer: {
+                    Text(L("跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到把保活方式设为「关闭」。"))
                 }
             }
 

@@ -14,13 +14,6 @@ enum KeepAliveError: Error, LocalizedError {
         return false
     }
 
-    /// 是否是「暂时」缺启动条件（例如当前没有前台窗口）。
-    /// 这种失败值得稍后重试，而不是直接放弃保活。
-    var isTransientUnavailable: Bool {
-        if case .unavailable = self { return true }
-        return false
-    }
-
     var errorDescription: String? {
         switch self {
         case .unsupported(let name):

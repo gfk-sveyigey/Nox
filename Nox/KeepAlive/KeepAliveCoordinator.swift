@@ -1,11 +1,11 @@
 import Foundation
 import Combine
-import UIKit
 
-/// 保活调度：有活跃下载时启动、全部结束 / 取消时停止。
+/// 保活调度：按「保活模式」决定何时启动 —— 跟随下载任务（有活跃任务才启动）
+/// 或启动即常驻；任务全部结束 / 取消（跟随模式下）时停止。
 ///
 /// 失败或被打断时**不会**自动切换到别的保活方式（避免静默改用会打断其它音频的
-/// 静音音频），只记录原因，回到前台由 `didEnterForeground()` 重建。
+/// 静音音频），也不会自动重试，只记录原因；回到前台由 `didEnterForeground()` 重建。
 @MainActor
 final class KeepAliveCoordinator: ObservableObject {
 
@@ -50,11 +50,16 @@ final class KeepAliveCoordinator: ObservableObject {
     private let pictureInPicture = PictureInPictureKeepAlive()
     private var hasActiveTasks = false
 
-    /// 前台自动重试（保活被中断后，不必等回到前台再手动重建）。
-    private var retryTask: Task<Void, Never>?
-    private var foregroundRetryCount = 0
-    private static let maxForegroundRetries = 4
-    private static let foregroundRetryDelay: Duration = .seconds(5)
+    /// 保活模式：跟随下载任务（默认）/ 启动即常驻。改动后立刻重新调度。
+    var lifetime: KeepAliveLifetime = .followTasks {
+        didSet {
+            guard lifetime != oldValue else { return }
+            reconcile()
+        }
+    }
+
+    /// 是否需要保活：常驻模式恒为真；跟随模式看是否有「排队中 / 下载中」的任务。
+    private var keepAliveNeeded: Bool { hasActiveTasks || lifetime == .alwaysOn }
 
     init() {
         pictureInPicture.coexistenceFallback = piPCoexistenceFallback
@@ -78,7 +83,6 @@ final class KeepAliveCoordinator: ObservableObject {
     func update(hasActiveTasks: Bool) {
         guard hasActiveTasks != self.hasActiveTasks else { return }
         self.hasActiveTasks = hasActiveTasks
-        if hasActiveTasks { foregroundRetryCount = 0 }
         reconcile()
     }
 
@@ -88,8 +92,7 @@ final class KeepAliveCoordinator: ObservableObject {
     /// App 在后台被挂起时，PiP 的结束回调可能不会送达，`activeMode` 会停留在旧值，
     /// 只看记录就会漏掉「其实已经掉了」的情况。
     func didEnterForeground() {
-        guard hasActiveTasks, preferredMode != .off else { return }
-        foregroundRetryCount = 0
+        guard keepAliveNeeded, preferredMode != .off else { return }
         guard !activeStrategyIsRunning else { return }
         activeMode = .off
         reconcile()
@@ -107,7 +110,7 @@ final class KeepAliveCoordinator: ObservableObject {
     // MARK: - 内部
 
     private func reconcile() {
-        guard hasActiveTasks, preferredMode != .off else {
+        guard keepAliveNeeded, preferredMode != .off else {
             deactivate()
             return
         }
@@ -145,9 +148,6 @@ final class KeepAliveCoordinator: ObservableObject {
                (error as? KeepAliveError)?.isCoexistenceUnavailable == true,
                piPCoexistenceFallback == .silentAudio {
                 activate(.silentAudio)
-            } else if (error as? KeepAliveError)?.isTransientUnavailable == true {
-                // 例如启动时还没拿到前台窗口（切后台/切页面瞬间）：按有限次前台重试补上。
-                scheduleForegroundRetry()
             }
         }
     }
@@ -163,7 +163,7 @@ final class KeepAliveCoordinator: ObservableObject {
     }
 
     private func handleInterruption() {
-        guard hasActiveTasks, preferredMode != .off else { return }
+        guard keepAliveNeeded, preferredMode != .off else { return }
         let interrupted = activeMode
         stopAll()
         activeMode = .off
@@ -179,35 +179,13 @@ final class KeepAliveCoordinator: ObservableObject {
 
     /// 画中画「始终没能启动」（不是启动后被系统/用户结束）。
     ///
-    /// 常见于其他 App 已有画中画、系统拒绝新建；此时在前台做有限次延迟重试，
-    /// 不必等用户切后台再切回来。次数有上限，不做无限重启循环。
+    /// 常见于其他 App 已有画中画、系统拒绝新建。这里不自动重试，
+    /// 只停止并等待用户回到前台再重建（见 `didEnterForeground()`）。
     private func handleStartFailure() {
-        guard hasActiveTasks, preferredMode != .off else { return }
+        guard keepAliveNeeded, preferredMode != .off else { return }
         stopAll()
         activeMode = .off
-        scheduleForegroundRetry()
-    }
-
-    /// 前台有限重试：只在前台、仍有活跃任务、且没超过次数上限时重试。
-    private func scheduleForegroundRetry() {
-        guard hasActiveTasks, preferredMode != .off else { return }
-        guard UIApplication.shared.applicationState == .active else {
-            onLog?("保活中断，将在回到前台后重建")
-            return
-        }
-        guard foregroundRetryCount < Self.maxForegroundRetries else {
-            onLog?("保活已中断且重试次数用尽，将在回到前台后重建")
-            return
-        }
-        foregroundRetryCount += 1
-        onLog?("保活中断，将在 \(Self.foregroundRetryDelay) 后重试（第 \(foregroundRetryCount) 次）")
-        retryTask?.cancel()
-        retryTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: Self.foregroundRetryDelay)
-            guard let self, !Task.isCancelled else { return }
-            guard self.hasActiveTasks, self.preferredMode != .off else { return }
-            self.activeMode = .off
-            self.reconcile()
-        }
+        // 不做自动重试：等用户回到前台由 `didEnterForeground()` 重建。
+        onLog?("保活中断，将在回到前台后重建")
     }
 }
