@@ -242,7 +242,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
 
         keepAlive.preferredMode = appState.keepAliveMode
         keepAlive.piPCoexistenceFallback = appState.pipCoexistenceFallback
-        keepAlive.pipMinimized = appState.pipMinimized
+        keepAlive.pipWindowHeight = appState.pipWindowHeight
         keepAlive.onLog = { message in LogStore.shared.info(message) }
 
         // 用下载记录的「排队中 / 下载中」驱动保活启停。
@@ -289,11 +289,11 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         keepAlive.piPCoexistenceFallback = fallback
     }
 
-    /// 设置页切换「是否以最小化显示画中画」。
-    func setPiPMinimized(_ minimized: Bool) {
-        appState.pipMinimized = minimized
+    /// 设置页调节「画中画窗口大小」（高度，pt）。
+    func setPiPWindowHeight(_ height: Double) {
+        appState.pipWindowHeight = height
         appState.persist()
-        keepAlive.pipMinimized = minimized
+        keepAlive.pipWindowHeight = height
     }
 
     // MARK: - 对外接口
