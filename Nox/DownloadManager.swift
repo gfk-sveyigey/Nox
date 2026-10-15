@@ -384,6 +384,10 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         speedMeters[updated.id] = nil
 
         start(updated)
+
+        // 取消任务会顺手停掉保活；「继续」时补一次重建检查 ——
+        // 刚停就重启很容易被系统拒绝，必须主动再试一次，而不是等状态变化。
+        keepAlive.retryKeepAlive()
     }
 
     /// 批量重试（多选时用）

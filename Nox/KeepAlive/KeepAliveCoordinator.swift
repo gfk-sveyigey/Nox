@@ -82,9 +82,22 @@ final class KeepAliveCoordinator: ObservableObject {
 
     /// 下载任务活跃数是否大于 0。
     func update(hasActiveTasks: Bool) {
-        guard hasActiveTasks != self.hasActiveTasks else { return }
-        self.hasActiveTasks = hasActiveTasks
-        onLog?("有活跃下载任务：\(hasActiveTasks)")
+        if hasActiveTasks != self.hasActiveTasks {
+            self.hasActiveTasks = hasActiveTasks
+            onLog?("有活跃下载任务：\(hasActiveTasks)")
+        }
+        // 即使活跃数没变也过一遍 reconcile：保活可能已经在别的路径上掉了
+        // （启动被拒 / 被系统结束），只等「状态变化」是等不到重建的。
+        reconcile()
+    }
+
+    /// 用户主动「继续 / 重试」任务时调用：立即重新检查一次保活。
+    ///
+    /// 「继续」不一定改变 `hasActiveTasks`（比如本来就还有别的任务在跑），而画中画
+    /// 很可能已经因为启动被拒 / 被系统结束而掉了 —— 这里补一次确定性的重建。
+    func retryKeepAlive() {
+        guard preferredMode != .off, keepAliveNeeded else { return }
+        onLog?("用户继续任务，重新检查保活")
         reconcile()
     }
 
@@ -112,7 +125,15 @@ final class KeepAliveCoordinator: ObservableObject {
     // MARK: - 内部
 
     private func reconcile() {
-        guard keepAliveNeeded, preferredMode != .off else {
+        // 用户把保活方式关掉：彻底销毁画中画基础设施（宿主视图 + 会话）。
+        if preferredMode == .off {
+            deactivate()
+            pictureInPicture.invalidate()
+            return
+        }
+        // 只是「暂时没有活跃任务」：停掉画中画，但**保留**会话与宿主视图，
+        // 这样紧接着的「继续」可以直接复用现有会话 —— 刚停就重建几乎必被系统拒绝。
+        guard keepAliveNeeded else {
             deactivate()
             return
         }

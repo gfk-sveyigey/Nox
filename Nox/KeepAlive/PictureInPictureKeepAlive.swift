@@ -19,7 +19,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private(set) var isActive = false
     var onInterruption: (() -> Void)?
     /// 「始终没能启动」回调（区别于「启动后被系统/用户结束」）。
-    /// 用于在前台做有限次重试。
     var onStartFailure: (() -> Void)?
 
     /// 诊断信息出口（内部适配是否可用等），由协调器转接到日志。
@@ -28,12 +27,22 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 共存保护装不上时的处理方式，由协调器按用户在设置里选的值同步过来。
     var coexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
+    /// 画中画基础设施：controller / 内容控制器 / 宿主视图。
+    ///
+    /// ⚠️ 只建一次，**跨启停复用**，停止时只调 `stopPictureInPicture()`，不拆掉宿主视图。
+    /// 原因：系统在「结束一个画中画会话」后的一小段时间内会拒绝新建，而把宿主视图从窗口里
+    /// 摘掉、再把 controller 置空，会让这次会话以「不干净」的方式收尾（`AVKitErrorDomain -1001`）。
+    /// 两者叠加就是「取消任务后再继续，画中画再也拉不起来」。参考实现 GlobalRefresh-PiP 同样是
+    /// 整个 App 生命周期只建一次 controller，之后只做 start / stopPictureInPicture。
     private var controller: AVPictureInPictureController?
     private var contentController: AVPictureInPictureVideoCallViewController?
     private weak var sourceView: UIView?
     private var sourceWidth: NSLayoutConstraint?
     private var sourceHeight: NSLayoutConstraint?
     private var coexistence: PiPCoexistenceProtection?
+    /// 这一次「停止」是我们自己发起的（任务结束 / 切保活方式），
+    /// 用来把 `didStop` 和「用户或系统关掉了画中画」区分开。
+    private var isStoppingSelf = false
 
     /// PiP 悬浮窗高度（pt），由设置页滑块调节。0 表示最小化：0.1pt，视觉隐藏。
     ///
@@ -61,7 +70,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private var startTask: Task<Void, Never>?
     /// 连续观察到 `isPictureInPicturePossible == true` 的次数（抖动确认用）。
     private var readyStreak = 0
-    /// 已尝试启动的次数（有界重试，避免无限轮询抢占 System）。
+    /// 已尝试启动的次数（`isPictureInPicturePossible` 一直 false 时的低速重试用）。
     private var attemptCount = 0
     /// 上一次停止 PiP 的时刻（单调时钟），用于「刚停就重启」冷却。
     private var lastStopUptime: TimeInterval?
@@ -70,18 +79,29 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 结果回来之前**绝不能**再调一次：重复调用会被系统以 `AVKitErrorDomain -1001`
     /// 拒绝，日志里就会同时出现两次「开始启动」和一次启动失败。
     private var isStartPending = false
+    /// 启动 API 被系统拒绝 / 迟迟未激活时的重试计数（`didStart` 或重开会话时清零）。
+    private var startRetryCount = 0
+    /// 「等上一次停止收尾」的重试次数（见 `attemptStartIfPossible`）。
+    private var stopWaitCount = 0
 
     /// 抖动确认窗口：刚创建 controller 时 `isPictureInPicturePossible` 常是瞬时 true，
     /// 之后系统才算出真值。要求它连续两次为 true 才真正启动。
     private static let startSettleDelay: Double = 0.6
     /// 未就绪时的重试间隔。
     private static let startRetryDelay: Double = 0.8
-    /// 启动尝试次数上限（约 12 秒）。
-    private static let maxStartAttempts = 15
+    /// 未就绪时保持「快速重试」的次数上限；之后转入低速重试（**不会**放弃会话）。
+    private static let maxFastStartAttempts = 5
+    /// 转入低速重试后的间隔。
+    private static let startSlowRetryDelay: Double = 3
+    /// 每多少次未就绪上报一次日志，避免刷屏。
+    private static let startAttemptsPerNotice = 10
+    /// 启动 API 被拒 / 迟迟未激活时的重试次数上限；超过才真正上报失败。
+    private static let maxStartRetries = 4
+    /// 等上一次停止收尾的次数上限（≈ 6.4 秒）。
+    private static let maxStopWaitAttempts = 8
     /// 启动后核对是否进入激活状态的延迟。
     ///
-    /// 不能太短：核对失败会走 `onStartFailure` → 立刻 `stopAll()`，把「只是慢了一点、
-    /// 马上就会激活」的会话直接掐掉，表现就是「拉起画中画失败」。
+    /// 不能太短：核对失败会走重试链，把「只是慢了一点、马上就会激活」的会话当成失败。
     private static let startVerificationDelay: Double = 8
     /// 上一次停止 PiP 之后，允许再次启动的最短间隔（秒）。
     ///
@@ -93,8 +113,62 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         guard AVPictureInPictureController.isPictureInPictureSupported() else {
             throw KeepAliveError.unsupported(name)
         }
-        guard controller == nil else { return }
 
+        let pipController = try ensureInfrastructure()
+
+        isActive = true
+        readyStreak = 0
+        attemptCount = 0
+        startRetryCount = 0
+        stopWaitCount = 0
+
+        if pipController.isPictureInPictureActive {
+            if isStoppingSelf {
+                // 刚请求过停止、系统还在收尾：等它真的停掉再启动（收尾期间新建几乎必被拒）。
+                onLog?("画中画正在收尾，稍后重试启动")
+                attemptStartIfPossible(pipController)
+                return
+            }
+            // 会话其实还在运行：直接复用，绝不重复 start。
+            isStartPending = false
+            onLog?("画中画会话已在运行，复用现有会话")
+            coexistence?.schedulePostStartUpdate(for: pipController)
+            return
+        }
+
+        attemptStartIfPossible(pipController)
+    }
+
+    /// 就近复用 / 新建画中画基础设施。
+    ///
+    /// 复用时会重新装一次共存保护：上一次停止时已经把内容类型退回 4，
+    /// 需要重新走「首次 4 → 启动后 6」的流程。
+    private func ensureInfrastructure() throws -> AVPictureInPictureController {
+        if let existing = controller, canReuseInfrastructure {
+            if let coexistence {
+                coexistence.prepare()
+                if !coexistence.isSupported, coexistenceFallback != .keepAlive {
+                    onLog?("画中画共存保护不可用，按设置\(coexistenceFallback.title)")
+                    destroyInfrastructure()
+                    throw KeepAliveError.coexistenceUnavailable(name)
+                }
+            }
+            return existing
+        }
+
+        destroyInfrastructure()
+        return try makeInfrastructure()
+    }
+
+    /// 现有会话是否还能复用（宿主视图仍在某个窗口上）。
+    private var canReuseInfrastructure: Bool {
+        guard controller != nil else { return false }
+        guard let view = sourceView, view.window != nil else { return false }
+        return true
+    }
+
+    /// 建立画中画基础设施（宿主视图 + controller + 共存保护）。
+    private func makeInfrastructure() throws -> AVPictureInPictureController {
         let host = try makeHostView()
         let content = AVPictureInPictureVideoCallViewController()
         content.preferredContentSize = pipSize
@@ -132,18 +206,12 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         // `.keepAlive` 时继续启动（可能挤掉其它 App 的 PiP），其余情况报错交给协调器。
         if !protection.isSupported, coexistenceFallback != .keepAlive {
             onLog?("画中画共存保护不可用，按设置\(coexistenceFallback.title)")
-            coexistence = nil
-            cleanup()
+            destroyInfrastructure()
             throw KeepAliveError.coexistenceUnavailable(name)
         }
 
-        isActive = true
-        // 直接以 0.1pt 启动（不是先开大再缩小），避免闪一下可见窗口。
-        readyStreak = 0
-        attemptCount = 0
         observeReadiness(for: pipController)
-        // 立刻尝试一次；未就绪则交给有界重试（见 attemptStartIfPossible）。
-        attemptStartIfPossible(pipController)
+        return pipController
     }
 
     /// 共存保护是否真的装上了（装不上时按 `coexistenceFallback` 处理）。
@@ -160,18 +228,27 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         lastStopUptime = ProcessInfo.processInfo.systemUptime
         startVerificationTask?.cancel()
         startVerificationTask = nil
-        coexistence?.restore()
-        coexistence = nil
-        controller?.delegate = nil
-        controller?.stopPictureInPicture()
-        cleanup()
+        startTask?.cancel()
+        startTask = nil
+        readyStreak = 0
+        attemptCount = 0
+        stopWaitCount = 0
+        isStartPending = false
         isActive = false
+        isStoppingSelf = true
+        // 内容类型退回 4：下次启动重新走「先 4 后 6」，也让别的 App 的画中画恢复原状。
+        coexistence?.restore()
+        controller?.stopPictureInPicture()
+        // 刻意**不**销毁 controller / 宿主视图：保留会话，下次 start() 直接复用。
+    }
+
+    /// 彻底销毁画中画基础设施（用户把保活方式关掉时用）。
+    func invalidate() {
+        stop()
+        destroyInfrastructure()
     }
 
     /// 启动是异步的：这里做一次「一次性」核对，确认 PiP 真的进入激活状态。
-    ///
-    /// 若长时间没进激活（被系统或其它 App 拒绝、设备处于不支持场景），
-    /// 上报一次中断，由协调器记录并从「未保活」开始重建。这里不是轮询，也不会重复提交。
     private func scheduleStartVerification(for controller: AVPictureInPictureController, delay: Double) {
         startVerificationTask?.cancel()
         startVerificationTask = Task { @MainActor [weak self] in
@@ -180,7 +257,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             self.startVerificationTask = nil
             guard !controller.isPictureInPictureActive else { return }
             self.onLog?("画中画启动后未进入激活状态（可能被系统或其他 App 拒绝）")
-            self.onStartFailure?()
+            self.scheduleStartRetry(for: controller)
         }
     }
 
@@ -205,21 +282,43 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 用瞬时值 `startPictureInPicture()` 会把对方挤掉、自己却起不来 ——
     /// 表现就是「启动保活时中断了其他 App 的画中画，保活本身也没成功」。
     private func attemptStartIfPossible(_ controller: AVPictureInPictureController) {
-        guard self.controller === controller, isActive, !isStartPending,
-              !controller.isPictureInPictureActive else { return }
+        guard self.controller === controller, isActive, !isStartPending else { return }
 
-        guard controller.isPictureInPicturePossible else {
-            readyStreak = 0
-            attemptCount += 1
-            guard attemptCount <= Self.maxStartAttempts else {
-                onLog?("画中画始终无法启动（长时间未就绪，可能被其他 App 的画中画占用）")
-                onStartFailure?()
+        if controller.isPictureInPictureActive {
+            // 只有「我们自己请求过停止、系统还在收尾」才需要等：
+            // 其余情况说明会话本来就活着，什么都不用做。
+            guard isStoppingSelf else { return }
+            stopWaitCount += 1
+            guard stopWaitCount <= Self.maxStopWaitAttempts else {
+                // 停止请求迟迟没生效：那就按「会话仍在运行」处理（对保活来说这正是想要的状态）。
+                stopWaitCount = 0
+                isStoppingSelf = false
+                onLog?("画中画停止迟迟未完成，按现有会话继续")
                 return
             }
             scheduleStartAttempt(for: controller, delay: Self.startRetryDelay)
             return
         }
+        stopWaitCount = 0
 
+        guard controller.isPictureInPicturePossible else {
+            readyStreak = 0
+            attemptCount += 1
+            // 不因为「长时间未就绪」就放弃会话：就绪状态可能只是被别人占着的一段时间。
+            // 一旦放弃，就只能等用户把 App 切后台再回来才会重建 —— 表现就是
+            // 「取消任务后再继续，画中画再也拉不起来」。这里改为低速持续重试。
+            if attemptCount % Self.startAttemptsPerNotice == 0 {
+                onLog?("画中画暂未就绪，继续等待（第 \(attemptCount) 次）")
+            }
+            let delay = attemptCount <= Self.maxFastStartAttempts
+                ? Self.startRetryDelay
+                : Self.startSlowRetryDelay
+            scheduleStartAttempt(for: controller, delay: delay)
+            return
+        }
+
+        // 一旦就绪，就把「未就绪」的等待计数清零，避免瞬时抖动把预算耗光。
+        attemptCount = 0
         readyStreak += 1
         guard readyStreak >= 2 else {
             // 第一次看到 true 先不启动，隔一个很短的窗口再确认一次。
@@ -252,9 +351,31 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         }
     }
 
+    /// 启动失败（被系统拒绝 / 迟迟未激活）后的有界重试。
+    ///
+    /// 「取消任务后马上继续」是最常见的操作：上一个画中画刚结束，系统常会拒绝紧接着的
+    /// 新建（`AVKitErrorDomain -1001`）。以前一次失败就彻底放弃，只能等用户把 App 切后台
+    /// 再回来才重建 —— 表现就是「继续 / 重试任务时拉不起保活」。
+    /// 这里改为退避重试若干次，仍失败才上报中断。
+    private func scheduleStartRetry(for controller: AVPictureInPictureController) {
+        guard self.controller === controller, isActive else { return }
+        startRetryCount += 1
+        guard startRetryCount <= Self.maxStartRetries else {
+            startRetryCount = 0
+            onStartFailure?()
+            return
+        }
+        let delay = Self.restartCooldown * Double(startRetryCount)
+        onLog?("画中画将在 \(delay) 秒后重试（第 \(startRetryCount)/\(Self.maxStartRetries) 次）")
+        readyStreak = 0
+        scheduleStartAttempt(for: controller, delay: delay)
+    }
+
     // MARK: - 内部
 
-    private func cleanup() {
+    /// 销毁基础设施（只在「关掉保活方式」或宿主视图失效时用）。
+    private func destroyInfrastructure() {
+        isActive = false
         possibleObservation?.invalidate()
         possibleObservation = nil
         startVerificationTask?.cancel()
@@ -263,7 +384,13 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         startTask = nil
         readyStreak = 0
         attemptCount = 0
+        startRetryCount = 0
         isStartPending = false
+        isStoppingSelf = false
+        coexistence?.restore()
+        coexistence = nil
+        controller?.delegate = nil
+        controller = nil
         sourceWidth?.isActive = false
         sourceHeight?.isActive = false
         sourceWidth = nil
@@ -271,14 +398,14 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         sourceView?.removeFromSuperview()
         sourceView = nil
         contentController = nil
-        controller = nil
     }
 
     /// 把当前尺寸即时应用到已启动的 PiP：更新宿主视图约束与内容尺寸。
     ///
     /// 只调整几何，不重建会话 —— 重建会打断保活。窗口由系统在下次布局时跟随。
     private func applySizeToRunningPiP() {
-        guard isActive else { return }
+        // 暂停期间也要跟随：会话是复用的，下次启动必须用最新尺寸。
+        guard controller != nil else { return }
         let size = pipSize
         sourceWidth?.constant = size.width
         sourceHeight?.constant = size.height
@@ -313,6 +440,9 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         let host = UIView()
         host.backgroundColor = .clear
         host.isOpaque = false
+        // 这个视图只是一块透明的几何来源，但会长期留在窗口里（会话复用），
+        // 必须关掉触摸，否则它会挡住中间那片区域的手势。
+        host.isUserInteractionEnabled = false
         host.translatesAutoresizingMaskIntoConstraints = false
         window.addSubview(host)
 
@@ -336,17 +466,26 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
 
     func pictureInPictureControllerDidStartPictureInPicture(_ controller: AVPictureInPictureController) {
         isStartPending = false
+        isStoppingSelf = false
         startVerificationTask?.cancel()
         startVerificationTask = nil
         startTask?.cancel()
         startTask = nil
         readyStreak = 0
+        attemptCount = 0
+        startRetryCount = 0
         // 启动成功后再延迟提交共存类型，避免与其他 PiP 争抢。
         coexistence?.schedulePostStartUpdate(for: controller)
     }
 
     func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
-        // 用户主动关闭 / 被系统结束 → 交给协调器按降级链处理。
+        // 我们自己发起的停止（任务结束 / 切保活方式）：只算暂停会话，
+        // 既不当成「被系统或用户结束」，也不要销毁基础设施 —— 下次 start() 直接复用。
+        if isStoppingSelf {
+            isStoppingSelf = false
+            return
+        }
+        // 用户主动关闭 / 被系统结束 → 交给协调器处理。
         Task { @MainActor in self.onInterruption?() }
     }
 
@@ -361,7 +500,7 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
             self.startVerificationTask = nil
             let nsError = error as NSError
             self.onLog?("画中画启动被系统拒绝：\(nsError.domain) \(nsError.code) — \(nsError.localizedDescription)")
-            self.onStartFailure?()
+            self.scheduleStartRetry(for: controller)
         }
     }
 }
