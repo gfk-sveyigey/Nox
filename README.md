@@ -227,6 +227,7 @@ final class XxxParser: VideoSiteParser {
 - 共存保护 `PiPCoexistenceProtection` 对齐参考实现（GlobalRefresh-PiP 1.1.1）：按 `platformAdapter` / `pegasusProxy` 选择器找内部对象，在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:`（并 hook `respondsToSelector:`）并挂好实例配置，**必须在惰性取得 `pegasusProxy` 之前完成**（顺序反了，本次会话仍是普通 PiP —— 表现就是启动保活时挤掉其他 App 的画中画）；首次启动用内容类型 4、`didStart` 后延迟 0.3 秒提交 6；所有调用都先做运行时签名校验，校验不通过即静默跳过
 - 启动是异步的：画中画启动后做一次「一次性」核对（窗口 8 秒 —— 太短会把「只是慢一点、马上就会激活」的会话直接掐掉，表现为「拉起画中画失败」），若始终未进入激活状态才上报「启动失败」；系统主动拒绝时会连同 `NSError` 的 domain / code / 描述一起写进日志；「启动失败」与「启动后被系统/用户结束」分开处理，但都只记录原因、不做自动重试，等回到前台由 `didEnterForeground()` 重建
 - 每次「有活跃任务」状态变化（继续 / 重试任务）都会按策略的**真实存活状态**自愈：若 `activeMode` 记录还在但 PiP 其实已经掉了，会先归零再重建，避免「重试任务时拉不起保活」；反过来，若目标策略其实还在运行而记录停在了 `.off`，只同步记录、不做「停掉再立刻重启」（画中画刚停就重启几乎必被系统拒绝）。另外，距离上一次停止 PiP 不足 2 秒时会推迟启动到冷却结束
+- 「回到前台」由两条路一起驱动 `didEnterForeground()`：SwiftUI 的 `scenePhase` 变化，以及 `UIApplication.didBecomeActiveNotification`。后者是兜底 —— 冷启动 / 前台切换期间被推迟的启动（典型是「跟随下载任务」下任务在启动阶段恢复、触发时 App 还没激活）会在 App 真正激活时补上，不会因为 `scenePhase` 那一次已经用掉而永远不再拉起
 - 宿主窗口不再强求 key window（后台 / 弹 sheet 时可能没有）：退化为「任意一个可见窗口」，拿不到宿主只算暂时失败，等回到前台重建
 - 保活启停由 `DownloadManager` 订阅 `AppState.$downloads` 驱动，不在每个状态迁移点手写调用，避免漏掉而「任务都结束了保活还开着」
 - 需要在 `Info.plist` 开启 `UIBackgroundModes: audio`
