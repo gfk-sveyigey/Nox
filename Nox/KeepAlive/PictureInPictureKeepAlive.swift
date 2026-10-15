@@ -35,21 +35,21 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private var sourceHeight: NSLayoutConstraint?
     private var coexistence: PiPCoexistenceProtection?
 
-    /// 是否以最小化方式显示 PiP：开启时高度压到 0.1pt（视觉隐藏），
-    /// 关闭时显示为普通可见小窗。由设置页切换。
+    /// PiP 悬浮窗高度（pt），由设置页滑块调节。0 表示最小化：0.1pt，视觉隐藏。
     ///
-    /// 切换时**不重建** PiP 会话：刚停掉就立刻重启常被系统拒绝，
+    /// 改动时**不重建** PiP 会话：刚停掉就立刻重启常被系统拒绝，
     /// 会导致保活直接失效；这里只更新宿主视图尺寸并即时生效。
-    var isMinimized = true {
+    var windowHeight: Double = AppState.defaultPiPWindowHeight {
         didSet {
-            guard isMinimized != oldValue else { return }
+            guard windowHeight != oldValue else { return }
             applySizeToRunningPiP()
         }
     }
 
-    /// PiP 悬浮窗尺寸。最小化时高 0.1pt（不可见），否则 12:9 的普通小窗。
+    /// PiP 悬浮窗尺寸：宽度固定 300pt，高度由滑块决定；0 时压到 0.1pt（不可见）。
     private var pipSize: CGSize {
-        isMinimized ? CGSize(width: 300, height: 0.1) : CGSize(width: 300, height: 225)
+        let height = windowHeight < 1 ? AppState.minimizedPiPWindowHeight : windowHeight
+        return CGSize(width: 300, height: height)
     }
 
     /// 启动后的「一次性」核对任务，确认 PiP 真的进入激活状态。
@@ -135,7 +135,11 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     var isCoexistenceInstalled: Bool { coexistence?.isSupported ?? false }
 
     /// PiP 是否真的还在显示（回前台时用来判断保活是否被系统 / 用户结束）。
-    var isLive: Bool { controller?.isPictureInPictureActive ?? false }
+    var isLive: Bool {
+        if controller?.isPictureInPictureActive == true { return true }
+        // 正在建立中也算「活着」：否则 `reconcile` 的自愈会在启动过程中反复重建。
+        return startTask != nil || startVerificationTask != nil
+    }
 
     func stop() {
         startVerificationTask?.cancel()
@@ -157,6 +161,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         startVerificationTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard let self, !Task.isCancelled, self.controller === controller else { return }
+            self.startVerificationTask = nil
             guard !controller.isPictureInPictureActive else { return }
             self.onLog?("画中画启动后未进入激活状态（可能被系统或其他 App 拒绝）")
             self.onStartFailure?()
@@ -217,6 +222,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         startTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard let self, !Task.isCancelled else { return }
+            self.startTask = nil
             self.attemptStartIfPossible(controller)
         }
     }
@@ -254,13 +260,25 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         sourceView?.superview?.layoutIfNeeded()
     }
 
-    /// 在 key window 上挂一个透明、高度 0.1pt 的 source view，作为 PiP 的几何来源。
+    /// 找一个可用的宿主窗口。
+    ///
+    /// 不要求必须是 key window：App 在后台、或弹着 sheet 时 key window 可能为空，
+    /// 但任意一个可见窗口都能提供合法的几何来源 —— 过度严格会让『继续/重试任务』时拉不起保活。
+    private static func hostWindow() -> UIWindow? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let windows = scenes.flatMap { $0.windows }
+
+        if let key = windows.first(where: { $0.isKeyWindow }) { return key }
+
+        let foreground = scenes.first(where: { $0.activationState == .foregroundActive })
+        if let window = foreground?.windows.first { return window }
+
+        return windows.first
+    }
+
+    /// 在宿主窗口上挂一个透明、高度由设置决定的 source view，作为 PiP 的几何来源。
     private func makeHostView() throws -> UIView {
-        guard let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap({ $0.windows })
-            .first(where: { $0.isKeyWindow })
-        else {
+        guard let window = Self.hostWindow() else {
             // 没有前台窗口只是「暂时」拿不到宿主，并非设备不支持，
             // 用单独的错误文案区分，避免误导排查方向。
             throw KeepAliveError.unavailable(name)

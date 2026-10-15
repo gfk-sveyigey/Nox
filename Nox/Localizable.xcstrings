@@ -1717,12 +1717,28 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@의 공존 보호를 사용할 수 없습니다" } }
       }
     },
-    "以最小化显示画中画" : {
+    "画中画窗口大小" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bild-in-Bild minimiert anzeigen" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show PiP minimized" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher l'image dans l'image réduite" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면 최소화 표시" } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bild-in-Bild-Fenstergröße" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "PiP window size" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Taille de la fenêtre PiP" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면 창 크기" } }
+      }
+    },
+    "最小" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Minimal" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Minimum" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Minimal" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최소" } }
+      }
+    },
+    "拖动到最左即最小：窗口高 0.1pt，视觉隐藏、不影响操作；越往右窗口越大。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ganz links = minimal: Fensterhöhe 0,1 pt, unsichtbar und ohne Einfluss auf die Bedienung; nach rechts wird das Fenster größer." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Drag to the far left for the minimum: 0.1 pt tall, visually hidden and does not affect operation; larger to the right." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Glissez tout à gauche pour le minimum : hauteur 0,1 pt, invisible et sans gêne ; vers la droite, la fenêtre grandit." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "왼쪽 끝은 최소: 높이 0.1pt로 보이지 않고 조작에 영향을 주지 않습니다. 오른쪽으로 갈수록 창이 커집니다." } }
       }
     },
     "画中画可能与其他 App 的画中画互相打断。这里选择共存保护不可用时如何处理。" : {

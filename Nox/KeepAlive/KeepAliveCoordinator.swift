@@ -32,14 +32,14 @@ final class KeepAliveCoordinator: ObservableObject {
         }
     }
 
-    /// 是否以最小化（视觉隐藏）方式显示画中画。
+    /// 画中画窗口高度（pt）。
     ///
     /// 只把尺寸变化即时应用到正在运行的画中画，**不重建会话**：
     /// 刚停掉就立刻重启常被系统拒绝，会让保活直接失效。
-    var pipMinimized: Bool = true {
+    var pipWindowHeight: Double = AppState.defaultPiPWindowHeight {
         didSet {
-            guard pipMinimized != oldValue else { return }
-            pictureInPicture.isMinimized = pipMinimized
+            guard pipWindowHeight != oldValue else { return }
+            pictureInPicture.windowHeight = pipWindowHeight
         }
     }
 
@@ -58,7 +58,7 @@ final class KeepAliveCoordinator: ObservableObject {
 
     init() {
         pictureInPicture.coexistenceFallback = piPCoexistenceFallback
-        pictureInPicture.isMinimized = pipMinimized
+        pictureInPicture.windowHeight = pipWindowHeight
         // 回调可能来自非主线程（音频中断通知等），显式跳回主线程再改状态。
         silentAudio.onInterruption = { [weak self] in
             Task { @MainActor in self?.handleInterruption() }
@@ -111,6 +111,12 @@ final class KeepAliveCoordinator: ObservableObject {
             deactivate()
             return
         }
+        // 记录里的保活方式可能已经掉了（系统结束 / 启动失败 / 之前拿不到宿主窗口），
+        // 但 `activeMode` 还停留在旧值 —— 那样 `activate` 会被 `guard activeMode != mode`
+        // 挡掉，表现就是「继续/重试任务时拉不起保活」。这里按真实存活状态纠正一次。
+        if activeMode != .off, !activeStrategyIsRunning {
+            activeMode = .off
+        }
         activate(preferredMode)
     }
 
@@ -139,6 +145,9 @@ final class KeepAliveCoordinator: ObservableObject {
                (error as? KeepAliveError)?.isCoexistenceUnavailable == true,
                piPCoexistenceFallback == .silentAudio {
                 activate(.silentAudio)
+            } else if (error as? KeepAliveError)?.isTransientUnavailable == true {
+                // 例如启动时还没拿到前台窗口（切后台/切页面瞬间）：按有限次前台重试补上。
+                scheduleForegroundRetry()
             }
         }
     }

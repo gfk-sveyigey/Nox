@@ -275,12 +275,30 @@ struct KeepAliveSettingsView: View {
                     }
                 }
 
-                // 只有画中画才有悬浮窗，其它保活方式下这个开关没有意义。
+                // 只有画中画才有悬浮窗，其它保活方式下这个滑块没有意义。
                 if appState.keepAliveMode == .pictureInPicture {
-                    Toggle(L("以最小化显示画中画"), isOn: Binding(
-                        get: { appState.pipMinimized },
-                        set: { manager.setPiPMinimized($0) }
-                    ))
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(L("画中画窗口大小"))
+                            Spacer()
+                            Text(pipWindowSizeTitle)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+
+                        Slider(
+                            value: Binding(
+                                get: { appState.pipWindowHeight },
+                                set: { manager.setPiPWindowHeight($0) }
+                            ),
+                            in: AppState.pipWindowHeightRange,
+                            step: 1
+                        )
+                    }
+                }
+            } footer: {
+                if appState.keepAliveMode == .pictureInPicture {
+                    Text(L("拖动到最左即最小：窗口高 0.1pt，视觉隐藏、不影响操作；越往右窗口越大。"))
                 }
             }
 
@@ -302,6 +320,11 @@ struct KeepAliveSettingsView: View {
         }
         .navigationTitle(L("后台保活"))
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// 滑块当前值说明：最左为「最小」（隐藏），其余显示高度点数。
+    private var pipWindowSizeTitle: String {
+        appState.pipWindowHeight < 1 ? L("最小") : "\(Int(appState.pipWindowHeight.rounded())) pt"
     }
 }
 
