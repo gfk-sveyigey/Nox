@@ -84,6 +84,7 @@ final class KeepAliveCoordinator: ObservableObject {
     func update(hasActiveTasks: Bool) {
         guard hasActiveTasks != self.hasActiveTasks else { return }
         self.hasActiveTasks = hasActiveTasks
+        onLog?("有活跃下载任务：\(hasActiveTasks)")
         reconcile()
     }
 
@@ -134,6 +135,7 @@ final class KeepAliveCoordinator: ObservableObject {
             stopOthers(than: mode)
             activeMode = mode
             lastError = nil
+            onLog?("保活已在运行，仅同步状态：\(mode.title)")
             return
         }
 

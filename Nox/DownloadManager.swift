@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import UIKit
 import WebKit
 
 /// 一个分片在远端文件中的位置。分片边界是 (总大小, 固定分片长度) 的纯函数结果，
@@ -154,6 +155,11 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     /// 后台保活：有活跃下载时启动，全部结束 / 取消时停止。
     let keepAlive: KeepAliveCoordinator
     private var keepAliveObservation: AnyCancellable?
+    /// App 真正激活的系统通知。
+    ///
+    /// 冷启动 / 弹窗切换时 SwiftUI 的 `scenePhase` 不一定每次都走 `.active`，用它兜底：
+    /// 任何因为「App 尚未进入前台」而被推迟的保活启动，都会在这里补上。
+    private var becomeActiveObserver: NSObjectProtocol?
 
     // MARK: - 全局并发调度
 
@@ -257,6 +263,20 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                     self?.keepAlive.update(hasActiveTasks: hasActive)
                 }
             }
+
+        becomeActiveObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.keepAlive.didEnterForeground() }
+        }
+    }
+
+    deinit {
+        if let becomeActiveObserver {
+            NotificationCenter.default.removeObserver(becomeActiveObserver)
+        }
     }
 
     /// 重新扫描「已完成但文件缺失」的记录。
