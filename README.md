@@ -219,14 +219,14 @@ final class XxxParser: VideoSiteParser {
 ### 后台保活
 
 - 抽成 `KeepAliveStrategy`（`SilentAudioKeepAlive` / `PictureInPictureKeepAlive`），由 `KeepAliveCoordinator` 统一调度：按「保活模式」决定 —— 跟随下载任务（有「排队中 / 下载中」任务就开启，全部结束就停止）或启动即常驻（进入前台就拉起并保持，直到把保活方式设为「关闭」）；失败或被打断只记录原因，**既不自动切换到别的保活方式**（避免静默改用会打断其它音频的静音音频）**也不自动重试**，等回到前台由 `didEnterForeground()` 重建
-- 画中画启动由 KVO + 有界重试驱动：`isPictureInPicturePossible` 刚创建时可能是**瞬时 true**（随后系统才算出真值），直接据此启动会「把其他 App 的画中画挤掉、自己却起不来」；因此要求连续两次为 true 才真正 `startPictureInPicture()`，未就绪时以固定间隔有限次重试（约 12 秒封顶），仍失败才上报「启动失败」
+- 画中画启动由 KVO + 有界重试驱动：`isPictureInPicturePossible` 刚创建时可能是**瞬时 true**（随后系统才算出真值），直接据此启动会「把其他 App 的画中画挤掉、自己却起不来」；因此要求连续两次为 true 才真正 `startPictureInPicture()`，未就绪时先以 0.8 秒间隔快速重试 5 次、之后每 3 秒继续等（**不放弃会话**，只是降速），避免「取消任务后再继续就永远拉不起来」
 - 画中画只在 App **前台激活**时才启动（用 `UIApplication.shared.applicationState == .active` 判定）：冷启动时 `DownloadManager` 初始化会同步设置保活模式并触发一次启动，而那一刻 App 还没激活，`startPictureInPicture()` 会被系统以 `AVKitErrorDomain -1001` 拒绝；现在这种启动会被推迟，等 `didEnterForeground()` 在 App 激活后再拉起
 - `startPictureInPicture()` 调用后到结果返回之前不会重复调用（用 `isStartPending` 标记）：重复调用同样会被系统以 `AVKitErrorDomain -1001` 拒绝
-- 画中画走 `AVPictureInPictureVideoCallViewController` + `activeVideoCallSourceView`，内容完全透明，不申请音频会话，因此不打断其他 App 的音频；悬浮窗尺寸由「画中画窗口大小」滑块控制：宽度固定 300pt、高度 0.1…225pt（最左 0.1pt 即视觉隐藏）；调节时只即时更新宿主视图尺寸，**不重建画中画会话**（刚停掉就重启常被系统拒绝，会让保活失效）
+- 画中画走 `AVPictureInPictureVideoCallViewController` + `activeVideoCallSourceView`，内容完全透明，不申请音频会话，因此不打断其他 App 的音频；悬浮窗尺寸由「画中画窗口大小」滑块控制：宽度固定 300pt、高度 0.1…225pt（最左 0.1pt 即视觉隐藏）；调节时只即时更新宿主视图尺寸，**不重建画中画会话**（刚停掉就重启常被系统拒绝，会让保活失效）。画中画会话（controller + 宿主视图）整个 App 生命周期**只建一次、跨启停复用**：任务结束只调 `stopPictureInPicture()` 暂停、不销毁基础设施，下次启动直接复用同一个会话 —— 拆掉重建会让系统以 `AVKitErrorDomain -1001` 拒绝新建；宿主视图常驻窗口但 `isUserInteractionEnabled = false`，不挡手势
 - 共存保护装不上时按用户在设置里的选择处理（继续用画中画 / 改用静音音频 / 停止保活），不再默认静默退回普通画中画
 - 共存保护 `PiPCoexistenceProtection` 对齐参考实现（GlobalRefresh-PiP 1.1.1）：按 `platformAdapter` / `pegasusProxy` 选择器找内部对象，在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:`（并 hook `respondsToSelector:`）并挂好实例配置，**必须在惰性取得 `pegasusProxy` 之前完成**（顺序反了，本次会话仍是普通 PiP —— 表现就是启动保活时挤掉其他 App 的画中画）；首次启动用内容类型 4、`didStart` 后延迟 0.3 秒提交 6；所有调用都先做运行时签名校验，校验不通过即静默跳过
-- 启动是异步的：画中画启动后做一次「一次性」核对（窗口 8 秒 —— 太短会把「只是慢一点、马上就会激活」的会话直接掐掉，表现为「拉起画中画失败」），若始终未进入激活状态才上报「启动失败」；系统主动拒绝时会连同 `NSError` 的 domain / code / 描述一起写进日志；「启动失败」与「启动后被系统/用户结束」分开处理，但都只记录原因、不做自动重试，等回到前台由 `didEnterForeground()` 重建
-- 每次「有活跃任务」状态变化（继续 / 重试任务）都会按策略的**真实存活状态**自愈：若 `activeMode` 记录还在但 PiP 其实已经掉了，会先归零再重建，避免「重试任务时拉不起保活」；反过来，若目标策略其实还在运行而记录停在了 `.off`，只同步记录、不做「停掉再立刻重启」（画中画刚停就重启几乎必被系统拒绝）。另外，距离上一次停止 PiP 不足 2 秒时会推迟启动到冷却结束
+- 启动是异步的：画中画启动后做一次「一次性」核对（窗口 8 秒 —— 太短会把「只是慢一点、马上就会激活」的会话直接掐掉，表现为「拉起画中画失败」），若始终未进入激活状态就走有界退避重试（2 / 4 / 6 / 8 秒，共 4 次），仍失败才上报「启动失败」；系统主动拒绝时会连同 `NSError` 的 domain / code / 描述一起写进日志；「启动失败」与「启动后被系统/用户结束」分开处理：前者在会话内部退避重试，后者只记录原因、不自动重试，等回到前台由 `didEnterForeground()` 重建
+- 每次「有活跃任务」变化都走一遍 reconcile（**即使活跃数没变也走**），按策略的**真实存活状态**自愈：若 `activeMode` 记录还在但 PiP 其实已经掉了，会先归零再重建，避免「重试任务时拉不起保活」；用户点「继续 / 重试」时还会额外主动检查一次（`retryKeepAlive()`）。反过来，若目标策略其实还在运行而记录停在了 `.off`，只同步记录、不做「停掉再立刻重启」（画中画刚停就重启几乎必被系统拒绝）。另外，距离上一次停止 PiP 不足 2 秒时会推迟启动到冷却结束
 - 「回到前台」由两条路一起驱动 `didEnterForeground()`：SwiftUI 的 `scenePhase` 变化，以及 `UIApplication.didBecomeActiveNotification`。后者是兜底 —— 冷启动 / 前台切换期间被推迟的启动（典型是「跟随下载任务」下任务在启动阶段恢复、触发时 App 还没激活）会在 App 真正激活时补上，不会因为 `scenePhase` 那一次已经用掉而永远不再拉起
 - 宿主窗口不再强求 key window（后台 / 弹 sheet 时可能没有）：退化为「任意一个可见窗口」，拿不到宿主只算暂时失败，等回到前台重建
 - 保活启停由 `DownloadManager` 订阅 `AppState.$downloads` 驱动，不在每个状态迁移点手写调用，避免漏掉而「任务都结束了保活还开着」
