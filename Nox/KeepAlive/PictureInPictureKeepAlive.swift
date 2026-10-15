@@ -63,6 +63,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private var readyStreak = 0
     /// 已尝试启动的次数（有界重试，避免无限轮询抢占 System）。
     private var attemptCount = 0
+    /// 上一次停止 PiP 的时刻（单调时钟），用于「刚停就重启」冷却。
+    private var lastStopUptime: TimeInterval?
 
     /// 抖动确认窗口：刚创建 controller 时 `isPictureInPicturePossible` 常是瞬时 true，
     /// 之后系统才算出真值。要求它连续两次为 true 才真正启动。
@@ -72,7 +74,15 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 启动尝试次数上限（约 12 秒）。
     private static let maxStartAttempts = 15
     /// 启动后核对是否进入激活状态的延迟。
-    private static let startVerificationDelay: Double = 3
+    ///
+    /// 不能太短：核对失败会走 `onStartFailure` → 立刻 `stopAll()`，把「只是慢了一点、
+    /// 马上就会激活」的会话直接掐掉，表现就是「拉起画中画失败」。
+    private static let startVerificationDelay: Double = 8
+    /// 上一次停止 PiP 之后，允许再次启动的最短间隔（秒）。
+    ///
+    /// 系统在刚结束一个画中画会话后的一小段时间内会拒绝新建；
+    /// 「先停再立刻起」几乎必失败，因此这里宁可推迟启动。
+    private static let restartCooldown: TimeInterval = 2
 
     func start() throws {
         guard AVPictureInPictureController.isPictureInPictureSupported() else {
@@ -142,6 +152,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     }
 
     func stop() {
+        lastStopUptime = ProcessInfo.processInfo.systemUptime
         startVerificationTask?.cancel()
         startVerificationTask = nil
         coexistence?.restore()
@@ -210,7 +221,14 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             return
         }
 
-        onLog?("画中画已就绪，开始启动")
+        // 刚结束过 PiP（例如任务下载完自动停止，紧接着切了保活模式）：推迟到冷却结束再启动。
+        let now = ProcessInfo.processInfo.systemUptime
+        if let lastStop = lastStopUptime, now - lastStop < Self.restartCooldown {
+            scheduleStartAttempt(for: controller, delay: Self.restartCooldown - (now - lastStop))
+            return
+        }
+
+        onLog?("画中画已就绪，开始启动（窗口 \(pipSize.width)×\(pipSize.height) pt）")
         readyStreak = 0
         controller.startPictureInPicture()
         scheduleStartVerification(for: controller, delay: Self.startVerificationDelay)
@@ -327,6 +345,13 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
         _ controller: AVPictureInPictureController,
         failedToStartPictureInPictureWithError error: Error
     ) {
-        Task { @MainActor in self.onStartFailure?() }
+        Task { @MainActor in
+            // 把系统给的原因原样带出来 —— 之前这里被吞掉了，日志里只剩「未进入激活状态」。
+            self.startVerificationTask?.cancel()
+            self.startVerificationTask = nil
+            let nsError = error as NSError
+            self.onLog?("画中画启动被系统拒绝：\(nsError.domain) \(nsError.code) — \(nsError.localizedDescription)")
+            self.onStartFailure?()
+        }
     }
 }
