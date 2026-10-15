@@ -1748,6 +1748,102 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'image dans l'image peut interrompre celle des autres apps. Choisissez le comportement lorsque la protection de coexistence est indisponible." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면이 다른 앱의 화면 속 화면을 중단시킬 수 있습니다. 공존 보호를 사용할 수 없을 때의 동작을 선택하세요." } }
       }
+    },
+    "保活模式" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keep-Alive-Modus" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep-Alive Mode" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mode de maintien en activité" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지 모드" } }
+      }
+    },
+    "跟随下载任务" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Aufgaben folgen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow download tasks" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre les tâches de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 작업에 따름" } }
+      }
+    },
+    "启动即常驻" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dauerhaft ab dem Start" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Persistent from launch" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Persistant dès le lancement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실행 시 상시 유지" } }
+      }
+    },
+    "跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到把保活方式设为「关闭」。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Aufgaben folgen: nur aktiv, solange Downloads laufen. Dauerhaft ab dem Start: startet beim Aktivwerden der App und bleibt aktiv, bis die Keep-Alive-Methode auf „Aus“ gesetzt wird." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow download tasks: keep alive only while downloads are active. Persistent from launch: start when the app becomes active and keep running until the keep-alive method is set to Off." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre les tâches de téléchargement : maintien actif uniquement pendant les téléchargements. Persistant dès le lancement : démarre à l'activation de l'app et reste actif jusqu'à ce que la méthode soit réglée sur « Désactivé »." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 작업에 따름: 다운로드가 있을 때만 유지합니다. 실행 시 상시 유지: 앱이 활성화될 때 시작해 유지 방식을 「끔」으로 설정할 때까지 계속 유지합니다." } }
+      }
+    },
+    "开源许可与致谢" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Open-Source-Lizenzen und Dank" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Source Licenses & Credits" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Licences open source et remerciements" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오픈 소스 라이선스 및 감사" } }
+      }
+    },
+    "来源与致谢" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Quellen und Dank" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sources & Credits" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sources et remerciements" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "출처 및 감사" } }
+      }
+    },
+    "作者：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Autor: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Author: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Auteur : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "제작자: %@" } }
+      }
+    },
+    "原始画中画示例" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ursprüngliches Bild-in-Bild-Beispiel" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Original picture-in-picture demo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Démo d'image dans l'image d'origine" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "원본 화면 속 화면 예제" } }
+      }
+    },
+    "后台保活与画中画共存保护参考实现" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Referenzimplementierung für Hintergrund-Keep-Alive und Bild-in-Bild-Koexistenz" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reference implementation for background keep-alive and PiP coexistence" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Implémentation de référence pour le maintien en arrière-plan et la coexistence PiP" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지 및 화면 속 화면 공존 참고 구현" } }
+      }
+    },
+    "本项目在其基础上实现后台保活与画中画共存保护，保留原作者的署名与项目地址；本项目与上述项目无隶属关系。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieses Projekt baut darauf auf und implementiert Hintergrund-Keep-Alive und Bild-in-Bild-Koexistenz; die Nennung der ursprünglichen Autoren und Projektlinks bleibt erhalten. Dieses Projekt steht in keiner Verbindung zu den genannten Projekten." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This project builds on them for its background keep-alive and PiP coexistence features, retaining the original authors' attribution and project links; it is not affiliated with those projects." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce projet s'appuie sur eux pour le maintien en arrière-plan et la coexistence PiP, en conservant la mention des auteurs d'origine et les liens des projets ; il n'est pas affilié à ces projets." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 프로젝트는 이를 바탕으로 백그라운드 유지와 화면 속 화면 공존을 구현하며, 원저작자 표시와 프로젝트 링크를 유지합니다. 이 프로젝트는 위 프로젝트와 아무런 제휴 관계가 없습니다." } }
+      }
+    },
+    "免责声明" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Haftungsausschluss" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Disclaimer" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Avertissement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "면책 조항" } }
+      }
+    },
+    "本项目仅供学习与个人测试使用。使用者在安装、签名和使用过程中需自行承担风险，请勿用于违反平台规则、商业侵权或其他不当用途。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieses Projekt dient nur zum Lernen und für persönliche Tests. Installation, Signierung und Nutzung erfolgen auf eigenes Risiko. Verwenden Sie es nicht, um Plattformregeln zu verletzen, Urheberrechte zu verletzen oder es anderweitig missbräuchlich einzusetzen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This project is for learning and personal testing only. You install, sign, and use it at your own risk. Do not use it to violate platform rules, infringe intellectual property, or for other improper purposes." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce projet est destiné uniquement à l'apprentissage et aux tests personnels. L'installation, la signature et l'utilisation se font à vos propres risques. Ne l'utilisez pas pour enfreindre les règles des plateformes, porter atteinte à la propriété intellectuelle ou à d'autres fins inappropriées." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 프로젝트는 학습 및 개인 테스트 용도로만 제공됩니다. 설치, 서명 및 사용에 따른 위험은 사용자가 부담합니다. 플랫폼 규칙 위반, 지식재산권 침해 또는 기타 부적절한 용도로 사용하지 마세요." } }
+      }
     }
   },
   "version" : "1.0"

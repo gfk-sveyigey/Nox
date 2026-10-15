@@ -120,6 +120,12 @@ struct SettingsView: View {
                 } label: {
                     Text(L("后台保活"))
                 }
+
+                NavigationLink {
+                    LicensesView()
+                } label: {
+                    Text(L("开源许可与致谢"))
+                }
             }
 
             Section {
@@ -141,14 +147,15 @@ struct SettingsView: View {
         }
     }
 
-    /// 页脚：居中显示版本，形如「Nox v1.0.16」。
+    /// 页脚：居中显示版本与作者，形如「Nox v1.0.16 · Aholic」。
+    ///
+    /// 不加额外上边距，让署名紧跟在最后一组设置下方，不会掉到屏幕很靠下的位置。
     private var versionFooter: some View {
-        Text(verbatim: "\(Self.appName) v\(Self.appVersion)")
+        Text(verbatim: "\(Self.appName) v\(Self.appVersion) · Aholic")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .center)
             .multilineTextAlignment(.center)
-            .padding(.top, 8)
     }
 
     private var enabledSiteCount: Int {
@@ -181,6 +188,71 @@ struct SettingsView: View {
         }
 
         return UIImage(named: "AppIcon")
+    }
+}
+
+/// 「开源许可与致谢」二级页：列出参考 / 复用来源，并附免责声明。
+///
+/// 说明：本页是「来源与致谢」而不是标准开源许可证列表 —— 参考的两个项目都没有
+/// 标准许可证文件（只有署名要求），因此这里不写 SPDX 标识、也不冒充开源许可。
+struct LicensesView: View {
+    @ObservedObject private var localization = LocalizationManager.shared
+
+    var body: some View {
+        Form {
+            Section {
+                creditRow(
+                    name: "PiP",
+                    author: "CaiWanFeng",
+                    detail: L("原始画中画示例"),
+                    urlString: "https://github.com/CaiWanFeng/PiP"
+                )
+
+                creditRow(
+                    name: "GlobalRefresh-PiP",
+                    author: "Yoroin",
+                    detail: L("后台保活与画中画共存保护参考实现"),
+                    urlString: "https://github.com/Yoroin/GlobalRefresh-PiP"
+                )
+            } header: {
+                Text(L("来源与致谢"))
+            } footer: {
+                Text(L("本项目在其基础上实现后台保活与画中画共存保护，保留原作者的署名与项目地址；本项目与上述项目无隶属关系。"))
+            }
+
+            Section {
+                Text(L("本项目仅供学习与个人测试使用。使用者在安装、签名和使用过程中需自行承担风险，请勿用于违反平台规则、商业侵权或其他不当用途。"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text(L("免责声明"))
+            }
+        }
+        .navigationTitle(L("开源许可与致谢"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// 一条来源：名称、作者、用途说明与仓库链接（整行可点开仓库）。
+    private func creditRow(name: String, author: String, detail: String, urlString: String) -> some View {
+        Link(destination: URL(string: urlString)!) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: name)
+                    .foregroundStyle(.primary)
+
+                Text(String(format: L("作者：%@"), author))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(verbatim: detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(verbatim: urlString)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 
@@ -253,7 +325,7 @@ struct DownloadSettingsView: View {
     }
 }
 
-/// 「后台保活」二级页：选择保活方式、画中画共存兜底，以及是否最小化显示画中画。
+/// 「后台保活」二级页：选择保活方式、保活模式、画中画窗口大小与共存兜底。
 struct KeepAliveSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var localization = LocalizationManager.shared
@@ -299,6 +371,22 @@ struct KeepAliveSettingsView: View {
             } footer: {
                 if appState.keepAliveMode == .pictureInPicture {
                     Text(L("拖动到最左即最小：窗口高 0.1pt，视觉隐藏、不影响操作；越往右窗口越大。"))
+                }
+            }
+
+            // 保活方式为「关闭」时不需要选生命周期。
+            if appState.keepAliveMode != .off {
+                Section {
+                    Picker(L("保活模式"), selection: Binding(
+                        get: { appState.keepAliveLifetime },
+                        set: { manager.setKeepAliveLifetime($0) }
+                    )) {
+                        ForEach(KeepAliveLifetime.allCases) { lifetime in
+                            Text(lifetime.title).tag(lifetime)
+                        }
+                    }
+                } footer: {
+                    Text(L("跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到把保活方式设为「关闭」。"))
                 }
             }
 

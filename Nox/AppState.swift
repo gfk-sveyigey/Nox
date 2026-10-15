@@ -55,6 +55,9 @@ final class AppState: ObservableObject {
     /// 画中画共存保护不可用时怎么办（继续用画中画 / 改用静音音频 / 停止保活）。
     @Published var pipCoexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
+    /// 保活模式：跟随下载任务（默认）/ 启动即常驻。
+    @Published var keepAliveLifetime: KeepAliveLifetime = .followTasks
+
     /// 画中画悬浮窗高度（pt）。0 = 最小化（实际 0.1pt，视觉隐藏），越大窗口越高。
     @Published var pipWindowHeight: Double = AppState.defaultPiPWindowHeight
 
@@ -88,6 +91,7 @@ final class AppState: ObservableObject {
     private let maxConcurrentDownloadsKey = "Nox.maxConcurrentDownloads"
     private let keepAliveModeKey = "Nox.keepAliveMode"
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
+    private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
     private let pipWindowHeightKey = "Nox.pipWindowHeight"
     /// 旧版「是否以最小化显示」开关的键，仅用于读盘迁移。
     private let pipMinimizedKey = "Nox.pipMinimized"
@@ -275,6 +279,7 @@ final class AppState: ObservableObject {
         defaults.set(maxConcurrentDownloads, forKey: maxConcurrentDownloadsKey)
         defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
+        defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
         defaults.set(historyRetentionMode.rawValue, forKey: historyRetentionModeKey)
         defaults.set(historyRetentionCount, forKey: historyRetentionCountKey)
@@ -358,6 +363,10 @@ final class AppState: ObservableObject {
         pipCoexistenceFallback = PiPCoexistenceFallback(
             rawValue: defaults.string(forKey: pipCoexistenceFallbackKey) ?? ""
         ) ?? .keepAlive
+
+        keepAliveLifetime = KeepAliveLifetime(
+            rawValue: defaults.string(forKey: keepAliveLifetimeKey) ?? ""
+        ) ?? .followTasks
 
         // 滑块值；缺键时回落到旧版「最小化」开关做迁移，再回落到默认（最小）。
         if let stored = defaults.object(forKey: pipWindowHeightKey) as? Double {
