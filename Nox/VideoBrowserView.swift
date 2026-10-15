@@ -26,6 +26,10 @@ struct VideoBrowserView: View {
     @State private var filenameInput = ""
     /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
     @State private var isScrolledDown = false
+    /// 地址栏加载进度条的进度（0…1）与可见 / 呼吸状态（见 `loadProgressBar`）
+    @State private var progressFraction: Double = 0
+    @State private var isProgressVisible = false
+    @State private var isProgressPulsing = false
     /// 是否显示原生「首页」（尚未打开任何页面，或用户点了主页按钮）
     @State private var showingHome = true
     @FocusState private var addressFocused: Bool
@@ -104,6 +108,8 @@ struct VideoBrowserView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 loadRequestedURLIfNeeded()
+                // 切走再切回来时 `isLoading` 不一定有变化，这里按当前状态补一次。
+                updateProgressAppearance(isLoading: parser.isLoading)
             }
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()
@@ -111,6 +117,16 @@ struct VideoBrowserView: View {
             // 地址栏跟随 WebView 的实际地址：页面内点链接、重定向、后退/前进都会更新。
             .onChange(of: parser.currentURL) { _, newValue in
                 syncAddress(with: newValue)
+            }
+            // 加载提示：转圈按 loading 开关，进度条按 estimatedProgress 走。
+            .onChange(of: parser.isLoading) { _, loading in
+                updateProgressAppearance(isLoading: loading)
+            }
+            .onChange(of: parser.loadProgress) { _, value in
+                guard parser.isLoading else { return }
+                withAnimation(.easeOut(duration: 0.3)) {
+                    progressFraction = max(progressFraction, min(max(value, 0), 1))
+                }
             }
             .alert(
                 L("解析失败"),
@@ -159,11 +175,13 @@ struct VideoBrowserView: View {
     // MARK: - 顶部地址栏
 
     /// 地址栏：中间是胶囊形输入框，主页与书签按钮各自独立浮在两侧。
-    /// 页面向下滚动时高度收缩，回到顶部再展开。
+    /// 页面向下滚动时高度收缩，回到顶部再展开；下沿叠一条加载进度条。
     private var addressToolbar: some View {
         addressBar
             .padding(.horizontal, 10)
             .padding(.vertical, isScrolledDown ? 3 : 8)
+            // 用 overlay 而不是 VStack：进度条不参与布局，出现 / 消失都不会让地址栏跳动。
+            .overlay(alignment: .bottom) { loadProgressBar }
             .animation(.easeInOut(duration: 0.2), value: isScrolledDown)
     }
 
@@ -188,7 +206,13 @@ struct VideoBrowserView: View {
                         openAddress()
                     }
 
-                if !address.isEmpty {
+                // 加载中且不在编辑地址时，把右侧的「清空」换成转圈 ——
+                // 地址栏本身就是「正在加载」的提示（与 Safari 一致）。
+                if showsLoadingIndicator, !addressFocused {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel(L("正在加载…"))
+                } else if !address.isEmpty {
                     Button {
                         address = ""
                     } label: {
@@ -210,6 +234,59 @@ struct VideoBrowserView: View {
                 disabled: !canBookmarkCurrentPage,
                 action: toggleBookmark
             )
+        }
+    }
+
+    /// 是否在地址栏上显示加载提示。
+    ///
+    /// 首页上没有「当前网页」的概念，加载中的 WebView 也盖在首页下面，所以不提示；
+    /// 其余情况只要 WebView 在加载就提示。
+    private var showsLoadingIndicator: Bool {
+        parser.isLoading && !showingHome
+    }
+
+    /// 地址栏下沿的细进度条：宽度跟随 `estimatedProgress`，加载中带一层呼吸动画。
+    ///
+    /// 为什么要有它：在页面里点链接时，`isUserInitiatedLoad` 为 false（旧页面会一直留到
+    /// 新页面提交），页面区域看不出任何变化。进度条是那种时刻唯一「在加载」的视觉反馈。
+    private var loadProgressBar: some View {
+        GeometryReader { proxy in
+            Capsule()
+                .fill(Color.accentColor)
+                .frame(width: proxy.size.width * progressFraction)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(height: 2.5)
+        // 加载中周期性地明暗变化：进度停住时也能看出「还在加载」，而不是卡死了。
+        .opacity(isProgressVisible && !showingHome ? (isProgressPulsing ? 0.55 : 1) : 0)
+        .padding(.horizontal, 12)
+        .allowsHitTesting(false)
+    }
+
+    /// 切换地址栏加载提示的显示状态。
+    ///
+    /// 开始加载：先把进度复位到可见下限（此刻条子是隐藏的，看不到回跳），再淡入并起呼吸动画 ——
+    /// `estimatedProgress` 起步时是 0，不复位的话进度条会「先看不见、再突然窜出来」。
+    /// 加载结束：补满一格、稍作停顿再淡出，让「加载完成」这个动作本身能被看到。
+    private func updateProgressAppearance(isLoading: Bool) {
+        if isLoading {
+            progressFraction = 0.08
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                isProgressPulsing = true
+            }
+            withAnimation(.easeOut(duration: 0.2)) {
+                isProgressVisible = true
+            }
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isProgressPulsing = false
+            }
+            withAnimation(.easeOut(duration: 0.2)) {
+                progressFraction = 1
+            }
+            withAnimation(.easeIn(duration: 0.3).delay(0.25)) {
+                isProgressVisible = false
+            }
         }
     }
 

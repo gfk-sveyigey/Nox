@@ -6,6 +6,11 @@ import WebKit
 @MainActor
 final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     @Published private(set) var isLoading = false
+    /// 当前页面的加载进度（0…1），来自 `WKWebView.estimatedProgress`。
+    ///
+    /// 地址栏用它画一条细进度条：在页面里点链接换页时，页面区域还停在旧页面上，
+    /// 只有这条进度条能立刻告诉用户「新页面正在加载」。
+    @Published private(set) var loadProgress: Double = 0
     @Published private(set) var pageMatchesRule = false
     @Published private(set) var pageReady = false
     /// WebView 当前地址。地址栏用它同步「页面内跳转 / 重定向」后的新地址。
@@ -26,6 +31,8 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     private(set) var lastLoadURL: URL?
 
     private let webView: WKWebView
+    /// 观察 `estimatedProgress`，把加载进度交给地址栏。
+    private var progressObservation: NSKeyValueObservation?
     /// 接收页面里 SPA 换页上报的地址（见 pageURLUserScript）。
     private let pageURLBridge: PageURLBridge
     private let appState: AppState
@@ -64,6 +71,12 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
 
         pageURLBridge.onURLChange = { [weak self] url in
             self?.currentURL = url
+        }
+
+        // `estimatedProgress` 的 KVO 回调不保证在主线程投递，显式跳回主线程再改状态。
+        progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] webView, _ in
+            let value = webView.estimatedProgress
+            Task { @MainActor in self?.loadProgress = value }
         }
 
         // 用完整的移动版 Safari UA。
