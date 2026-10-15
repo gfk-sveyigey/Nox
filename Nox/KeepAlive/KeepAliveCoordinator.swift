@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UIKit
 
 /// 保活调度：按「保活模式」决定何时启动 —— 跟随下载任务（有活跃任务才启动）
 /// 或启动即常驻；任务全部结束 / 取消（跟随模式下）时停止。
@@ -133,6 +134,15 @@ final class KeepAliveCoordinator: ObservableObject {
             stopOthers(than: mode)
             activeMode = mode
             lastError = nil
+            return
+        }
+
+        // 画中画只有 App 真正前台激活时才能启动：冷启动阶段 `applicationState` 还是
+        // `.inactive`（`DownloadManager` 在 init 里同步设置保活模式就会走到这里），
+        // 此时 `startPictureInPicture()` 会被系统以 `AVKitErrorDomain -1001` 拒绝 ——
+        // 表现就是「拉起画中画失败」。这里直接推迟，等 `didEnterForeground()` 再拉起。
+        if mode == .pictureInPicture, UIApplication.shared.applicationState != .active {
+            onLog?("保活启动推迟：App 尚未进入前台")
             return
         }
 
