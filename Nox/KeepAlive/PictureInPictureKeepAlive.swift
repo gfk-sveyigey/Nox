@@ -65,6 +65,11 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private var attemptCount = 0
     /// 上一次停止 PiP 的时刻（单调时钟），用于「刚停就重启」冷却。
     private var lastStopUptime: TimeInterval?
+    /// 是否已经调用过 `startPictureInPicture()`、正在等结果。
+    ///
+    /// 结果回来之前**绝不能**再调一次：重复调用会被系统以 `AVKitErrorDomain -1001`
+    /// 拒绝，日志里就会同时出现两次「开始启动」和一次启动失败。
+    private var isStartPending = false
 
     /// 抖动确认窗口：刚创建 controller 时 `isPictureInPicturePossible` 常是瞬时 true，
     /// 之后系统才算出真值。要求它连续两次为 true 才真正启动。
@@ -200,7 +205,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 用瞬时值 `startPictureInPicture()` 会把对方挤掉、自己却起不来 ——
     /// 表现就是「启动保活时中断了其他 App 的画中画，保活本身也没成功」。
     private func attemptStartIfPossible(_ controller: AVPictureInPictureController) {
-        guard self.controller === controller, isActive, !controller.isPictureInPictureActive else { return }
+        guard self.controller === controller, isActive, !isStartPending,
+              !controller.isPictureInPictureActive else { return }
 
         guard controller.isPictureInPicturePossible else {
             readyStreak = 0
@@ -230,6 +236,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
 
         onLog?("画中画已就绪，开始启动（窗口 \(pipSize.width)×\(pipSize.height) pt）")
         readyStreak = 0
+        isStartPending = true
         controller.startPictureInPicture()
         scheduleStartVerification(for: controller, delay: Self.startVerificationDelay)
     }
@@ -256,6 +263,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         startTask = nil
         readyStreak = 0
         attemptCount = 0
+        isStartPending = false
         sourceWidth?.isActive = false
         sourceHeight?.isActive = false
         sourceWidth = nil
@@ -327,6 +335,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
 extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControllerDelegate {
 
     func pictureInPictureControllerDidStartPictureInPicture(_ controller: AVPictureInPictureController) {
+        isStartPending = false
         startVerificationTask?.cancel()
         startVerificationTask = nil
         startTask?.cancel()
@@ -347,6 +356,7 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
     ) {
         Task { @MainActor in
             // 把系统给的原因原样带出来 —— 之前这里被吞掉了，日志里只剩「未进入激活状态」。
+            self.isStartPending = false
             self.startVerificationTask?.cancel()
             self.startVerificationTask = nil
             let nsError = error as NSError
