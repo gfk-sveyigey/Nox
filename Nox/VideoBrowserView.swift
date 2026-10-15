@@ -30,6 +30,8 @@ struct VideoBrowserView: View {
     @State private var progressFraction: Double = 0
     @State private var isProgressVisible = false
     @State private var isProgressPulsing = false
+    /// 进度条是否是「不确定进度」（同文档换页拿不到进度，用固定一段 + 呼吸表达「在动」）
+    @State private var isProgressIndeterminate = false
     /// 是否显示原生「首页」（尚未打开任何页面，或用户点了主页按钮）
     @State private var showingHome = true
     @FocusState private var addressFocused: Bool
@@ -109,7 +111,7 @@ struct VideoBrowserView: View {
             .onAppear {
                 loadRequestedURLIfNeeded()
                 // 切走再切回来时 `isLoading` 不一定有变化，这里按当前状态补一次。
-                updateProgressAppearance(isLoading: parser.isLoading)
+                updateProgressAppearance(isLoading: showsLoadingIndicator)
             }
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()
@@ -118,8 +120,9 @@ struct VideoBrowserView: View {
             .onChange(of: parser.currentURL) { _, newValue in
                 syncAddress(with: newValue)
             }
-            // 加载提示：转圈按 loading 开关，进度条按 estimatedProgress 走。
-            .onChange(of: parser.isLoading) { _, loading in
+            // 加载提示：开 / 关看合并后的状态（真实导航 or 同文档换页），
+            // 具体进度按 estimatedProgress 走。
+            .onChange(of: showsLoadingIndicator) { _, loading in
                 updateProgressAppearance(isLoading: loading)
             }
             .onChange(of: parser.loadProgress) { _, value in
@@ -127,6 +130,12 @@ struct VideoBrowserView: View {
                 withAnimation(.easeOut(duration: 0.3)) {
                     progressFraction = max(progressFraction, min(max(value, 0), 1))
                 }
+            }
+            // 「同文档换页的提示还没结束，又发起了真实导航」时，把形态切回确定进度，
+            // 否则进度条会一直停在那个固定宽度上（合计状态没变，上面那个 onChange 不会触发）。
+            .onChange(of: parser.isLoading) { _, loading in
+                guard loading, showsLoadingIndicator else { return }
+                isProgressIndeterminate = false
             }
             .alert(
                 L("解析失败"),
@@ -239,48 +248,72 @@ struct VideoBrowserView: View {
 
     /// 是否在地址栏上显示加载提示。
     ///
-    /// 首页上没有「当前网页」的概念，加载中的 WebView 也盖在首页下面，所以不提示；
-    /// 其余情况只要 WebView 在加载就提示。
+    /// 两种来源：真实导航（`isLoading`，带 `estimatedProgress`）与同文档换页
+    /// （`isSameDocumentLoading`，SPA 只改 path，没有任何导航回调、也没有进度）。
+    /// 首页上没有「当前网页」的概念，加载中的 WebView 也盖在首页下面，所以不提示。
     private var showsLoadingIndicator: Bool {
-        parser.isLoading && !showingHome
+        (parser.isLoading || parser.isSameDocumentLoading) && !showingHome
     }
 
-    /// 地址栏下沿的细进度条：宽度跟随 `estimatedProgress`，加载中带一层呼吸动画。
+    /// 地址栏下沿的加载条。
     ///
     /// 为什么要有它：在页面里点链接时，`isUserInitiatedLoad` 为 false（旧页面会一直留到
-    /// 新页面提交），页面区域看不出任何变化。进度条是那种时刻唯一「在加载」的视觉反馈。
+    /// 新页面提交），页面区域看不出任何变化；SPA 只改 path 时连 `isLoading` 都不会变。
+    /// 这条进度条就是那种时刻主要的「在加载」反馈。
+    ///
+    /// 两种形态：真实导航有 `estimatedProgress`，条子跟着进度长；同文档换页拿不到任何进度，
+    /// 就固定显示一段（约 1/3 宽），靠呼吸动画表达「还在动」。
     private var loadProgressBar: some View {
         GeometryReader { proxy in
-            Capsule()
-                .fill(Color.accentColor)
-                .frame(width: proxy.size.width * progressFraction)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // 呼吸用 `TimelineView` 按时钟算亮度，而不是 `repeatForever` 的状态动画：
+            // 状态动画会被同一批事务里的淡入 / 淡出（`withAnimation`）顶掉，
+            // 表现就是「只看得到进度条在长，看不到呼吸」。这里亮度只由时间决定，
+            // 不会被别的动画覆盖；不呼吸时 `paused` 掉，不额外耗电。
+            TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: !isProgressPulsing || !isProgressVisible)) { context in
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(width: proxy.size.width * progressBarWidthFactor)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .opacity(pulseOpacity(at: context.date))
+            }
         }
         .frame(height: 2.5)
-        // 加载中周期性地明暗变化：进度停住时也能看出「还在加载」，而不是卡死了。
-        .opacity(isProgressVisible && !showingHome ? (isProgressPulsing ? 0.55 : 1) : 0)
+        .opacity(isProgressVisible && !showingHome ? 1 : 0)
         .padding(.horizontal, 12)
         .allowsHitTesting(false)
     }
 
+    /// 进度条当前占多宽。同文档换页拿不到任何进度，固定显示约 1/3 宽。
+    private var progressBarWidthFactor: Double {
+        isProgressIndeterminate ? 0.33 : progressFraction
+    }
+
+    /// 呼吸灯的亮度：不呼吸时恒定 1；呼吸时在一个周期内于 0.35…1 之间来回。
+    private func pulseOpacity(at date: Date) -> Double {
+        guard isProgressPulsing else { return 1 }
+        let period: Double = 0.9
+        let phase = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
+        let breathe = 0.5 - 0.5 * cos(2 * Double.pi * phase)
+        return 0.35 + 0.65 * breathe
+    }
+
     /// 切换地址栏加载提示的显示状态。
     ///
-    /// 开始加载：先把进度复位到可见下限（此刻条子是隐藏的，看不到回跳），再淡入并起呼吸动画 ——
-    /// `estimatedProgress` 起步时是 0，不复位的话进度条会「先看不见、再突然窜出来」。
+    /// 开始加载：先把进度复位到可见下限（此刻条子是隐藏的，看不到回跳），再淡入并起呼吸。
+    /// `estimatedProgress` 起步是 0，不复位的话进度条会「先看不见、再突然窜出来」。
     /// 加载结束：补满一格、稍作停顿再淡出，让「加载完成」这个动作本身能被看到。
     private func updateProgressAppearance(isLoading: Bool) {
         if isLoading {
+            // 同文档换页（SPA）拿不到任何进度，用「固定一段 + 呼吸」表达在动；
+            // 真实导航有 `estimatedProgress`，条子跟着它长。
+            isProgressIndeterminate = !parser.isLoading
             progressFraction = 0.08
-            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
-                isProgressPulsing = true
-            }
+            isProgressPulsing = true
             withAnimation(.easeOut(duration: 0.2)) {
                 isProgressVisible = true
             }
         } else {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isProgressPulsing = false
-            }
+            isProgressPulsing = false
             withAnimation(.easeOut(duration: 0.2)) {
                 progressFraction = 1
             }
@@ -289,6 +322,7 @@ struct VideoBrowserView: View {
             }
         }
     }
+    
 
     /// 地址栏展开 / 收起时，三个控件共用的高度。
     private var barControlHeight: CGFloat {

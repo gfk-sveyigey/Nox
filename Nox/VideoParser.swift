@@ -11,6 +11,11 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     /// 地址栏用它画一条细进度条：在页面里点链接换页时，页面区域还停在旧页面上，
     /// 只有这条进度条能立刻告诉用户「新页面正在加载」。
     @Published private(set) var loadProgress: Double = 0
+    /// 是否正在「同一文档内换页」（SPA 的 pushState / replaceState / popstate）。
+    ///
+    /// 这类换页**不触发任何导航回调**：`isLoading` 与 `estimatedProgress` 都不会变，
+    /// 页面区域也还停在旧内容上。地址栏只能靠页面上报的这个标记给出加载反馈。
+    @Published private(set) var isSameDocumentLoading = false
     @Published private(set) var pageMatchesRule = false
     @Published private(set) var pageReady = false
     /// WebView 当前地址。地址栏用它同步「页面内跳转 / 重定向」后的新地址。
@@ -35,6 +40,8 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
     private var progressObservation: NSKeyValueObservation?
     /// 接收页面里 SPA 换页上报的地址（见 pageURLUserScript）。
     private let pageURLBridge: PageURLBridge
+    /// 接收页面里「同文档换页是否还在加载」的上报（见 pageURLUserScript）。
+    private let pageLoadingBridge: PageLoadingBridge
     private let appState: AppState
     private let registry: VideoSiteParserRegistry
 
@@ -64,13 +71,20 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         configuration.userContentController.addUserScript(Self.youtubeMediaUserScript())
         let pageURLBridge = PageURLBridge()
         configuration.userContentController.add(pageURLBridge, name: PageURLBridge.handlerName)
+        // 同文档换页的加载状态：导航回调完全不会为它触发，只能靠页面脚本上报。
+        let pageLoadingBridge = PageLoadingBridge()
+        configuration.userContentController.add(pageLoadingBridge, name: PageLoadingBridge.handlerName)
 
         self.pageURLBridge = pageURLBridge
+        self.pageLoadingBridge = pageLoadingBridge
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
         pageURLBridge.onURLChange = { [weak self] url in
             self?.currentURL = url
+        }
+        pageLoadingBridge.onLoadingChange = { [weak self] loading in
+            self?.isSameDocumentLoading = loading
         }
 
         // `estimatedProgress` 的 KVO 回调不保证在主线程投递，显式跳回主线程再改状态。
@@ -199,6 +213,9 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         isLoading = true
         pageReady = false
         loadErrorMessage = nil
+        // 真正的换页（新文档）开始：旧文档连同它的脚本一起没了，
+        // 同文档换页的标记不可能再收到「结束」上报，必须在这里清掉。
+        isSameDocumentLoading = false
         currentURL = webView.url
         pageMatchesRule = activeParser(for: webView.url) != nil
     }
@@ -217,6 +234,7 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
         pageReady = true
         pageMatchesRule = activeParser(for: webView.url) != nil
         isUserInitiatedLoad = false
+        isSameDocumentLoading = false
         currentURL = webView.url
         if let url = webView.url {
             LogStore.shared.info("loaded \(url.absoluteString)")
@@ -272,10 +290,56 @@ final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate {
             "  if (window.__noxURLHook) { return; }",
             "  window.__noxURLHook = true;",
             "  var last = location.href;",
+            "  var lastPath = location.pathname + location.search;",
+            "  var navAt = 0;          // 最近一次 URL 变化的时间",
+            "  var startedAt = 0;      // 这一轮「同文档加载」开始的时间",
+            "  var loadingTimer = null;",
+            "  var lastResourceAt = 0;",
+            "  var minVisibleMs = 900; // 太短的提示会一闪而过，等于没有提示",
+            "  var quietMs = 600;      // 连续这么久没有新的资源请求，就算这一轮结束",
+            "  var maxMs = 8000;       // 兜底：再慢也不让提示一直亮着",
+            "  var relightMs = 2500;   // 换页后这段时间内到达的资源请求，算作这次换页的",
+            "  // 资源请求既刷新「还在加载」的时间戳，也能在慢站点上把提示重新点亮。",
+            "  try {",
+            "    var observer = new PerformanceObserver(function () {",
+            "      lastResourceAt = Date.now();",
+            "      if (loadingTimer === null && Date.now() - navAt < relightMs) { beginSameDocumentLoad(); }",
+            "    });",
+            "    observer.observe({ entryTypes: ['resource'] });",
+            "  } catch (e) {}",
+            "  function post(name, value) {",
+            "    try { window.webkit.messageHandlers[name].postMessage(value); } catch (e) {}",
+            "  }",
+            "  function reportLoading(loading) {",
+            "    post('\(PageLoadingBridge.handlerName)', loading ? 1 : 0);",
+            "  }",
+            "  // SPA 换页不触发导航回调、也拿不到进度：用「path/query 变了」当作开始，",
+            "  // 用「连续一段时间没有新的资源请求」当作结束（另加最短显示时间与 8 秒兜底）。",
+            "  function beginSameDocumentLoad() {",
+            "    if (loadingTimer !== null) { return; }",
+            "    startedAt = Date.now();",
+            "    lastResourceAt = startedAt;",
+            "    reportLoading(true);",
+            "    loadingTimer = setInterval(function () {",
+            "      var now = Date.now();",
+            "      var elapsed = now - startedAt;",
+            "      if (elapsed > maxMs || (elapsed > minVisibleMs && now - lastResourceAt > quietMs)) {",
+            "        clearInterval(loadingTimer);",
+            "        loadingTimer = null;",
+            "        reportLoading(false);",
+            "      }",
+            "    }, 200);",
+            "  }",
             "  function report() {",
             "    if (location.href === last) { return; }",
             "    last = location.href;",
-            "    try { window.webkit.messageHandlers.\(PageURLBridge.handlerName).postMessage(String(location.href)); } catch (e) {}",
+            "    navAt = Date.now();",
+            "    post('\(PageURLBridge.handlerName)', String(location.href));",
+            "    var path = location.pathname + location.search;",
+            "    if (path !== lastPath) {",
+            "      lastPath = path;",
+            "      beginSameDocumentLoad();",
+            "    }",
             "  }",
             "  ['pushState', 'replaceState'].forEach(function (name) {",
             "    var original = history[name];",
@@ -421,5 +485,30 @@ final class PageURLBridge: NSObject, WKScriptMessageHandler {
         guard message.name == Self.handlerName else { return }
         guard let raw = message.body as? String, let url = URL(string: raw) else { return }
         onURLChange?(url)
+    }
+}
+
+/// 接收页面里「同一文档内换页（SPA）是否还在加载」的上报。
+///
+/// 这类换页不触发任何 `WKNavigationDelegate` 回调，`isLoading` / `estimatedProgress`
+/// 都不会变；地址栏只有靠它才能在只改 path 的换页上给出加载反馈。
+@MainActor
+final class PageLoadingBridge: NSObject, WKScriptMessageHandler {
+    static let handlerName = "noxPageLoading"
+
+    var onLoadingChange: ((Bool) -> Void)?
+
+    func userContentController(
+        _ controller: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        guard message.name == Self.handlerName else { return }
+
+        // 脚本里 postMessage 的是 0 / 1；两种类型都接住，避免平台差异导致静默失效。
+        if let number = message.body as? NSNumber {
+            onLoadingChange?(number.boolValue)
+        } else if let raw = message.body as? String {
+            onLoadingChange?(raw == "1")
+        }
     }
 }
