@@ -59,7 +59,8 @@
 - 历史记录（二级页）：保留方式（按条数 / 按时间），两种方式都可设为「无限制」
 - 外观：跟随系统 / 浅色 / 深色；语言：App 内切换（不再额外显示提示小字）
 - 日志（二级页）：查看运行日志（含版本、系统、下载与解析等细节），可选保留天数（含无限制）；日志按块加载，进入时只读最近一块，更早的用「加载更多」往前翻；支持清空与导出（系统分享面板）
-- 版本不占行，在最后一组的页脚居中显示，形如 `Nox v1.0.16`
+- 版本与作者不占行，在最后一组的页脚居中显示，形如 `Nox v1.0.16 · Aholic`
+- 开源许可与致谢（二级页）：列出本项目参考 / 复用的来源（CaiWanFeng/PiP、Yoroin/GlobalRefresh-PiP）及各自作者、用途与仓库链接，并附免责声明；仓库根目录的 `NOTICE` 是该署名要求的正式版本
 - 仅支持竖屏（iPhone 竖屏锁定）
 
 ### 文件访问
@@ -74,6 +75,7 @@
 .
 ├── Info.plist                      # 真实生效的 Info.plist（GENERATE_INFOPLIST_FILE = NO）
 ├── VERSION                         # 版本号，CI 据此打 tag
+├── NOTICE                          # 第三方署名与免责声明（PiP / GlobalRefresh-PiP）
 ├── .github/workflows/
 │   ├── build-and-release.yml       # 合并到 main 后构建无签名 IPA 并发 Release
 │   └── build-dev.yml               # 推送到 dev 时编译并打包无签名 IPA，上传为 Actions 工件；仅改 VERSION 的推送不触发

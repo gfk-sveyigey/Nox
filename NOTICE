@@ -1,0 +1,29 @@
+Nox
+Author: Aholic
+
+Third-party attribution
+-----------------------
+
+This project builds on the following projects for its background keep-alive and
+picture-in-picture features:
+
+  PiP - original picture-in-picture demo
+    Author: CaiWanFeng
+    https://github.com/CaiWanFeng/PiP
+
+  GlobalRefresh-PiP - background keep-alive and picture-in-picture coexistence
+  reference implementation
+    Author: Yoroin (based on the original demo by CaiWanFeng)
+    https://github.com/Yoroin/GlobalRefresh-PiP
+
+Portions of this project are derived from the projects above. The original
+authors and project links are retained, and the source of the reused code is
+identified. This project is not affiliated with the projects above, and is not
+claimed to be entirely original work.
+
+Disclaimer
+----------
+
+This project is for learning and personal testing only. You install, sign, and
+use it at your own risk. Do not use it to violate platform rules, infringe
+intellectual property, or for other improper purposes.
