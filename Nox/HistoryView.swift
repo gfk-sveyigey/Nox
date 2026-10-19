@@ -8,6 +8,8 @@ struct HistoryView: View {
     @State private var showingClearConfirmation = false
     @State private var editMode: EditMode = .inactive
     @State private var selection = Set<UUID>()
+    /// 可见行的全局坐标，双指滑动时据此把路径映射到具体记录。
+    @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var showingDeleteConfirmation = false
     @State private var isVisible = false
 
@@ -34,6 +36,7 @@ struct HistoryView: View {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("清空"), role: .destructive) {
                     appState.clearHistory()
+                    finishSelection()
                 }
             } message: {
                 Text(L("所有浏览历史将被删除，此操作无法撤销。"))
@@ -42,9 +45,7 @@ struct HistoryView: View {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("删除"), role: .destructive) {
                     appState.removeHistory(ids: selection)
-                    selection.removeAll()
-
-                    if appState.history.isEmpty { editMode = .inactive }
+                    finishSelection()
                 }
             } message: {
                 Text(String(format: L("将删除选中的 %d 条记录。"), selection.count))
@@ -54,24 +55,52 @@ struct HistoryView: View {
             }
             .onAppear { isVisible = true }
             .onDisappear { isVisible = false }
-            // 双指下滑进入多选（类似「信息」App）
-            .twoFingerPanToSelect(isEnabled: isVisible) {
-                withAnimation { editMode = .active }
-            }
+            // 双指滑动：进入多选，并按滑过的路径选中记录。
+            .twoFingerPanToSelect(
+                isEnabled: isVisible,
+                onBegin: { beginTwoFingerSelection() },
+                onPath: { selectRows(in: $0) }
+            )
         }
     }
 
-    /// 只有多选态才把选择绑给列表。
-    ///
-    /// 非多选态下单击列表行没有任何对应操作，绑上去只会留下「选中」高亮，
-    /// 因此非多选态直接用不带 selection 的 List —— 这样连点击高亮都不会出现。
-    @ViewBuilder
-    private var list: some View {
-        if editMode.isEditing {
-            List(selection: $selection) { rows }
-        } else {
-            List { rows }
+    /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。
+    private func beginTwoFingerSelection() {
+        guard !editMode.isEditing else { return }
+        withAnimation { editMode = .active }
+    }
+
+    /// 把双指滑过的路径映射到可见行；只增选，不反转已选项。
+    private func selectRows(in path: CGRect) {
+        let ids = rowFrames.compactMap { id, frame in
+            frame.intersects(path) ? id : nil
         }
+        guard !ids.isEmpty else { return }
+        selection.formUnion(ids)
+    }
+
+    /// 删除或其它操作完成后清理选择并退出多选。
+    private func finishSelection() {
+        selection.removeAll()
+        guard editMode.isEditing else { return }
+        withAnimation { editMode = .inactive }
+    }
+
+    private var list: some View {
+        List(selection: listSelection) { rows }
+            .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
+    }
+
+    /// 非多选态忽略系统点选写入，避免单击行留下高亮；
+    /// 同时始终复用同一个 List 身份，进入多选时不会重置滚动位置。
+    private var listSelection: Binding<Set<UUID>> {
+        Binding(
+            get: { selection },
+            set: { newValue in
+                guard editMode.isEditing else { return }
+                selection = newValue
+            }
+        )
     }
 
     @ViewBuilder
@@ -91,6 +120,14 @@ struct HistoryView: View {
                         .foregroundStyle(.tertiary)
                 }
                 .contentShape(Rectangle())
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: SelectableRowFrameKey.self,
+                            value: [item.id: proxy.frame(in: .global)]
+                        )
+                    }
+                }
                 .tag(item.id)
                 .contextMenu {
                     // 标题被截断成一行，长按时先把完整标题展示出来；
@@ -101,12 +138,14 @@ struct HistoryView: View {
 
                     Button {
                         openInBrowser(item.url)
+                        finishSelection()
                     } label: {
                         Label(L("跳转网页"), systemImage: "safari")
                     }
 
                     Button {
                         UIPasteboard.general.string = item.url.absoluteString
+                        finishSelection()
                     } label: {
                         Label(L("复制链接"), systemImage: "doc.on.doc")
                     }
@@ -115,6 +154,7 @@ struct HistoryView: View {
 
                     Button(role: .destructive) {
                         appState.removeHistory(item)
+                        finishSelection()
                     } label: {
                         Label(L("删除记录"), systemImage: "trash")
                     }
@@ -123,6 +163,7 @@ struct HistoryView: View {
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
                         appState.removeHistory(item)
+                        finishSelection()
                     } label: {
                         Label(L("删除"), systemImage: "trash")
                     }
@@ -161,9 +202,20 @@ struct HistoryView: View {
     }
 }
 
-// MARK: - 双指下滑进入多选
+// MARK: - 双指滑动选择
 
-/// 双指下滑进入多选（类似「信息」App）。
+/// 收集可见历史行的全局坐标；列表只保留可见行，坐标会随滚动自动更新。
+struct SelectableRowFrameKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
+// MARK: - 双指滑动进入多选
+
+/// 双指滑动进入多选（类似「信息」App），并沿滑动路径选中记录。
 ///
 /// SwiftUI 的 `DragGesture` 拿不到触摸点数，只能落到 UIKit：往 window 上加一个
 /// `minimumNumberOfTouches = 2` 的 `UIPanGestureRecognizer`，并设
@@ -173,7 +225,8 @@ struct HistoryView: View {
 /// （工程文件不会自动同步目录，新增文件必须手工登记，容易出错）。
 struct TwoFingerPanToSelect: UIViewRepresentable {
     var isEnabled: Bool
-    var onTrigger: () -> Void
+    var onBegin: () -> Void
+    var onPath: (CGRect) -> Void
 
     func makeUIView(context: Context) -> UIView {
         let view = DetectorView()
@@ -185,7 +238,8 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.onTrigger = onTrigger
+        context.coordinator.onBegin = onBegin
+        context.coordinator.onPath = onPath
         context.coordinator.isEnabled = isEnabled
 
         if let window = uiView.window {
@@ -198,7 +252,7 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(isEnabled: isEnabled, onTrigger: onTrigger)
+        Coordinator(isEnabled: isEnabled, onBegin: onBegin, onPath: onPath)
     }
 
     /// 视图真正进入窗口时回调一次。`updateUIView` 有可能早于入窗，
@@ -214,20 +268,25 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var isEnabled: Bool
-        var onTrigger: () -> Void
+        var onBegin: () -> Void
+        var onPath: (CGRect) -> Void
 
         private weak var window: UIWindow?
         private var recognizer: UIPanGestureRecognizer?
-        private var didFire = false
-        /// 本次双指滑动是否从列表行上开始
-        private var startedOnRow = false
+        /// 本次手势是否已经从行上开始并进入选择。
+        private var isSelecting = false
+        /// 上一次两指覆盖的纵向范围，用来补上快速滑动跳过的行。
+        private var lastMinY: CGFloat?
+        private var lastMaxY: CGFloat?
 
-        /// 向下拖动多少点才触发，避免与双指滚动混淆
-        private let threshold: CGFloat = 40
-
-        init(isEnabled: Bool, onTrigger: @escaping () -> Void) {
+        init(
+            isEnabled: Bool,
+            onBegin: @escaping () -> Void,
+            onPath: @escaping (CGRect) -> Void
+        ) {
             self.isEnabled = isEnabled
-            self.onTrigger = onTrigger
+            self.onBegin = onBegin
+            self.onPath = onPath
         }
 
         func attach(to window: UIWindow) {
@@ -251,47 +310,110 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
 
             recognizer = nil
             window = nil
+            reset()
         }
 
         @objc private func handle(_ gesture: UIPanGestureRecognizer) {
             switch gesture.state {
             case .began:
-                didFire = false
-                // 只有从列表行上开始的双指滑动才进入多选。
-                // 在空白区域（列表下方、分组之间的间隙）滑动不应进入选择模式。
-                startedOnRow = Self.startedOnRow(gesture)
+                guard isEnabled, Self.startedOnRow(gesture) else {
+                    reset()
+                    return
+                }
+
+                isSelecting = true
+                lastMinY = nil
+                lastMaxY = nil
+                onBegin()
+                reportPath(for: gesture, includePrevious: false)
+
             case .changed:
-                guard isEnabled, startedOnRow, !didFire else { return }
+                guard isEnabled, isSelecting else { return }
+                reportPath(for: gesture, includePrevious: true)
 
-                let translation = gesture.translation(in: gesture.view)
-
-                guard translation.y > threshold,
-                      abs(translation.y) > abs(translation.x) else { return }
-
-                didFire = true
-                onTrigger()
             default:
-                didFire = false
+                reset()
             }
+        }
+
+        private func reset() {
+            isSelecting = false
+            lastMinY = nil
+            lastMaxY = nil
+        }
+
+        /// 把两指当前覆盖的纵向范围、以及从上一次回调到现在的扫过范围交给列表。
+        /// 这样即使滑得很快、跳过了几行，也不会漏选中间的记录。
+        private func reportPath(for gesture: UIPanGestureRecognizer, includePrevious: Bool) {
+            guard let view = gesture.view,
+                  let current = Self.verticalRange(of: gesture, in: view) else { return }
+
+            let minY: CGFloat
+            let maxY: CGFloat
+            if includePrevious, let lastMinY, let lastMaxY {
+                minY = min(lastMinY, current.lowerBound)
+                maxY = max(lastMaxY, current.upperBound)
+            } else {
+                minY = current.lowerBound
+                maxY = current.upperBound
+            }
+
+            self.lastMinY = current.lowerBound
+            self.lastMaxY = current.upperBound
+
+            let rect = CGRect(
+                x: 0,
+                y: minY,
+                width: view.bounds.width,
+                height: max(1, maxY - minY)
+            )
+            onPath(rect)
+        }
+
+        /// 两指在 window 坐标系里的纵向范围。
+        private static func verticalRange(
+            of gesture: UIPanGestureRecognizer,
+            in view: UIView
+        ) -> ClosedRange<CGFloat>? {
+            guard gesture.numberOfTouches > 0 else { return nil }
+
+            var minY = CGFloat.greatestFiniteMagnitude
+            var maxY = -CGFloat.greatestFiniteMagnitude
+
+            for index in 0..<gesture.numberOfTouches {
+                let y = gesture.location(ofTouch: index, in: view).y
+                minY = min(minY, y)
+                maxY = max(maxY, y)
+            }
+
+            guard minY <= maxY else { return nil }
+            return minY...maxY
         }
 
         func gestureRecognizer(
             _ gestureRecognizer: UIGestureRecognizer,
             shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
         ) -> Bool {
-            // 与列表自身的滚动手势并存，否则双指滑动会被 ScrollView 吃掉
+            // 与列表自身的滚动手势并存，否则双指滑动会被 ScrollView 吃掉。
             true
         }
 
-        /// 命中测试：起点落在列表行上才算数。
-        ///
-        /// SwiftUI 的 List 底层是 UICollectionView（旧系统为 UITableView）：
-        /// 先看是否有 cell 命中；命中结果是滚动视图本身时，再问它这个点有没有对应的
-        /// item —— 空白区域（列表下方、分组之间的间隙）没有 item，于是不会进入选择模式。
+        /// 命中测试：任一手指起点落在列表行上才算数。
         private static func startedOnRow(_ gesture: UIPanGestureRecognizer) -> Bool {
             guard let view = gesture.view else { return false }
 
-            let point = gesture.location(in: view)
+            if gesture.numberOfTouches == 0 {
+                return isRow(at: gesture.location(in: view), in: view)
+            }
+
+            for index in 0..<gesture.numberOfTouches {
+                let point = gesture.location(ofTouch: index, in: view)
+                if isRow(at: point, in: view) { return true }
+            }
+            return false
+        }
+
+        private static func isRow(at point: CGPoint, in view: UIView) -> Bool {
             var hit = view.hitTest(point, with: nil)
 
             while let current = hit {
@@ -305,11 +427,13 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
                 }
 
                 if let collectionView = current as? UICollectionView {
-                    return collectionView.indexPathForItem(at: collectionView.convert(point, from: view)) != nil
+                    let localPoint = collectionView.convert(point, from: view)
+                    return collectionView.indexPathForItem(at: localPoint) != nil
                 }
 
                 if let tableView = current as? UITableView {
-                    return tableView.indexPathForRow(at: tableView.convert(point, from: view)) != nil
+                    let localPoint = tableView.convert(point, from: view)
+                    return tableView.indexPathForRow(at: localPoint) != nil
                 }
 
                 hit = current.superview
@@ -321,9 +445,19 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
 }
 
 extension View {
-    /// 双指下滑进入多选。`isEnabled` 建议与「本页是否可见」绑定，
-    /// 免得在别的标签页上误触发。
-    func twoFingerPanToSelect(isEnabled: Bool, action: @escaping () -> Void) -> some View {
-        background(TwoFingerPanToSelect(isEnabled: isEnabled, onTrigger: action))
+    /// 双指滑动进入多选，并把滑过的路径报告给调用方。
+    /// `isEnabled` 建议与「本页是否可见」绑定，免得在别的标签页上误触发。
+    func twoFingerPanToSelect(
+        isEnabled: Bool,
+        onBegin: @escaping () -> Void,
+        onPath: @escaping (CGRect) -> Void
+    ) -> some View {
+        background(
+            TwoFingerPanToSelect(
+                isEnabled: isEnabled,
+                onBegin: onBegin,
+                onPath: onPath
+            )
+        )
     }
 }

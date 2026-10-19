@@ -246,11 +246,12 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         // 启动时扫一遍：上次运行留下的「已完成」记录，文件可能已被系统清理或用户删除。
         refreshMissingFiles()
 
+        keepAlive.onLog = { message in LogStore.shared.info(message) }
+        keepAlive.piPVerboseLogging = appState.pipVerboseLogging
         keepAlive.preferredMode = appState.keepAliveMode
         keepAlive.piPCoexistenceFallback = appState.pipCoexistenceFallback
         keepAlive.lifetime = appState.keepAliveLifetime
         keepAlive.pipWindowHeight = appState.pipWindowHeight
-        keepAlive.onLog = { message in LogStore.shared.info(message) }
 
         // 用下载记录的「排队中 / 下载中」驱动保活启停。
         // 直接订阅 `downloads`，而不是在每个状态迁移点手写调用：漏一处就会出现
@@ -322,6 +323,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         appState.pipWindowHeight = height
         appState.persist()
         keepAlive.pipWindowHeight = height
+    }
+
+    /// 设置页切换「画中画详细日志」。
+    func setPiPVerboseLogging(_ enabled: Bool) {
+        appState.pipVerboseLogging = enabled
+        appState.persist()
+        keepAlive.piPVerboseLogging = enabled
     }
 
     // MARK: - 对外接口

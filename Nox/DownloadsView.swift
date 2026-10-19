@@ -12,6 +12,8 @@ struct DownloadsView: View {
 
     @State private var editMode: EditMode = .inactive
     @State private var selection = Set<UUID>()
+    /// 可见行的全局坐标，双指滑动时据此把路径映射到具体任务。
+    @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var showingDeleteConfirmation = false
     @State private var isVisible = false
 
@@ -41,6 +43,7 @@ struct DownloadsView: View {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("清空"), role: .destructive) {
                     manager.clearFinished()
+                    finishSelection()
                 }
             } message: {
                 Text(L("已完成、失败和已取消的任务将被移除，同时删除对应的本地文件与未完成的分片。此操作无法撤销。"))
@@ -49,9 +52,7 @@ struct DownloadsView: View {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("删除"), role: .destructive) {
                     manager.deleteFiles(ids: selection)
-                    selection.removeAll()
-
-                    if appState.downloads.isEmpty { editMode = .inactive }
+                    finishSelection()
                 }
             } message: {
                 Text(String(format: L("将删除选中的 %d 项，同时删除对应的本地文件与未完成的分片。"),
@@ -67,24 +68,52 @@ struct DownloadsView: View {
             }
             .onAppear { isVisible = true }
             .onDisappear { isVisible = false }
-            // 双指下滑进入多选（类似「信息」App）
-            .twoFingerPanToSelect(isEnabled: isVisible) {
-                withAnimation { editMode = .active }
-            }
+            // 双指滑动：进入多选，并按滑过的路径选中任务。
+            .twoFingerPanToSelect(
+                isEnabled: isVisible,
+                onBegin: { beginTwoFingerSelection() },
+                onPath: { selectRows(in: $0) }
+            )
         }
     }
 
-    /// 只有多选态才把选择绑给列表。
-    ///
-    /// 非多选态下单击列表行没有任何对应操作，绑上去只会留下「选中」高亮，
-    /// 因此非多选态直接用不带 selection 的 List —— 这样连点击高亮都不会出现。
-    @ViewBuilder
-    private var list: some View {
-        if editMode.isEditing {
-            List(selection: $selection) { rows }
-        } else {
-            List { rows }
+    /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。
+    private func beginTwoFingerSelection() {
+        guard !editMode.isEditing else { return }
+        withAnimation { editMode = .active }
+    }
+
+    /// 把双指滑过的路径映射到可见行；只增选，不反转已选项。
+    private func selectRows(in path: CGRect) {
+        let ids = rowFrames.compactMap { id, frame in
+            frame.intersects(path) ? id : nil
         }
+        guard !ids.isEmpty else { return }
+        selection.formUnion(ids)
+    }
+
+    /// 删除或其它操作完成后清理选择并退出多选。
+    private func finishSelection() {
+        selection.removeAll()
+        guard editMode.isEditing else { return }
+        withAnimation { editMode = .inactive }
+    }
+
+    private var list: some View {
+        List(selection: listSelection) { rows }
+            .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
+    }
+
+    /// 非多选态忽略系统点选写入，避免单击行留下高亮；
+    /// 同时始终复用同一个 List 身份，进入多选时不会重置滚动位置。
+    private var listSelection: Binding<Set<UUID>> {
+        Binding(
+            get: { selection },
+            set: { newValue in
+                guard editMode.isEditing else { return }
+                selection = newValue
+            }
+        )
     }
 
     @ViewBuilder
@@ -96,10 +125,25 @@ struct DownloadsView: View {
                 isMissingFile: manager.missingFileIDs.contains(record.id),
                 onShare: { record in
                     share(record)
+                    finishSelection()
                 },
-                onRetry: { manager.retry($0) },
-                onCancel: { manager.cancel($0) }
+                onRetry: { record in
+                    manager.retry(record)
+                    finishSelection()
+                },
+                onCancel: { record in
+                    manager.cancel(record)
+                    finishSelection()
+                }
             )
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: SelectableRowFrameKey.self,
+                        value: [record.id: proxy.frame(in: .global)]
+                    )
+                }
+            }
             .tag(record.id)
             // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
             // 左侧红色减号按钮，与「右上角统一删除」重复。
@@ -107,6 +151,7 @@ struct DownloadsView: View {
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
                     manager.deleteFile(for: record)
+                    finishSelection()
                 } label: {
                     Label(L("删除"), systemImage: "trash")
                 }

@@ -1717,6 +1717,22 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@의 공존 보호를 사용할 수 없습니다" } }
       }
     },
+    "详细日志" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ausführliche Protokolle" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Verbose logging" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Journaux détaillés" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "상세 로그" } }
+      }
+    },
+    "开启后记录画中画启动、就绪判断、重试及系统回调等诊断信息，日志量会明显增加；排查完成后建议关闭。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokolliert ausführliche Diagnoseinformationen zu PiP-Start, Bereitschaftsprüfungen, Wiederholungen und System-Callbacks. Das Protokollvolumen steigt deutlich; nach der Fehlersuche wieder deaktivieren." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Logs detailed diagnostics for PiP startup, readiness checks, retries, and system callbacks. Log volume increases significantly, so turn it off after troubleshooting." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistre des diagnostics détaillés sur le démarrage de PiP, les vérifications de disponibilité, les nouvelles tentatives et les rappels système. Le volume de journaux augmente nettement ; désactivez cette option après le dépannage." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "PiP 시작, 준비 상태 확인, 재시도 및 시스템 콜백에 대한 상세 진단 정보를 기록합니다. 로그 양이 크게 늘어나므로 문제 해결 후에는 끄는 것이 좋습니다." } }
+      }
+    },
     "画中画窗口大小" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Bild-in-Bild-Fenstergröße" } },

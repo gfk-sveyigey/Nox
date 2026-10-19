@@ -75,18 +75,32 @@ final class PiPCoexistenceProtection {
     /// 是否找到了可用的内部适配对象并安装好 provider（找不到就只走公开 PiP，不报错）。
     var isSupported: Bool { isPrepared }
 
+    /// 详细诊断日志开关，由画中画保活同步。
+    var verboseLogging = false
+
+    private func verboseLog(_ message: @autoclosure () -> String) {
+        guard verboseLogging else { return }
+        noxKeepAliveLog("画中画共存保护（诊断）：\(message())")
+    }
+
     // MARK: - 生命周期
 
     /// 构造阶段：定位内部适配对象，**先装 provider 再取 proxy**，最后校验签名并提交初始类型。
     func prepare() {
-        guard Thread.isMainThread else { return }
+        verboseLog("prepare 开始")
+        guard Thread.isMainThread else {
+            verboseLog("prepare 跳过：不在主线程")
+            return
+        }
         guard let adapter = Self.object(controller, selector: "platformAdapter"),
               let base = object_getClass(adapter),
               Self.addScopedProvider(to: base) else {
+            verboseLog("prepare 失败：未找到 adapter 或 provider 安装失败")
             noxKeepAliveLog("画中画共存保护：未找到内部适配对象，跳过（仅使用公开 PiP）")
             return
         }
 
+        verboseLog("找到 adapter · \(String(describing: type(of: adapter)))")
         // 关键顺序：provider 与其初始值必须在**惰性取得 pegasusProxy 之前**就位。
         // 系统在创建 proxy 时会依据实例响应能力 / 内容类型决定实现；
         // 先取 proxy 再装 provider，会让本次会话仍是普通 PiP ——
@@ -96,6 +110,7 @@ final class PiPCoexistenceProtection {
         configuration.isObtainingProxy = true
         let candidateProxy = Self.object(adapter, selector: "pegasusProxy")
         configuration.isObtainingProxy = false
+        verboseLog("取得 pegasusProxy · \(candidateProxy.map { String(describing: type(of: $0)) } ?? "nil")")
 
         guard let proxy = candidateProxy,
               let expected = NSClassFromString("PGPictureInPictureProxy"),
@@ -107,12 +122,14 @@ final class PiPCoexistenceProtection {
         }
         configuration.proxy = proxy
 
+        verboseLog("校验内部签名并安装 provider · proxy=\(String(describing: type(of: proxy)))")
         guard install(adapter: adapter, proxy: proxy, configuration: configuration) else {
             objc_setAssociatedObject(adapter, &Self.associationKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             noxKeepAliveLog("画中画共存保护：内部签名不匹配，跳过（仅使用公开 PiP）")
             return
         }
         isPrepared = true
+        verboseLog("prepare 完成 · provider 已安装")
     }
 
     /// `didStart` 之后延迟一小段提交一次共存类型。
@@ -120,39 +137,57 @@ final class PiPCoexistenceProtection {
     /// 延迟从「启动成功」开始计时，不会反复提交；期间会核对实例身份，
     /// 防止旧的延迟任务改到新的会话上。
     func schedulePostStartUpdate(for controller: AVPictureInPictureController) {
-        guard Thread.isMainThread else { return }
-        guard isPrepared, configuration != nil else {
-            noxKeepAliveLog("画中画共存保护：未安装 provider，跳过启动后提交")
+        verboseLog("schedulePostStartUpdate · active=\(controller.isPictureInPictureActive) suspended=\(controller.isPictureInPictureSuspended) possible=\(controller.isPictureInPicturePossible)")
+        guard Thread.isMainThread else {
+            verboseLog("跳过启动后提交：不在主线程")
             return
         }
-        guard !postStartScheduled else { return }
+        guard isPrepared, configuration != nil else {
+            noxKeepAliveLog("画中画共存保护：未安装 provider，跳过启动后提交")
+            verboseLog("跳过启动后提交：provider 未安装")
+            return
+        }
+        guard !postStartScheduled else {
+            verboseLog("跳过启动后提交：本次会话已安排过")
+            return
+        }
         guard self.controller === controller else {
             noxKeepAliveLog("画中画共存保护：controller 身份不一致，跳过启动后提交")
+            verboseLog("跳过启动后提交：controller 身份不一致")
             return
         }
         guard controller.isPictureInPictureActive else {
             noxKeepAliveLog("画中画共存保护：didStart 时 PiP 未处于激活状态，跳过启动后提交")
+            verboseLog("跳过启动后提交：PiP 未激活")
             return
         }
         postStartScheduled = true
         noxKeepAliveLog("画中画共存保护：已安排 \(postStartDelay) 秒后提交共存类型")
         let token = installationID
         DispatchQueue.main.asyncAfter(deadline: .now() + postStartDelay) { [weak self] in
-            guard let self, self.installationID == token else { return }
+            guard let self else { return }
+            guard self.installationID == token else {
+                self.verboseLog("启动后提交已取消：会话令牌已失效")
+                return
+            }
             guard self.controller === controller, controller.isPictureInPictureActive,
                   !controller.isPictureInPictureSuspended,
                   let adapter = Self.object(controller, selector: "platformAdapter"),
                   let proxy = Self.object(adapter, selector: "pegasusProxy"),
                   adapter === self.adapter, proxy === self.proxy else {
                 noxKeepAliveLog("画中画共存保护：启动后核验失败，跳过共存类型提交")
+                self.verboseLog("启动后核验失败 · active=\(controller.isPictureInPictureActive) suspended=\(controller.isPictureInPictureSuspended)")
                 return
             }
+            self.verboseLog("启动后核验通过，提交共存内容类型")
             self.submitCoexistingType()
         }
     }
 
     /// 结束时使令牌失效、清理实例关联配置，并尽量恢复初始类型。
     func restore() {
+        let currentType = proxy.flatMap { Self.contentType(of: $0) }.map(String.init) ?? "nil"
+        verboseLog("restore 开始 · adapter=\(adapter != nil) proxy=\(proxy != nil) contentType=\(currentType)")
         installationID = nil
         postStartScheduled = false
         isPrepared = false
@@ -162,7 +197,10 @@ final class PiPCoexistenceProtection {
             configuration = nil
             originalContentType = nil
         }
-        guard let adapter else { return }
+        guard let adapter else {
+            verboseLog("restore 跳过：adapter 已释放")
+            return
+        }
         objc_setAssociatedObject(adapter, &Self.associationKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         if let proxy, let previous = originalContentType, Self.contentType(of: proxy) == coexistingContentType,
            let state = Self.object(proxy, selector: "playbackState"),
@@ -170,6 +208,9 @@ final class PiPCoexistenceProtection {
            let setter = Self.method(stateClass, selector: NSSelectorFromString("setContentType:"), result: "v", arguments: ["q"]) {
             let setterIMP = unsafeBitCast(method_getImplementation(setter), to: IntegerSetter.self)
             setterIMP(state, NSSelectorFromString("setContentType:"), previous)
+            verboseLog("restore 已恢复 contentType=\(previous)")
+        } else {
+            verboseLog("restore 未恢复 contentType（当前不是共存类型或运行时不可用）")
         }
     }
 
@@ -188,6 +229,7 @@ final class PiPCoexistenceProtection {
               let setter = Self.method(stateClass, selector: setterSelector, result: "v", arguments: ["q"]),
               let previousType = Self.contentType(of: candidateProxy),
               previousType == initialContentType else {
+            verboseLog("install 失败：内部签名或初始 contentType 不匹配")
             return false
         }
 
@@ -209,6 +251,7 @@ final class PiPCoexistenceProtection {
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(candidateProxy, updateSelector, mutation)
         let localType = Self.contentType(of: candidateProxy).map(String.init) ?? "unknown"
         noxKeepAliveLog("画中画共存保护：已安装 provider（首次类型 4，启动后转 6，本地 contentType=\(localType)）")
+        verboseLog("install 成功 · previousType=\(previousType) localType=\(localType)")
         return true
     }
 
@@ -223,6 +266,7 @@ final class PiPCoexistenceProtection {
               let stateClass = object_getClass(state),
               let setter = Self.method(stateClass, selector: setterSelector, result: "v", arguments: ["q"]) else {
             noxKeepAliveLog("画中画共存保护：启动后提交被跳过（运行时不支持）")
+            verboseLog("提交共存类型失败：运行时签名不支持")
             return
         }
 
@@ -237,6 +281,7 @@ final class PiPCoexistenceProtection {
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(proxy, updateSelector, mutation)
         let localType = Self.contentType(of: proxy).map(String.init) ?? "unknown"
         noxKeepAliveLog("画中画共存保护：已提交共存内容类型 6（本地 contentType=\(localType)）")
+        verboseLog("提交共存类型完成 · localType=\(localType)")
     }
 
     // MARK: - 运行时校验
