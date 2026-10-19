@@ -61,6 +61,9 @@ final class AppState: ObservableObject {
     /// 画中画悬浮窗高度（pt）。0 = 最小化（实际 0.1pt，视觉隐藏），越大窗口越高。
     @Published var pipWindowHeight: Double = AppState.defaultPiPWindowHeight
 
+    /// 画中画详细日志：开启后输出启动、就绪判断、重试和系统回调等诊断信息。
+    @Published var pipVerboseLogging = false
+
     /// 画中画窗口高度可选范围：0（最小/隐藏）… 最大可见小窗。
     static let pipWindowHeightRange: ClosedRange<Double> = 0...225
     /// 默认最小化：不影响操作。
@@ -93,6 +96,7 @@ final class AppState: ObservableObject {
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
     private let pipWindowHeightKey = "Nox.pipWindowHeight"
+    private let pipVerboseLoggingKey = "Nox.pipVerboseLogging"
     /// 旧版「是否以最小化显示」开关的键，仅用于读盘迁移。
     private let pipMinimizedKey = "Nox.pipMinimized"
     private let historyRetentionModeKey = "Nox.historyRetentionMode"
@@ -281,6 +285,7 @@ final class AppState: ObservableObject {
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
+        defaults.set(pipVerboseLogging, forKey: pipVerboseLoggingKey)
         defaults.set(historyRetentionMode.rawValue, forKey: historyRetentionModeKey)
         defaults.set(historyRetentionCount, forKey: historyRetentionCountKey)
         defaults.set(historyRetentionDays, forKey: historyRetentionDaysKey)
@@ -378,6 +383,8 @@ final class AppState: ObservableObject {
         } else {
             pipWindowHeight = Self.defaultPiPWindowHeight
         }
+
+        pipVerboseLogging = defaults.bool(forKey: pipVerboseLoggingKey)
 
         disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
 

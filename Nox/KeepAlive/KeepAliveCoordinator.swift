@@ -44,8 +44,34 @@ final class KeepAliveCoordinator: ObservableObject {
         }
     }
 
+    /// 是否输出画中画详细诊断日志（设置页开关）。
+    var piPVerboseLogging = false {
+        didSet {
+            guard piPVerboseLogging != oldValue else { return }
+            pictureInPicture.verboseLogging = piPVerboseLogging
+            onLog?("画中画详细日志已\(piPVerboseLogging ? "开启" : "关闭")")
+        }
+    }
+
     /// 诊断信息出口，接到 App 日志。
     var onLog: ((String) -> Void)?
+
+    /// 详细诊断日志（只在画中画相关时输出）。
+    private func verboseLog(_ message: @autoclosure () -> String) {
+        guard piPVerboseLogging,
+              preferredMode == .pictureInPicture || activeMode == .pictureInPicture else { return }
+        onLog?("保活诊断：\(message())")
+    }
+
+    private static var applicationStateDescription: String {
+        switch UIApplication.shared.applicationState {
+        case .active: return "active"
+        case .inactive: return "inactive"
+        case .background: return "background"
+        @unknown default:
+            return "unknown(\(UIApplication.shared.applicationState.rawValue))"
+        }
+    }
 
     private let silentAudio = SilentAudioKeepAlive()
     private let pictureInPicture = PictureInPictureKeepAlive()
@@ -65,6 +91,7 @@ final class KeepAliveCoordinator: ObservableObject {
     init() {
         pictureInPicture.coexistenceFallback = piPCoexistenceFallback
         pictureInPicture.windowHeight = pipWindowHeight
+        pictureInPicture.verboseLogging = piPVerboseLogging
         // 回调可能来自非主线程（音频中断通知等），显式跳回主线程再改状态。
         silentAudio.onInterruption = { [weak self] in
             Task { @MainActor in self?.handleInterruption() }
@@ -88,6 +115,7 @@ final class KeepAliveCoordinator: ObservableObject {
         }
         // 即使活跃数没变也过一遍 reconcile：保活可能已经在别的路径上掉了
         // （启动被拒 / 被系统结束），只等「状态变化」是等不到重建的。
+        verboseLog("update · hasActiveTasks=\(hasActiveTasks) needed=\(keepAliveNeeded) preferred=\(preferredMode.title) active=\(activeMode.title) lifetime=\(lifetime.title)")
         reconcile()
     }
 
@@ -98,6 +126,7 @@ final class KeepAliveCoordinator: ObservableObject {
     func retryKeepAlive() {
         guard preferredMode != .off, keepAliveNeeded else { return }
         onLog?("用户继续任务，重新检查保活")
+        verboseLog("retryKeepAlive · preferred=\(preferredMode.title) active=\(activeMode.title) strategyRunning=\(activeStrategyIsRunning)")
         reconcile()
     }
 
@@ -107,6 +136,7 @@ final class KeepAliveCoordinator: ObservableObject {
     /// App 在后台被挂起时，PiP 的结束回调可能不会送达，`activeMode` 会停留在旧值，
     /// 只看记录就会漏掉「其实已经掉了」的情况。
     func didEnterForeground() {
+        verboseLog("didEnterForeground · needed=\(keepAliveNeeded) preferred=\(preferredMode.title) active=\(activeMode.title) strategyRunning=\(activeStrategyIsRunning) app=\(Self.applicationStateDescription)")
         guard keepAliveNeeded, preferredMode != .off else { return }
         guard !activeStrategyIsRunning else { return }
         activeMode = .off
@@ -125,6 +155,7 @@ final class KeepAliveCoordinator: ObservableObject {
     // MARK: - 内部
 
     private func reconcile() {
+        verboseLog("reconcile · preferred=\(preferredMode.title) active=\(activeMode.title) needed=\(keepAliveNeeded) hasActiveTasks=\(hasActiveTasks) lifetime=\(lifetime.title) strategyRunning=\(activeStrategyIsRunning)")
         // 用户把保活方式关掉：彻底销毁画中画基础设施（宿主视图 + 会话）。
         if preferredMode == .off {
             deactivate()
@@ -147,7 +178,11 @@ final class KeepAliveCoordinator: ObservableObject {
     }
 
     private func activate(_ mode: KeepAliveMode) {
-        guard activeMode != mode else { return }
+        verboseLog("activate · target=\(mode.title) current=\(activeMode.title) running=\(isRunning(mode)) needed=\(keepAliveNeeded) app=\(Self.applicationStateDescription)")
+        guard activeMode != mode else {
+            verboseLog("activate 跳过：当前已是 \(mode.title)")
+            return
+        }
 
         // 目标策略其实还在运行（例如系统结束回调没送达、记录停在了 `.off`）：
         // 只纠正记录、停掉另一个策略，**不**「停掉再立刻重启」——
@@ -157,6 +192,7 @@ final class KeepAliveCoordinator: ObservableObject {
             activeMode = mode
             lastError = nil
             onLog?("保活已在运行，仅同步状态：\(mode.title)")
+            verboseLog("activate 仅同步状态：\(mode.title) 本来就在运行")
             return
         }
 
@@ -166,6 +202,7 @@ final class KeepAliveCoordinator: ObservableObject {
         // 表现就是「拉起画中画失败」。这里直接推迟，等 `didEnterForeground()` 再拉起。
         if mode == .pictureInPicture, UIApplication.shared.applicationState != .active {
             onLog?("保活启动推迟：App 尚未进入前台")
+            verboseLog("启动推迟：app=\(Self.applicationStateDescription)，等待 didEnterForeground")
             return
         }
 
@@ -182,9 +219,11 @@ final class KeepAliveCoordinator: ObservableObject {
             activeMode = mode
             lastError = nil
             onLog?("保活已启动：\(mode.title)")
+            verboseLog("activate 成功：\(mode.title)")
         } catch {
             lastError = error.localizedDescription
             onLog?("保活启动失败：\(error.localizedDescription)")
+            verboseLog("activate 失败：\(error) preferred=\(preferredMode.title) fallback=\(piPCoexistenceFallback.title)")
             activeMode = .off
             // 共存保护不可用时按用户选的兜底方案处理；其余失败就停在这一档，
             // 不再自动改用别的保活方式（静音音频会打断用户正在播放的其它音频）。
@@ -197,6 +236,7 @@ final class KeepAliveCoordinator: ObservableObject {
     }
 
     private func deactivate() {
+        verboseLog("deactivate · before active=\(activeMode.title) needed=\(keepAliveNeeded)")
         stopAll()
         activeMode = .off
     }
@@ -222,6 +262,7 @@ final class KeepAliveCoordinator: ObservableObject {
     }
 
     private func handleInterruption() {
+        verboseLog("handleInterruption · active=\(activeMode.title) needed=\(keepAliveNeeded) preferred=\(preferredMode.title)")
         guard keepAliveNeeded, preferredMode != .off else { return }
         let interrupted = activeMode
         stopAll()
@@ -241,6 +282,7 @@ final class KeepAliveCoordinator: ObservableObject {
     /// 常见于其他 App 已有画中画、系统拒绝新建。这里不自动重试，
     /// 只停止并等待用户回到前台再重建（见 `didEnterForeground()`）。
     private func handleStartFailure() {
+        verboseLog("handleStartFailure · active=\(activeMode.title) needed=\(keepAliveNeeded) preferred=\(preferredMode.title)")
         guard keepAliveNeeded, preferredMode != .off else { return }
         stopAll()
         activeMode = .off

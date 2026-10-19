@@ -403,6 +403,20 @@ struct KeepAliveSettingsView: View {
                     Text(L("画中画可能与其他 App 的画中画互相打断。这里选择共存保护不可用时如何处理。"))
                 }
             }
+
+            // 详细日志只影响画中画保活的诊断输出，不改变保活行为。
+            if appState.keepAliveMode == .pictureInPicture {
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { appState.pipVerboseLogging },
+                        set: { manager.setPiPVerboseLogging($0) }
+                    )) {
+                        Text(L("详细日志"))
+                    }
+                } footer: {
+                    Text(L("开启后记录画中画启动、就绪判断、重试及系统回调等诊断信息，日志量会明显增加；排查完成后建议关闭。"))
+                }
+            }
         }
         .navigationTitle(L("后台保活"))
         .navigationBarTitleDisplayMode(.inline)
@@ -489,8 +503,8 @@ enum StorageCategory: String, CaseIterable, Identifiable {
 
 /// 「储存空间」二级页：按类别展示占用。
 ///
-/// 多选逻辑与「下载 / 历史」页保持一致：点「选择」或双指下滑进入多选，
-/// 勾选任意几类后由右上角的「清理」统一清理。
+/// 多选逻辑与「下载 / 历史」页保持一致：双指滑动进入多选，
+/// 并沿滑动路径勾选类别，最后由右上角的「清理」统一清理。
 struct StorageSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var localization = LocalizationManager.shared
@@ -499,6 +513,7 @@ struct StorageSettingsView: View {
     @State private var sizes: [StorageCategory: Int64] = [:]
     @State private var editMode: EditMode = .inactive
     @State private var selection = Set<StorageCategory>()
+    @State private var rowFrames: [StorageCategory: CGRect] = [:]
     @State private var showingClearConfirmation = false
     @State private var isVisible = false
 
@@ -511,6 +526,14 @@ struct StorageSettingsView: View {
             Section {
                 ForEach(StorageCategory.allCases) { category in
                     row(for: category)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: StorageRowFrameKey.self,
+                                    value: [category: proxy.frame(in: .global)]
+                                )
+                            }
+                        }
                         .tag(category)
                 }
             } header: {
@@ -524,6 +547,7 @@ struct StorageSettingsView: View {
             }
         }
         .environment(\.editMode, $editMode)
+        .onPreferenceChange(StorageRowFrameKey.self) { rowFrames = $0 }
         .navigationBarBackButtonHidden(editMode.isEditing)
         .navigationTitle(L("储存空间"))
         .navigationBarTitleDisplayMode(.inline)
@@ -535,16 +559,40 @@ struct StorageSettingsView: View {
         }
         .task { refresh() }
         .onChange(of: appState.downloads.count) { _, _ in refresh() }
-        // 与下载 / 历史页一致：双指下滑进入多选
-        .twoFingerPanToSelect(isEnabled: isVisible) {
-            withAnimation { editMode = .active }
-        }
+        // 与下载 / 历史页一致：双指滑动进入多选，并按路径选中类别。
+        .twoFingerPanToSelect(
+            isEnabled: isVisible,
+            onBegin: { beginTwoFingerSelection() },
+            onPath: { selectRows(in: $0) }
+        )
         .alert(L("清理所选？"), isPresented: $showingClearConfirmation) {
             Button(L("取消"), role: .cancel) {}
             Button(L("清理"), role: .destructive) { clearSelected() }
         } message: {
             Text(L("所选类别的缓存与文件将被删除，此操作无法撤销。"))
         }
+    }
+
+    /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。
+    private func beginTwoFingerSelection() {
+        guard !editMode.isEditing else { return }
+        withAnimation { editMode = .active }
+    }
+
+    /// 把双指滑过的路径映射到可见类别；只增选，不反转已选项。
+    private func selectRows(in path: CGRect) {
+        let categories = rowFrames.compactMap { category, frame in
+            frame.intersects(path) ? category : nil
+        }
+        guard !categories.isEmpty else { return }
+        selection.formUnion(categories)
+    }
+
+    /// 清理完成后退出多选，避免停留在不可继续操作的选择状态。
+    private func finishSelection() {
+        selection.removeAll()
+        guard editMode.isEditing else { return }
+        withAnimation { editMode = .inactive }
     }
 
     /// 多选态才把选择绑给列表（与下载 / 历史页相同的处理）。
@@ -560,7 +608,7 @@ struct StorageSettingsView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        // 多选只通过双指下滑进入；进入后在返回键的位置显示「完成」。
+        // 多选只通过双指滑动进入；进入后在返回键的位置显示「完成」。
         ToolbarItem(placement: .topBarLeading) {
             if editMode.isEditing {
                 Button(L("完成")) {
@@ -623,7 +671,7 @@ struct StorageSettingsView: View {
 
     private func clearSelected() {
         let categories = selection
-        selection.removeAll()
+        finishSelection()
 
         Task {
             if categories.contains(.videos) {
@@ -643,6 +691,18 @@ struct StorageSettingsView: View {
 
             refresh()
         }
+    }
+}
+
+/// 收集可见储存类别行的全局坐标，供双指路径选择使用。
+private struct StorageRowFrameKey: PreferenceKey {
+    static let defaultValue: [StorageCategory: CGRect] = [:]
+
+    static func reduce(
+        value: inout [StorageCategory: CGRect],
+        nextValue: () -> [StorageCategory: CGRect]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
     }
 }
 
