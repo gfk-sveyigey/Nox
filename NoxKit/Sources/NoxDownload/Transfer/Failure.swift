@@ -8,6 +8,23 @@ import NoxKeepAlive
 // MARK: - 失败处理
 
 extension DownloadManager {
+    /// 网络失败的用户文案。
+    ///
+    /// 「仅无线局域网」时系统只会抛出 `dataNotAllowed` / `notConnectedToInternet`，
+    /// 直接展示系统文案会让人以为设备没网，这里换成可操作的提示。
+    func downloadErrorMessage(for error: Error) -> String {
+        guard !allowsCellularDownloads, let urlError = error as? URLError else {
+            return error.localizedDescription
+        }
+
+        switch urlError.code {
+        case .dataNotAllowed, .notConnectedToInternet:
+            return L("已限制为「仅无线局域网」，请连接无线局域网后重试。")
+        default:
+            return error.localizedDescription
+        }
+    }
+
     func abort(id: UUID, message: String) {
         defer {
             resetScheduling(for: id)

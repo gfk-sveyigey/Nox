@@ -43,7 +43,10 @@ extension DownloadManager {
         startProgressTimerIfNeeded()
 
         do {
-            let merged = try await HLSDownloader(concurrency: concurrency).download(
+            let merged = try await HLSDownloader(
+                concurrency: concurrency,
+                allowsCellularAccess: allowsCellularDownloads
+            ).download(
                 recordID: id,
                 playlistURL: record.sourceURL,
                 referer: record.refererURL,
@@ -66,7 +69,7 @@ extension DownloadManager {
             return
         } catch {
             guard !cancellingIDs.contains(id) else { return }
-            abort(id: id, message: error.localizedDescription)
+            abort(id: id, message: downloadErrorMessage(for: error))
         }
     }
 

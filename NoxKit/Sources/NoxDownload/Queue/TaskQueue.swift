@@ -88,7 +88,8 @@ extension DownloadManager {
         let probe = await Self.probe(
             url: record.sourceURL,
             referer: record.refererURL,
-            cookieHeader: record.cookieHeader
+            cookieHeader: record.cookieHeader,
+            allowsCellularAccess: allowsCellularDownloads
         )
 
         guard !cancellingIDs.contains(id) else { return }

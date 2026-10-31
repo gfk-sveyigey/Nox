@@ -29,10 +29,12 @@ extension DownloadManager {
     static func probe(
         url: URL,
         referer: URL?,
-        cookieHeader: String?
+        cookieHeader: String?,
+        allowsCellularAccess: Bool
     ) async -> ProbeResult {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.allowsCellularAccess = allowsCellularAccess
         request.setValue("bytes=0-0", forHTTPHeaderField: "Range")
         request.setValue("video/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
         // URLSession.shared 带本地缓存，命中旧响应会让探测结论失真
@@ -80,6 +82,16 @@ extension DownloadManager {
             let length = http.value(forHTTPHeaderField: "Content-Length").flatMap { Int64($0) }
             return ProbeResult(supportsRanges: false, totalBytes: length, error: nil)
         } catch {
+            if !allowsCellularAccess,
+               let urlError = error as? URLError,
+               urlError.code == .dataNotAllowed || urlError.code == .notConnectedToInternet {
+                return ProbeResult(
+                    supportsRanges: false,
+                    totalBytes: nil,
+                    error: L("已限制为「仅无线局域网」，请连接无线局域网后重试。")
+                )
+            }
+
             return ProbeResult(
                 supportsRanges: false,
                 totalBytes: nil,

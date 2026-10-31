@@ -34,6 +34,19 @@ struct DownloadSettingsView: View {
             }
 
             Section {
+                Picker(L("下载网络"), selection: $appState.downloadNetworkMode) {
+                    ForEach(DownloadNetworkMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .onChange(of: appState.downloadNetworkMode) { _, _ in
+                    appState.persist()
+                }
+            } footer: {
+                Text(L("「仅无线局域网」不会使用蜂窝流量；更改对之后发起的请求生效。离开无线局域网后下载会中断，重新连接后点「继续下载」可从断点续传。"))
+            }
+
+            Section {
                 Toggle(L("多线程下载"), isOn: $appState.experimentalMultiThreadDownload)
                     .onChange(of: appState.experimentalMultiThreadDownload) { _, _ in
                         appState.persist()

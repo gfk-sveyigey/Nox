@@ -17,6 +17,7 @@ public protocol DownloadStateStore: AnyObject {
     var multiThreadSegmentCount: Int { get }
     var m3u8SegmentConcurrency: Int { get }
     var maxConcurrentDownloads: Int { get }
+    var downloadNetworkMode: DownloadNetworkMode { get }
 
     var keepAliveMode: KeepAliveMode { get set }
     var keepAliveLifetime: KeepAliveLifetime { get set }

@@ -56,6 +56,10 @@ public final class AppState: ObservableObject {
     /// 同时进行的下载任务数（见 `maxConcurrentDownloadsOptions`，0 = 无限制）。每个任务内部还会再开分片连接
     @Published public var maxConcurrentDownloads: Int = AppState.defaultMaxConcurrentDownloads
 
+    /// 下载网络：无线局域网与蜂窝 / 仅无线局域网。
+    /// 后者会把所有下载请求的 `allowsCellularAccess` 置为 false。
+    @Published public var downloadNetworkMode: DownloadNetworkMode = NoxDefaults.defaultDownloadNetworkMode
+
     /// 后台保活方式：关闭 / 静音音频 / 画中画。
     /// 默认走画中画：它不占用音频会话，不会打断其他 App 正在播放的音频。
     @Published public var keepAliveMode: KeepAliveMode = .pictureInPicture
@@ -99,6 +103,7 @@ public final class AppState: ObservableObject {
     private let segmentCountKey = "Nox.multiThreadSegmentCount"
     private let m3u8ConcurrencyKey = "Nox.m3u8SegmentConcurrency"
     private let maxConcurrentDownloadsKey = "Nox.maxConcurrentDownloads"
+    private let downloadNetworkModeKey = "Nox.downloadNetworkMode"
     private let keepAliveModeKey = "Nox.keepAliveMode"
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
@@ -288,6 +293,7 @@ public final class AppState: ObservableObject {
         defaults.set(multiThreadSegmentCount, forKey: segmentCountKey)
         defaults.set(m3u8SegmentConcurrency, forKey: m3u8ConcurrencyKey)
         defaults.set(maxConcurrentDownloads, forKey: maxConcurrentDownloadsKey)
+        defaults.set(downloadNetworkMode.rawValue, forKey: downloadNetworkModeKey)
         defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
@@ -349,6 +355,10 @@ public final class AppState: ObservableObject {
         } else {
             maxConcurrentDownloads = Self.defaultMaxConcurrentDownloads
         }
+
+        downloadNetworkMode = DownloadNetworkMode(
+            rawValue: defaults.string(forKey: downloadNetworkModeKey) ?? ""
+        ) ?? NoxDefaults.defaultDownloadNetworkMode
 
         historyRetentionMode = HistoryRetentionMode(
             rawValue: defaults.string(forKey: historyRetentionModeKey) ?? ""

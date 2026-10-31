@@ -150,7 +150,7 @@ extension DownloadManager {
 
             self.abort(
                 id: id,
-                message: error.localizedDescription
+                message: self.downloadErrorMessage(for: error)
             )
         }
     }

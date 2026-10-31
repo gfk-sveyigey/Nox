@@ -416,16 +416,20 @@ public enum NoxLocalization {
 4. 删除 29 条 `PBXBuildFile`、29 条 `PBXFileReference`，以及 `PBXSourcesBuildPhase.files` / `PBXResourcesBuildPhase.files` 里的对应条目。**漏删一条会报 `Build input file cannot be found`**——属于 CI 能立刻抓到的错误。
 5. 加本地包引用：一条 `XCLocalSwiftPackageReference`（`relativePath = NoxKit`）+ 6 条 `XCSwiftPackageProductDependency`，写进 `PBXFrameworksBuildPhase.files`。
 
-**CI 必须断言资源，不能只看编译通过：**
+**编译通过不等于资源正确，需核对 `Build (dev)` 的 IPA 产物：**
 
 ```bash
-APP=build/DerivedData/Build/Products/Debug-iphoneos/Nox.app
-test -f "$APP/MediaSniffer.js"   || { echo "::error::MediaSniffer.js missing"; exit 1; }
-test -d "$APP/zh-Hans.lproj"     || { echo "::error::zh-Hans.lproj missing"; exit 1; }
-test -d "$APP/en.lproj"          || { echo "::error::en.lproj missing"; exit 1; }
+APP=Payload/Nox.app          # build-dev 的 artifact 解压后
+test -f "$APP/MediaSniffer.js" || { echo "MediaSniffer.js missing"; exit 1; }
+test -f "$APP/Assets.car"      || { echo "Assets.car missing"; exit 1; }
+for l in en ko fr de; do test -d "$APP/$l.lproj" || { echo "$l.lproj missing"; exit 1; }; done
+/usr/libexec/PlistBuddy -c 'Print :CFBundleLocalizations' "$APP/Info.plist" | grep -q zh-Hans \
+  || { echo "zh-Hans not declared"; exit 1; }
 ```
 
-原因：同步组按文件类型自动分配构建阶段。`.js` 和 `.xcstrings` 一旦没被识别为资源，**编译照样通过，但运行时嗅探静默失效、多语言退回开发语言**。这是 P0 唯一真正的坑，必须用断言挡住。
+原因：同步组按文件类型自动分配构建阶段。`.js` 和 `.xcstrings` 一旦没被识别为资源，**编译照样通过，但运行时嗅探静默失效、多语言退回开发语言**。这是 P0 唯一真正的坑，每次改 pbxproj 或资源后都要核对产物。
+
+> `zh-Hans` 是 string catalog 的 `sourceLanguage`，不会生成 `zh-Hans.lproj`；只检查 `CFBundleLocalizations` 里是否声明。
 
 > 回退方案：若同步组在 Xcode 26 上表现异常，退回逐条维护 `PBXFileReference`，但那样每个阶段的文件搬移都要额外改 pbxproj，工期 +30%。
 
@@ -442,49 +446,7 @@ test -d "$APP/en.lproj"          || { echo "::error::en.lproj missing"; exit 1; 
 | `build-dev.yml` | push 到 `dev`（忽略 `VERSION`）或手动 | 编译 + 打无签名 IPA + 上传工件 |
 | `build-and-release.yml` | PR 合并到 `main` | 编译 + 打 IPA + 发 Release |
 
-改造期建议**新增一个只编译的 workflow**，把反馈时间压到最短：
-
-```yaml
-name: Build check
-
-on:
-  push:
-    branches: [ dev, 'refactor/**' ]
-    paths-ignore: [ VERSION, 'docs/**', '*.md' ]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: build-check-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  build:
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v4
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '26.6'
-      - name: Build
-        run: |
-          set -o pipefail
-          xcodebuild \
-            -project Nox.xcodeproj -scheme Nox -sdk iphoneos \
-            -configuration Debug -destination 'generic/platform=iOS' \
-            -derivedDataPath build/DerivedData \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-            -quiet build
-      - name: Resource smoke check
-        run: |
-          APP=build/DerivedData/Build/Products/Debug-iphoneos/Nox.app
-          test -d "$APP"                              || { echo "::error::Nox.app missing"; exit 1; }
-          test -f "$APP/MediaSniffer.js"              || { echo "::error::MediaSniffer.js missing"; exit 1; }
-          test -d "$APP/zh-Hans.lproj"                 || { echo "::error::zh-Hans.lproj missing"; exit 1; }
-          test -d "$APP/en.lproj"                      || { echo "::error::en.lproj missing"; exit 1; }
-```
+改造期直接用 `build-dev.yml` 做编译反馈，不额外维护只编译的 workflow：push 后看 run 结果，下载 artifact 同时核对资源。
 
 配套规则：
 
@@ -500,7 +462,7 @@ jobs:
 
 | 阶段 | 内容 | 验收 | 工期 |
 |---|---|---|---|
-| **P0 骨架** | 同步组迁移 + 建 `NoxKit` 空包 + 1 个空 target + 新 CI；**不搬任何文件** | CI 绿 + 三条资源断言通过 | 0.5–1 天（2–3 轮 CI） |
+| **P0 骨架** | 同步组迁移 + 建 `NoxKit` 空包 + 1 个空 target；**不搬任何文件** | `Build (dev)` 绿 + IPA 资源核对通过 | 0.5–1 天（2–3 轮 CI） |
 | **P1 Core** | 搬 `Models`/`L()`/`LogStore`/`DownloadStorage`/常量；`public` 标注 | App 全功能手测通过 | 2–3 天 |
 | **P2 KeepAlive** | 搬 5 个文件；常量替换 | 保活/PiP/共存保护三条路径手测 | 1–1.5 天 |
 | **P3 Parsing** | 搬解析 + 嗅探；拆 `YouTubeParser` 为 5 文件 | 三个站点解析 + 嗅探 + 日志页 | 3–4 天 |
@@ -526,7 +488,7 @@ jobs:
 | 资源找不到（xcstrings / js） | 低 | 中 | 本次资源不动，保持 `Bundle.main` |
 | 无测试导致回归漏网 | 高 | 高 | P7 单独留 3–4 天；至少手测矩阵覆盖：断点续传、取消后重试、HLS、保活三模式、语言切换、深色模式 |
 | 只能用 CI 编译，单次反馈 4–10 分钟 | 确定 | 中 | 小步 push；一次只改一件事；`gh run view --log-failed` 取错误；P0 测出基线耗时 |
-| 同步组静默丢资源（编译过、运行时坏） | 中 | 高 | §4.6 的三条资源断言必须进 CI |
+| 同步组静默丢资源（编译过、运行时坏） | 中 | 高 | 每次改 pbxproj/资源后按 §4.6 核对 `build-dev` 的 IPA 产物 |
 | pbxproj 手改漏删引用 | 中 | 中 | P0 单独 PR，不做文件搬移；失败信息明确（Build input file cannot be found） |
 | `@MainActor` 协议与 Swift 5 模式 | 低 | 低 | 保持 Swift 5 语言模式，不改 strict concurrency |
 | PiP 的 ObjC runtime 私有调用跨模块失效 | 低 | 高 | `PiPCoexistenceProtection` 保持 `internal`，只搬文件不改实现；P2 单独验证 |
@@ -549,7 +511,7 @@ jobs:
 编译与结构：
 
 - [ ] `xcodebuild -scheme Nox -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build` 通过
-- [ ] 产物内含 `MediaSniffer.js` 与全部 5 个 `.lproj`（见 §4.6 断言）
+- [ ] 产物内含 `MediaSniffer.js`、`Assets.car`、`en/ko/fr/de.lproj`，`CFBundleLocalizations` 含 `zh-Hans`（见 §4.6）
 - [ ] 6 个 target 的依赖方向与 §2.1 一致（`NoxState` 不被任何库引用）
 - [ ] 无 `@_exported import`、无跨模块 `internal` 偷渡
 - [ ] `NoxKit` 内没有 `Bundle.main` 资源查找（除已声明的 `MediaSniffer.js` / `L()`）
@@ -598,7 +560,6 @@ jobs:
 | `Nox/AppWiring.swift` | `AppState` 对两个边界协议的实现 |
 | `Nox/Views/**` | 25 个视图文件（原 4 个大文件拆开，改为 `extension`，行为不变） |
 | `Nox/Resources/**` | 字符串目录、嗅探脚本、Asset Catalog |
-| `.github/workflows/build-check.yml` | 只编译 + 资源断言 |
 
 ### 10.2 结构性改动
 
@@ -613,7 +574,7 @@ jobs:
 
 ### 10.3 上线前必须在 CI/真机确认
 
-- [ ] `build-check` 首次运行通过（pbxproj 语法 + 模块可见性）
+- [ ] `Build (dev)` 首次运行通过（pbxproj 语法 + 模块可见性）
 - [ ] `Nox.app` 内含 `MediaSniffer.js`、`Assets.car` 与 `en/ko/fr/de.lproj`；`zh-Hans` 只要求出现在 `CFBundleLocalizations`（源语言不生成 lproj）
 - [ ] 真机安装 dev IPA 后手测：解析三个来源、断点续传、m3u8、保活三模式、语言切换
 - [ ] 若同步组漏掉 `.js` 或 `.xcstrings`，按 §4.6 的回退方案改为显式 `PBXFileReference`
@@ -638,11 +599,11 @@ jobs:
 - 跨文件 `private` / `fileprivate` 成员、顶层 `private` 类型已脚本排查，无残留；
 - App 层引用的各模块类型/成员均已 `public`；`AppState` 对两个边界协议的 witness 齐全。
 
-以上只能降低 CI 首轮报错量，**不代表已编译通过**；最终以 `build-check` 结果为准。
+以上只能降低 CI 首轮报错量，**不代表已编译通过**；最终以 `Build (dev)` 结果为准。
 
 ### 10.6 CI 首轮结果（2026-10-31）
 
 - `Build (dev)` run `41190277429`（提交 `96d3e84`）**编译 + 打包成功**。
 - 实际 IPA 内含：`MediaSniffer.js`、`Assets.car`、`en/ko/fr/de.lproj`、`Nox`、`Info.plist`。
-- `zh-Hans.lproj` 不存在；改造前的 IPA 同样不存在。原因是 `zh-Hans` 为 string catalog 的 `sourceLanguage`，源语言文本就是 key。已据此修正 `build-check.yml` 的断言（改为检查 `CFBundleLocalizations`）。
+- `zh-Hans.lproj` 不存在；改造前的 IPA 同样不存在。原因是 `zh-Hans` 为 string catalog 的 `sourceLanguage`，源语言文本就是 key。资源核对以 `CFBundleLocalizations` 为准。
 - 顺带修复一个旧 bug：系统英文 + App 内选简体中文时，`L()` 回落到 `Bundle.main` 会命中 `en.lproj`，界面显示英文。现在源语言且无 `zh-Hans.lproj` 时直接返回 key。
