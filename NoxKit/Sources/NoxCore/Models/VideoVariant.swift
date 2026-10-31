@@ -13,8 +13,13 @@ public struct VideoVariant: Identifiable, Codable, Hashable {
         self.url = url
     }
 
+    /// 展示用清晰度：按当前 App 语言翻译已知标签（音频 / 仅视频 等）。
+    public var displayQuality: String {
+        translatedQualityLabel(quality)
+    }
+
     public var displayName: String {
-        let q = quality.isEmpty ? L("未知清晰度") : quality
+        let q = quality.isEmpty ? L("未知清晰度") : displayQuality
         let f = format.isEmpty ? "VIDEO" : format.uppercased()
         return "\(q) · \(f)"
     }

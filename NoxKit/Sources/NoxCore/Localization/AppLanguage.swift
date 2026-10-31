@@ -5,7 +5,7 @@ import Foundation
 /// - `system`：不设任何覆盖，交给 iOS 按「系统偏好语言 ∩ App 支持语言」选择，
 ///   系统语言不在支持列表时回落到 `CFBundleDevelopmentRegion`。
 /// - 其余 case 的 `rawValue` 必须与 `.lproj` 目录名一致。
-public enum AppLanguage: String, CaseIterable, Identifiable {
+public enum AppLanguage: String, CaseIterable, Identifiable, Hashable {
     case system
     case english = "en"
     case simplifiedChinese = "zh-Hans"

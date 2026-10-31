@@ -350,7 +350,7 @@ final class HLSDownloader {
         timeout: TimeInterval,
         maxRetries: Int
     ) async throws -> Data {
-        var lastError: Error = ParserError.manifestRequestFailed("请求失败")
+        var lastError: Error = ParserError.manifestRequestFailed(L("请求失败"))
 
         for attempt in 0...maxRetries {
             // 被取消时立刻退出，不要白等 sleep 与后续重试
@@ -365,7 +365,7 @@ final class HLSDownloader {
                     allowsCellularAccess: allowsCellularAccess,
                     timeout: timeout
                 ) else {
-                    throw ParserError.manifestRequestFailed("响应为空")
+                    throw ParserError.manifestRequestFailed(L("响应为空"))
                 }
 
                 return data
@@ -424,7 +424,7 @@ final class HLSDownloader {
         userAgent: String?,
         allowsCellularAccess: Bool
     ) async throws -> Int64 {
-        var lastError: Error = ParserError.manifestRequestFailed("分片下载失败")
+        var lastError: Error = ParserError.manifestRequestFailed(L("分片下载失败"))
         let attempts = 2
 
         for attempt in 0...attempts {
@@ -439,7 +439,7 @@ final class HLSDownloader {
                     allowsCellularAccess: allowsCellularAccess,
                     timeout: 45
                 ) else {
-                    throw ParserError.manifestRequestFailed("分片响应为空")
+                    throw ParserError.manifestRequestFailed(L("分片响应为空"))
                 }
 
                 let payload: Data

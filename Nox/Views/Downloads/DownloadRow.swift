@@ -15,6 +15,8 @@ struct DownloadRow: View {
 
     /// 编辑态下行内的按钮要收起来，否则点击会被按钮吃掉、选不中行
     @Environment(\.editMode) private var editMode
+    /// 行内的状态文案、菜单项都是纯 String，需要观察语言变化才会刷新。
+    @ObservedObject private var localization = LocalizationManager.shared
 
     init(
         record: DownloadRecord,
@@ -49,8 +51,9 @@ struct DownloadRow: View {
                         .lineLimit(1)
 
                     HStack(spacing: 6) {
-                        // 清晰度与格式来自远端数据，不做本地化
-                        Text(verbatim: "\(record.quality) · \(record.format.uppercased())")
+                        // 清晰度/格式来自远端；旧记录里「页面嗅探」这类标签是按下载时的
+                        // 语言存下的，displayQuality 会按当前语言重新翻译。
+                        Text(verbatim: "\(record.displayQuality) · \(record.format.uppercased())")
 
                         // 实际并发数（普通下载 = 同时在飞的分片数，m3u8 = 分片并发）。
                         // 服务器不支持 Range 时会退化成单流，显示 1。

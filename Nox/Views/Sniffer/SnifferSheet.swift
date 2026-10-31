@@ -143,6 +143,8 @@ struct SnifferSheet: View {
 
 private struct SnifferRow: View {
     let item: SnifferBridge.Item
+    /// 来源标签（页面嗅探 等）在 body 里计算，必须观察语言变化。
+    @ObservedObject private var localization = LocalizationManager.shared
 
     var body: some View {
         HStack(spacing: 12) {
