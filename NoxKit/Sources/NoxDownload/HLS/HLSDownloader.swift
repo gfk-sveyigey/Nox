@@ -15,11 +15,19 @@ final class HLSDownloader {
     private let concurrency: Int
     private let timeout: TimeInterval
     private let maxRetries: Int
+    /// 「仅无线局域网」时置为 false，清单 / 密钥 / 分片请求都不走蜂窝。
+    private let allowsCellularAccess: Bool
 
-    init(concurrency: Int = 4, timeout: TimeInterval = 30, maxRetries: Int = 2) {
+    init(
+        concurrency: Int = 4,
+        timeout: TimeInterval = 30,
+        maxRetries: Int = 2,
+        allowsCellularAccess: Bool = true
+    ) {
         self.concurrency = max(1, concurrency)
         self.timeout = timeout
         self.maxRetries = max(0, maxRetries)
+        self.allowsCellularAccess = allowsCellularAccess
     }
 
     /// - Returns: 合并完成的暂存文件 URL，由调用方搬到 `Documents/`
@@ -33,6 +41,9 @@ final class HLSDownloader {
         onProgress: (@Sendable (Progress) -> Void)? = nil
     ) async throws -> URL {
         let fileManager = FileManager.default
+        // 捕获成局部值：分片下载在 @Sendable 闭包里执行，
+        // 直接读实例属性会让闭包间接捕获整个 HLSDownloader。
+        let allowsCellularAccess = self.allowsCellularAccess
         let partsDirectory = DownloadStorage.partsDirectory(for: recordID)
         let stagingDirectory = DownloadStorage.stagingDirectory(for: recordID)
 
@@ -102,6 +113,7 @@ final class HLSDownloader {
                 referer: referer,
                 cookieHeader: cookieHeader,
                 userAgent: userAgent,
+                allowsCellularAccess: allowsCellularAccess,
                 timeout: timeout,
                 maxRetries: maxRetries
             )
@@ -124,7 +136,8 @@ final class HLSDownloader {
                     destination: target,
                     referer: referer,
                     cookieHeader: cookieHeader,
-                    userAgent: userAgent
+                    userAgent: userAgent,
+                    allowsCellularAccess: allowsCellularAccess
                 )
             }
 
@@ -177,7 +190,8 @@ final class HLSDownloader {
                             destination: destination,
                             referer: referer,
                             cookieHeader: cookieHeader,
-                            userAgent: userAgent
+                            userAgent: userAgent,
+                            allowsCellularAccess: allowsCellularAccess
                         )
                     }
                 }
@@ -275,6 +289,7 @@ final class HLSDownloader {
             referer: referer,
             cookieHeader: cookieHeader,
             userAgent: userAgent,
+            allowsCellularAccess: allowsCellularAccess,
             timeout: timeout,
             maxRetries: maxRetries
         )
@@ -331,6 +346,7 @@ final class HLSDownloader {
         referer: URL?,
         cookieHeader: String?,
         userAgent: String?,
+        allowsCellularAccess: Bool,
         timeout: TimeInterval,
         maxRetries: Int
     ) async throws -> Data {
@@ -346,6 +362,7 @@ final class HLSDownloader {
                     referer: referer,
                     cookieHeader: cookieHeader,
                     userAgent: userAgent,
+                    allowsCellularAccess: allowsCellularAccess,
                     timeout: timeout
                 ) else {
                     throw ParserError.manifestRequestFailed("响应为空")
@@ -371,11 +388,13 @@ final class HLSDownloader {
         referer: URL?,
         cookieHeader: String?,
         userAgent: String?,
+        allowsCellularAccess: Bool,
         timeout: TimeInterval
     ) async throws -> Data? {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.timeoutInterval = timeout
+        request.allowsCellularAccess = allowsCellularAccess
         request.setValue(
             "application/vnd.apple.mpegurl, application/x-mpegURL, video/*, */*;q=0.8",
             forHTTPHeaderField: "Accept"
@@ -402,7 +421,8 @@ final class HLSDownloader {
         destination: URL,
         referer: URL?,
         cookieHeader: String?,
-        userAgent: String?
+        userAgent: String?,
+        allowsCellularAccess: Bool
     ) async throws -> Int64 {
         var lastError: Error = ParserError.manifestRequestFailed("分片下载失败")
         let attempts = 2
@@ -416,6 +436,7 @@ final class HLSDownloader {
                     referer: referer,
                     cookieHeader: cookieHeader,
                     userAgent: userAgent,
+                    allowsCellularAccess: allowsCellularAccess,
                     timeout: 45
                 ) else {
                     throw ParserError.manifestRequestFailed("分片响应为空")

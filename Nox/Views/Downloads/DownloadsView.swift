@@ -39,6 +39,11 @@ struct DownloadsView: View {
                     list
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                if editMode.isEditing {
+                    selectionActionsBar
+                }
+            }
             .navigationTitle(L("下载"))
             .navigationBarTitleDisplayMode(.inline)
             .environment(\.editMode, $editMode)
@@ -150,7 +155,7 @@ struct DownloadsView: View {
             }
             .tag(record.id)
             // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
-            // 左侧红色减号按钮，与「右上角统一删除」重复。
+            // 左侧红色减号按钮，与底部操作栏的统一删除重复。
             // swipeActions 在编辑态自动失效，不影响多选。
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
@@ -177,14 +182,17 @@ struct DownloadsView: View {
 
         ToolbarItem(placement: .topBarTrailing) {
             if editMode.isEditing {
-                // 多选态：红色文字，和列表的删除语义一致。
-                Button(role: .destructive) {
-                    showingDeleteConfirmation = true
-                } label: {
-                    Text(L("删除"))
-                        .foregroundStyle(.red)
+                // 批量操作在底部操作栏；右上角只负责选择范围。
+                Button(allSelected ? L("取消全选") : L("全选")) {
+                    withAnimation {
+                        if allSelected {
+                            selection.removeAll()
+                        } else {
+                            selection = Set(appState.downloads.map(\.id))
+                        }
+                    }
                 }
-                .disabled(selection.isEmpty)
+                .disabled(appState.downloads.isEmpty)
             } else if appState.downloads.contains(where: {
                 $0.status == .finished ||
                 $0.status == .failed ||
@@ -195,6 +203,127 @@ struct DownloadsView: View {
                 }
             }
         }
+    }
+
+    // MARK: - 多选批量操作
+
+    var selectedRecords: [DownloadRecord] {
+        appState.downloads.filter { selection.contains($0.id) }
+    }
+
+    /// 失败 / 已暂停的任务可以重试或继续。
+    var retryableRecords: [DownloadRecord] {
+        selectedRecords.filter { $0.status == .failed || $0.status == .cancelled }
+    }
+
+    /// 排队中 / 下载中的任务可以暂停；分片已落盘，之后可继续。
+    var pausableRecords: [DownloadRecord] {
+        selectedRecords.filter { $0.status == .queued || $0.status == .downloading }
+    }
+
+    /// 已完成且本地文件仍在的任务可以分享。
+    var shareableRecords: [DownloadRecord] {
+        selectedRecords.filter {
+            $0.status == .finished &&
+            !manager.missingFileIDs.contains($0.id) &&
+            manager.shareableFileURL(for: $0) != nil
+        }
+    }
+
+    /// 全部选中项都已有下载进度时才写「继续下载」，否则写「重试」。
+    var retryActionTitle: String {
+        let records = retryableRecords
+        guard !records.isEmpty else { return L("重试") }
+        return records.allSatisfy { ($0.receivedBytes ?? 0) > 0 } ? L("继续下载") : L("重试")
+    }
+
+    var allSelected: Bool {
+        !appState.downloads.isEmpty && selection.count == appState.downloads.count
+    }
+
+    /// 多选态底部操作栏。每个按钮只对选中项里状态适用的记录生效，
+    /// 全部不适用时置灰，避免出现「点了没反应」。
+    var selectionActionsBar: some View {
+        HStack(spacing: 0) {
+            actionButton(
+                title: retryActionTitle,
+                systemImage: "arrow.clockwise",
+                isEnabled: !retryableRecords.isEmpty
+            ) {
+                manager.retryAll(ids: Set(retryableRecords.map(\.id)))
+            }
+
+            actionButton(
+                title: L("暂停"),
+                systemImage: "pause.circle",
+                isEnabled: !pausableRecords.isEmpty
+            ) {
+                manager.cancelAll(ids: Set(pausableRecords.map(\.id)))
+            }
+
+            actionButton(
+                title: L("分享"),
+                systemImage: "square.and.arrow.up",
+                isEnabled: !shareableRecords.isEmpty
+            ) {
+                shareSelected()
+            }
+
+            actionButton(
+                title: L("删除"),
+                systemImage: "trash",
+                role: .destructive,
+                isEnabled: !selection.isEmpty
+            ) {
+                showingDeleteConfirmation = true
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 6)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
+    func actionButton(
+        title: String,
+        systemImage: String,
+        role: ButtonRole? = nil,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.title3)
+                Text(title)
+                    .font(.caption2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .foregroundStyle(actionButtonColor(role: role, isEnabled: isEnabled))
+    }
+
+    func actionButtonColor(role: ButtonRole?, isEnabled: Bool) -> Color {
+        guard isEnabled else { return .secondary }
+        return role == nil ? .accentColor : .red
+    }
+
+    /// 批量分享：只带上文件仍在的已完成记录。
+    func shareSelected() {
+        let urls = shareableRecords.compactMap { manager.shareableFileURL(for: $0) }
+        guard !urls.isEmpty else {
+            shareFailureMessage = L("文件不存在或已删除")
+            showShareFailureAlert = true
+            return
+        }
+
+        SharePresenter.present(items: urls)
     }
 
     /// 由长按菜单的「分享」触发。

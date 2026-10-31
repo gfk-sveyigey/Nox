@@ -1860,6 +1860,70 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce projet est destiné uniquement à l'apprentissage et aux tests personnels. L'installation, la signature et l'utilisation se font à vos propres risques. Ne l'utilisez pas pour enfreindre les règles des plateformes, porter atteinte à la propriété intellectuelle ou à d'autres fins inappropriées." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 프로젝트는 학습 및 개인 테스트 용도로만 제공됩니다. 설치, 서명 및 사용에 따른 위험은 사용자가 부담합니다. 플랫폼 규칙 위반, 지식재산권 침해 또는 기타 부적절한 용도로 사용하지 마세요." } }
       }
+    },
+    "暂停" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Pausieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suspendre" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일시 정지" } }
+      }
+    },
+    "全选" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle auswählen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select All" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout sélectionner" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모두 선택" } }
+      }
+    },
+    "取消全选" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswahl aufheben" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Deselect All" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout désélectionner" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택 해제" } }
+      }
+    },
+    "下载网络" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Downloadnetzwerk" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download Network" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réseau de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 네트워크" } }
+      }
+    },
+    "无线局域网与蜂窝" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "WLAN und Mobilfunk" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi & Cellular" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi et cellulaire" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi 및 셀룰러" } }
+      }
+    },
+    "仅无线局域网" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur WLAN" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi Only" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi uniquement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi만" } }
+      }
+    },
+    "「仅无线局域网」不会使用蜂窝流量；更改对之后发起的请求生效。离开无线局域网后下载会中断，重新连接后点「继续下载」可从断点续传。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "„Nur WLAN“ verwendet keine mobilen Daten. Änderungen gelten für danach gestartete Anfragen. Downloads werden unterbrochen, wenn Sie das WLAN verlassen; verbinden Sie sich erneut und tippen Sie auf „Fortsetzen“, um fortzufahren." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "“Wi-Fi Only” never uses cellular data. Changes apply to requests made afterwards. Downloads stop when you leave Wi-Fi; reconnect and tap Resume to continue from where they left off." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "« Wi-Fi uniquement » n’utilise jamais les données cellulaires. Les modifications s’appliquent aux requêtes suivantes. Les téléchargements s’arrêtent lorsque vous quittez le Wi-Fi ; reconnectez-vous et appuyez sur « Reprendre » pour continuer." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "“Wi-Fi만”은 셀룰러 데이터를 사용하지 않습니다. 변경 사항은 이후 요청부터 적용됩니다. Wi-Fi를 벗어나면 다운로드가 중단되며, 다시 연결한 뒤 ‘이어받기’를 누르면 이어서 다운로드합니다." } }
+      }
+    },
+    "已限制为「仅无线局域网」，请连接无线局域网后重试。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Downloads sind auf WLAN beschränkt. Stellen Sie eine WLAN-Verbindung her und versuchen Sie es erneut." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloads are limited to Wi-Fi. Connect to Wi-Fi and try again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les téléchargements sont limités au Wi-Fi. Connectez-vous au Wi-Fi et réessayez." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드가 Wi-Fi로 제한되어 있습니다. Wi-Fi에 연결한 후 다시 시도하세요." } }
+      }
     }
   },
   "version" : "1.0"

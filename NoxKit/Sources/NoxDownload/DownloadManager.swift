@@ -54,6 +54,14 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         return max(1, configured)
     }
 
+    /// 当前设置是否允许下载请求使用蜂窝网络。
+    ///
+    /// 除了建会话时的配置，每个请求还会单独带一次 `allowsCellularAccess`：
+    /// 设置可以随时改，而已有的 `URLSession` 不会重建（重建会取消在跑的任务）。
+    var allowsCellularDownloads: Bool {
+        store.downloadNetworkMode.allowsCellularAccess
+    }
+
     /// 已占用槽位的任务（探测中 / 下载中 / HLS 合并中）
     var activeIDs = Set<UUID>()
     /// 排队等待槽位的任务，先进先出
@@ -94,6 +102,8 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         )
         configuration.isDiscretionary = false
         configuration.sessionSendsLaunchEvents = true
+        // 会话级兜底；设置切换后由每个请求上的同名字段接管。
+        configuration.allowsCellularAccess = allowsCellularDownloads
         // 允许多线程设置最大到 32 条并发连接
         configuration.httpMaximumConnectionsPerHost = NoxDefaults.segmentCountRange.upperBound
         return URLSession(
@@ -326,6 +336,20 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
         // 取消后保留历史记录：取消只是想停下来，不代表这次访问没发生过。
         // 真正要清掉历史时，用下载页 / 历史页的「清空」或左滑删除。
+    }
+
+    /// 批量暂停（多选时用）。只处理排队中 / 下载中的任务。
+    ///
+    /// 暂停复用 `cancel`：已下载分片留在磁盘上，状态记为 `.cancelled`，
+    /// 之后可以「继续下载」。先快照再处理，避免边遍历边修改 downloads。
+    public func cancelAll(ids: Set<UUID>) {
+        let targets = store.downloads.filter {
+            ids.contains($0.id) && ($0.status == .queued || $0.status == .downloading)
+        }
+
+        for record in targets {
+            cancel(record)
+        }
     }
 
     /// 清空：删除记录 + 本地文件 + 未完成的分片。

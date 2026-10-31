@@ -28,6 +28,9 @@ public enum NoxDefaults {
     /// 同时进行的下载任务数默认值
     public static let defaultMaxConcurrentDownloads = 3
 
+    /// 下载网络默认值：无线局域网与蜂窝
+    public static let defaultDownloadNetworkMode = DownloadNetworkMode.wifiAndCellular
+
     /// 历史保留「无限制」的取值
     public static let unlimitedHistory = 0
     /// 历史「按条数」保留的可选上限（0 = 无限制）

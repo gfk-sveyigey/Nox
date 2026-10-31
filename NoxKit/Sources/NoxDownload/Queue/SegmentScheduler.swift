@@ -95,6 +95,7 @@ extension DownloadManager {
 
         var request = URLRequest(url: record.sourceURL)
         request.httpMethod = "GET"
+        request.allowsCellularAccess = allowsCellularDownloads
         request.setValue("video/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
 
         if let referer = record.refererURL {
