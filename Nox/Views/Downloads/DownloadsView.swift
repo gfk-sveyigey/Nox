@@ -39,15 +39,17 @@ struct DownloadsView: View {
                     list
                 }
             }
-            .safeAreaInset(edge: .bottom) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 if editMode.isEditing {
-                    selectionActionsBar
+                    selectionFloatingActions
                 }
             }
             .navigationTitle(L("下载"))
             .navigationBarTitleDisplayMode(.inline)
             .environment(\.editMode, $editMode)
             .toolbar { toolbarContent }
+            // 多选时隐藏底部标签栏，避免与悬浮操作按钮抢位置。
+            .toolbar(editMode.isEditing ? .hidden : .visible, for: .tabBar)
             .alert(L("清空下载？"), isPresented: $showingClearConfirmation) {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("清空"), role: .destructive) {
@@ -155,7 +157,7 @@ struct DownloadsView: View {
             }
             .tag(record.id)
             // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
-            // 左侧红色减号按钮，与底部操作栏的统一删除重复。
+            // 左侧红色减号按钮，与悬浮删除按钮重复。
             // swipeActions 在编辑态自动失效，不影响多选。
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
@@ -172,9 +174,18 @@ struct DownloadsView: View {
     var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             if !appState.downloads.isEmpty {
-                Button(editMode.isEditing ? L("完成") : L("选择")) {
-                    withAnimation {
-                        editMode = editMode.isEditing ? .inactive : .active
+                if editMode.isEditing {
+                    // 主题色对号 = 完成，和系统「照片」的多选一致。
+                    Button {
+                        withAnimation { editMode = .inactive }
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .fontWeight(.semibold)
+                    }
+                    .accessibilityLabel(L("完成"))
+                } else {
+                    Button(L("选择")) {
+                        withAnimation { editMode = .active }
                     }
                 }
             }
@@ -241,77 +252,71 @@ struct DownloadsView: View {
         !appState.downloads.isEmpty && selection.count == appState.downloads.count
     }
 
-    /// 多选态底部操作栏。每个按钮只对选中项里状态适用的记录生效，
-    /// 全部不适用时置灰，避免出现「点了没反应」。
-    var selectionActionsBar: some View {
-        HStack(spacing: 0) {
-            actionButton(
-                title: retryActionTitle,
-                systemImage: "arrow.clockwise",
-                isEnabled: !retryableRecords.isEmpty
-            ) {
-                manager.retryAll(ids: Set(retryableRecords.map(\.id)))
-            }
+    var hasBatchActions: Bool {
+        !retryableRecords.isEmpty || !pausableRecords.isEmpty || !shareableRecords.isEmpty
+    }
 
-            actionButton(
-                title: L("暂停"),
-                systemImage: "pause.circle",
-                isEnabled: !pausableRecords.isEmpty
-            ) {
-                manager.cancelAll(ids: Set(pausableRecords.map(\.id)))
-            }
+    /// 多选态悬浮操作：左下角「更多」菜单，右下角删除。
+    /// 每个菜单项只对选中项里状态适用的记录生效，全部不适用时置灰。
+    var selectionFloatingActions: some View {
+        HStack(alignment: .center) {
+            Menu {
+                Button {
+                    manager.retryAll(ids: Set(retryableRecords.map(\.id)))
+                } label: {
+                    Label(retryActionTitle, systemImage: "arrow.clockwise")
+                }
+                .disabled(retryableRecords.isEmpty)
 
-            actionButton(
-                title: L("分享"),
-                systemImage: "square.and.arrow.up",
-                isEnabled: !shareableRecords.isEmpty
-            ) {
-                shareSelected()
-            }
+                Button {
+                    manager.cancelAll(ids: Set(pausableRecords.map(\.id)))
+                } label: {
+                    Label(L("暂停"), systemImage: "pause.circle")
+                }
+                .disabled(pausableRecords.isEmpty)
 
-            actionButton(
-                title: L("删除"),
-                systemImage: "trash",
-                role: .destructive,
-                isEnabled: !selection.isEmpty
-            ) {
+                Divider()
+
+                Button {
+                    // 等菜单退场后再拉起系统分享面板，否则会被系统静默丢弃。
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        shareSelected()
+                    }
+                } label: {
+                    Label(L("分享"), systemImage: "square.and.arrow.up")
+                }
+                .disabled(shareableRecords.isEmpty)
+            } label: {
+                circleLabel("ellipsis", color: .primary)
+            }
+            .disabled(!hasBatchActions)
+            .modifier(GlassCircleBackground())
+            .accessibilityLabel(L("更多操作"))
+
+            Spacer(minLength: 0)
+
+            Button(role: .destructive) {
                 showingDeleteConfirmation = true
+            } label: {
+                circleLabel("trash", color: .red)
+                    .opacity(selection.isEmpty ? 0.4 : 1)
             }
+            .buttonStyle(.plain)
+            .disabled(selection.isEmpty)
+            .modifier(GlassCircleBackground())
+            .accessibilityLabel(L("删除"))
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 6)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
     }
 
-    func actionButton(
-        title: String,
-        systemImage: String,
-        role: ButtonRole? = nil,
-        isEnabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(role: role, action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: systemImage)
-                    .font(.title3)
-                Text(title)
-                    .font(.caption2)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .foregroundStyle(actionButtonColor(role: role, isEnabled: isEnabled))
-    }
-
-    func actionButtonColor(role: ButtonRole?, isEnabled: Bool) -> Color {
-        guard isEnabled else { return .secondary }
-        return role == nil ? .accentColor : .red
+    func circleLabel(_ systemImage: String, color: Color) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(color)
+            .frame(width: 52, height: 52)
+            .contentShape(Circle())
     }
 
     /// 批量分享：只带上文件仍在的已完成记录。
@@ -344,3 +349,18 @@ struct DownloadsView: View {
     }
 }
 
+/// 多选态圆形按钮：iOS 26 使用系统液态玻璃，低版本回退到材质 + 描边。
+private struct GlassCircleBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: Circle())
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay {
+                    Circle().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+                }
+                .shadow(color: Color.black.opacity(0.15), radius: 10, y: 3)
+        }
+    }
+}

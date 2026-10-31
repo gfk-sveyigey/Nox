@@ -1885,6 +1885,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택 해제" } }
       }
     },
+    "更多操作" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Weitere Aktionen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More Actions" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plus d’actions" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "추가 작업" } }
+      }
+    },
     "下载网络" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Downloadnetzwerk" } },
