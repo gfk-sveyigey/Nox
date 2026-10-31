@@ -114,6 +114,10 @@ struct VideoBrowserView: View {
             .animation(.easeInOut(duration: 0.2), value: showingHome)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            // 导航栏是空的，但默认半透明材质在浅色模式下会比页面背景更浅。
+            // 用不透明的系统背景填满，避免顶部出现一条突兀的色带。
+            .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .onAppear {
                 loadRequestedURLIfNeeded()
                 // 切走再切回来时 `isLoading` 不一定有变化，这里按当前状态补一次。

@@ -6,6 +6,9 @@ import NoxState
 struct ContentView: View {
     @StateObject private var appState: AppState
     @StateObject private var downloadManager: DownloadManager
+    /// 观察语言变化，让底部 Tab 标题跟着刷新。
+    /// 不要再给 `SettingsView` 套 `.id(language)`：那会重建整个 Form，
+    /// 把用户正在浏览的设置列表弹回顶部。
     @ObservedObject private var localization = LocalizationManager.shared
     @State private var selectedTab = 0
     @State private var browserURL: URL?
@@ -36,9 +39,6 @@ struct ContentView: View {
             .tag(2)
 
             SettingsView(manager: downloadManager)
-                // 语言切换后强制重建设置页：Picker 的选项内容会被系统菜单缓存，
-                // 只靠 @ObservedObject 重算 body 时可能仍显示旧文案。
-                .id(localization.language)
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(3)
         }

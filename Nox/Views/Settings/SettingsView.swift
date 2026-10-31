@@ -144,6 +144,9 @@ struct SettingsView: View {
                     Text(language.title).tag(language)
                 }
             }
+            // Picker 的系统菜单会缓存选项文案。只重建这一行，既能刷新菜单，
+            // 又不会像重建设置页那样把整个 Form 的滚动位置带回顶部。
+            .id(localization.language)
         } footer: {
             versionFooter
         }
