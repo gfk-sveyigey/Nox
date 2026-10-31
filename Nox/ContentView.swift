@@ -1,4 +1,7 @@
 import SwiftUI
+import NoxCore
+import NoxDownload
+import NoxState
 
 struct ContentView: View {
     @StateObject private var appState: AppState
@@ -12,7 +15,7 @@ struct ContentView: View {
     init() {
         let state = AppState()
         _appState = StateObject(wrappedValue: state)
-        _downloadManager = StateObject(wrappedValue: DownloadManager(appState: state))
+        _downloadManager = StateObject(wrappedValue: DownloadManager(store: state))
     }
 
     var body: some View {
