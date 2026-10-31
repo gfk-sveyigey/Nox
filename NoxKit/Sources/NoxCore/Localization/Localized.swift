@@ -43,8 +43,17 @@ public enum AppLocale {
 /// - 带插值的文案用 `String(format:)`：
 ///   `String(format: L("页面加载失败：%@"), message)`
 public func L(_ key: String) -> String {
+    // zh-Hans 是 string catalog 的 sourceLanguage，Xcode 不会为源语言生成
+    // 独立的 zh-Hans.lproj，源语言文本就是 key 本身。
+    // 若此时回落到 Bundle.main，在英文系统上会错误地取到 en.lproj 的翻译
+    // （表现为：App 内选“简体中文”，界面却变成英文）。
+    if AppLocale.selectedCode == AppLanguage.simplifiedChinese.rawValue,
+       Bundle.main.path(forResource: "zh-Hans", ofType: "lproj") == nil {
+        return key
+    }
+
     // 等价写法：NSLocalizedString(key, tableName: nil, bundle: AppLocale.bundle, value: key, comment: "")
     // 注意：全局函数 NSLocalizedString 的标签是 tableName；
     //       而 Bundle 实例方法 localizedString(forKey:value:table:) 的标签是 table。两者不要混用。
-    AppLocale.bundle.localizedString(forKey: key, value: key, table: nil)
+    return AppLocale.bundle.localizedString(forKey: key, value: key, table: nil)
 }

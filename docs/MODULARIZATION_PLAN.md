@@ -614,7 +614,7 @@ jobs:
 ### 10.3 上线前必须在 CI/真机确认
 
 - [ ] `build-check` 首次运行通过（pbxproj 语法 + 模块可见性）
-- [ ] `Nox.app` 内含 `MediaSniffer.js` 与 `zh-Hans.lproj` / `en.lproj`
+- [ ] `Nox.app` 内含 `MediaSniffer.js`、`Assets.car` 与 `en/ko/fr/de.lproj`；`zh-Hans` 只要求出现在 `CFBundleLocalizations`（源语言不生成 lproj）
 - [ ] 真机安装 dev IPA 后手测：解析三个来源、断点续传、m3u8、保活三模式、语言切换
 - [ ] 若同步组漏掉 `.js` 或 `.xcstrings`，按 §4.6 的回退方案改为显式 `PBXFileReference`
 
@@ -629,7 +629,7 @@ jobs:
 | `initializer is inaccessible due to 'private' protection level` | struct 带 `private` 存储属性时，合成的 memberwise init 也是 private；拆文件后跨文件构造会失败 | 已为 `DownloadRow` / `SnifferSheet` / `SpeedMeter` 增加显式 internal init，其余同类按报错补 |
 | `cannot find type 'Published' / 'ObservableObject'` | 文件只 import 了 WebKit/Foundation，没有 Combine | 已补 `VideoParser.swift`、`SnifferBridge.swift` 的 `import Combine` |
 | `cannot find 'WKWebsiteDataStore'` | `DownloadStorage` 拆到 NoxCore 后漏了 WebKit | 已补 `import WebKit` |
-| 同步组未包含资源 | `.js` / `.xcstrings` 分类异常 | CI 断言会失败，按 §4.6 回退 |
+| 同步组未包含资源 | `.js` / `.xcstrings` 分类异常 | 实测 `MediaSniffer.js` 与 4 个翻译 lproj 均在包内；`zh-Hans` 是源语言，不生成 lproj |
 
 ### 10.5 本机静态检查（非编译）
 
@@ -639,3 +639,10 @@ jobs:
 - App 层引用的各模块类型/成员均已 `public`；`AppState` 对两个边界协议的 witness 齐全。
 
 以上只能降低 CI 首轮报错量，**不代表已编译通过**；最终以 `build-check` 结果为准。
+
+### 10.6 CI 首轮结果（2026-10-31）
+
+- `Build (dev)` run `41190277429`（提交 `96d3e84`）**编译 + 打包成功**。
+- 实际 IPA 内含：`MediaSniffer.js`、`Assets.car`、`en/ko/fr/de.lproj`、`Nox`、`Info.plist`。
+- `zh-Hans.lproj` 不存在；改造前的 IPA 同样不存在。原因是 `zh-Hans` 为 string catalog 的 `sourceLanguage`，源语言文本就是 key。已据此修正 `build-check.yml` 的断言（改为检查 `CFBundleLocalizations`）。
+- 顺带修复一个旧 bug：系统英文 + App 内选简体中文时，`L()` 回落到 `Bundle.main` 会命中 `en.lproj`，界面显示英文。现在源语言且无 `zh-Hans.lproj` 时直接返回 key。
