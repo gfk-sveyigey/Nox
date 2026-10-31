@@ -44,6 +44,7 @@ struct DownloadsView: View {
                     selectionFloatingActions
                 }
             }
+            .background(Color(.systemGroupedBackground).ignoresSafeArea(edges: .bottom))
             .navigationTitle(L("下载"))
             .navigationBarTitleDisplayMode(.inline)
             .environment(\.editMode, $editMode)
@@ -104,10 +105,13 @@ struct DownloadsView: View {
     }
 
     /// 删除或其它操作完成后清理选择并退出多选。
+    ///
+    /// 退出时不要包在 `withAnimation` 里：标签栏重新出现、底部 `safeAreaInset`
+    /// 同时收起时，两者的过渡会短暂叠出一块比页面更浅的背景。
     func finishSelection() {
         selection.removeAll()
         guard editMode.isEditing else { return }
-        withAnimation { editMode = .inactive }
+        editMode = .inactive
     }
 
     var list: some View {
@@ -177,7 +181,7 @@ struct DownloadsView: View {
                 if editMode.isEditing {
                     // 主题色对号 = 完成，和系统「照片」的多选一致。
                     Button {
-                        withAnimation { editMode = .inactive }
+                        finishSelection()
                     } label: {
                         Image(systemName: "checkmark")
                             .fontWeight(.semibold)
@@ -263,6 +267,7 @@ struct DownloadsView: View {
             Menu {
                 Button {
                     manager.retryAll(ids: Set(retryableRecords.map(\.id)))
+                    finishSelection()
                 } label: {
                     Label(retryActionTitle, systemImage: "arrow.clockwise")
                 }
@@ -270,6 +275,7 @@ struct DownloadsView: View {
 
                 Button {
                     manager.cancelAll(ids: Set(pausableRecords.map(\.id)))
+                    finishSelection()
                 } label: {
                     Label(L("暂停"), systemImage: "pause.circle")
                 }
@@ -278,10 +284,7 @@ struct DownloadsView: View {
                 Divider()
 
                 Button {
-                    // 等菜单退场后再拉起系统分享面板，否则会被系统静默丢弃。
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        shareSelected()
-                    }
+                    shareSelected()
                 } label: {
                     Label(L("分享"), systemImage: "square.and.arrow.up")
                 }
@@ -320,15 +323,22 @@ struct DownloadsView: View {
     }
 
     /// 批量分享：只带上文件仍在的已完成记录。
+    ///
+    /// 先取出 URL 再退出多选；系统分享面板要等菜单退场后才能弹出，
+    /// 提前清空 selection 不会影响这次分享。
     func shareSelected() {
         let urls = shareableRecords.compactMap { manager.shareableFileURL(for: $0) }
+        finishSelection()
+
         guard !urls.isEmpty else {
             shareFailureMessage = L("文件不存在或已删除")
             showShareFailureAlert = true
             return
         }
 
-        SharePresenter.present(items: urls)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            SharePresenter.present(items: urls)
+        }
     }
 
     /// 由长按菜单的「分享」触发。

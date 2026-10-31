@@ -5,8 +5,8 @@ import Foundation
 public final class LocalizationManager: ObservableObject {
     public static let shared = LocalizationManager()
 
-    /// 当前选择。改变后观察本对象的视图会自动刷新；设置页额外由
-    /// `ContentView` 的 `.id(language)` 强制重建，避免 Picker 选项残留旧文案。
+    /// 当前选择。改变后观察本对象的视图会自动刷新；设置页的语言 Picker
+    /// 会按语言值重建自身，避免系统菜单缓存旧文案。
     /// 这里只负责持久化与对外暴露 `locale`。
     @Published public var language: AppLanguage {
         didSet {
