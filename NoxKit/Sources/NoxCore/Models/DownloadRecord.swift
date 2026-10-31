@@ -81,6 +81,14 @@ public struct DownloadRecord: Identifiable, Codable {
         return "\(title)-\(quality).\(suffix)"
     }
 
+    /// 列表里展示的清晰度。
+    ///
+    /// `quality` 会持久化，旧记录里可能存着下载当时的语言文案（例如「页面嗅探」）；
+    /// 展示时按当前 App 语言重新翻译。
+    public var displayQuality: String {
+        translatedQualityLabel(quality)
+    }
+
     /// 历史记录里用的标题：文件名去掉扩展名。
     public var displayTitle: String {
         let stem = (displayFilename as NSString).deletingPathExtension

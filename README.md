@@ -270,6 +270,8 @@ String(localized: "页面加载失败：\(message)")
 @ObservedObject private var localization = LocalizationManager.shared
 ```
 
+**不要持久化本地化结果**：`L(...)` 返回的是「当前语言」的字符串，存进模型后切语言不会变（例如下载记录的 `quality` 曾把「页面嗅探」直接存下来）。确需保存时，展示前用 `NoxCore` 的 `translatedQualityLabel(_:)` 按当前语言重新查表。
+
 **新增文案**：手写加入 `Localizable.xcstrings` 的对应语言列。因为 `L(_:)` 的参数是变量，Xcode 无法自动提取，不会像 `Text("字面量")` 那样自动出现在待翻译列表里。
 
 ### 新增语言

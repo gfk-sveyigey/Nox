@@ -10,6 +10,7 @@ import NoxBrowser
 /// 文字统一用 `.primary`（深色）而不是 Button 默认的强调色，避免蓝字看不清。
 struct ParseVariantRow: View {
     let variant: VideoVariant
+    @ObservedObject private var localization = LocalizationManager.shared
 
     var body: some View {
         HStack(spacing: 12) {
@@ -19,7 +20,7 @@ struct ParseVariantRow: View {
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(variant.quality.isEmpty ? L("未知清晰度") : variant.quality)
+                Text(variant.quality.isEmpty ? L("未知清晰度") : variant.displayQuality)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 

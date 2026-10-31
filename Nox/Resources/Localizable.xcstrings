@@ -1924,6 +1924,38 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les téléchargements sont limités au Wi-Fi. Connectez-vous au Wi-Fi et réessayez." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드가 Wi-Fi로 제한되어 있습니다. Wi-Fi에 연결한 후 다시 시도하세요." } }
       }
+    },
+    "请求失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Anfrage fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Request failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de la requête" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "요청 실패" } }
+      }
+    },
+    "响应为空" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Leere Antwort" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Empty response" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réponse vide" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "응답이 비어 있음" } }
+      }
+    },
+    "分片下载失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Segment-Download fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Segment download failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec du téléchargement du segment" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "세그먼트 다운로드 실패" } }
+      }
+    },
+    "分片响应为空" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Leere Segment-Antwort" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Empty segment response" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réponse de segment vide" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "세그먼트 응답이 비어 있음" } }
+      }
     }
   },
   "version" : "1.0"
