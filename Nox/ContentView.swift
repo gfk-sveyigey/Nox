@@ -16,6 +16,9 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var browserURL: URL?
     @State private var didLogSession = false
+    /// 临时诊断：收到外部 URL 时在顶部显示一条提示，
+    /// 用来确认系统到底有没有把 URL 交给 App。定位完可以删除。
+    @State private var incomingBanner: String?
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -48,6 +51,20 @@ struct ContentView: View {
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .top) {
+            if let incomingBanner {
+                Text(incomingBanner)
+                    .font(.footnote.weight(.medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: incomingBanner)
         // 浅色 / 深色 / 跟随系统
         .preferredColorScheme(appState.appearanceMode.colorScheme)
         .onAppear {
@@ -120,6 +137,8 @@ struct ContentView: View {
 
     @MainActor
     private func handleIncomingURL(_ url: URL) {
+        showIncomingBanner(for: url)
+
         if IncomingLink.isPluginImport(url) {
             LogStore.shared.info("handle incoming: shared plugin")
             if let data = IncomingLink.pluginData(from: url) {
@@ -135,6 +154,19 @@ struct ContentView: View {
         } else {
             LogStore.shared.info("handle incoming: file")
             pluginImport.handleOpenURL(url)
+        }
+    }
+
+    private func showIncomingBanner(for url: URL) {
+        let text = url.isFileURL
+            ? String(format: L("已收到外部文件：%@"), url.lastPathComponent)
+            : String(
+                format: L("已收到外部链接：%@"),
+                (url.scheme ?? "?") + "://" + (url.host ?? "")
+            )
+        incomingBanner = text
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+            if incomingBanner == text { incomingBanner = nil }
         }
     }
 
