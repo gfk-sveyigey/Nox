@@ -73,7 +73,8 @@ public final class VideoSiteParserRegistry: ObservableObject {
         list.append(GenericSnifferParser())
 
         let sorted = list.sorted(by: defaultSort)
-        let savedOrder = UserDefaults.standard.stringArray(forKey: orderKey) ?? []
+        let savedOrder = (UserDefaults.standard.stringArray(forKey: orderKey) ?? [])
+            .map { $0 == "generic" ? SnifferSite.identifier : $0 }
         return apply(order: savedOrder, to: sorted)
     }
 

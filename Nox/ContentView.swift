@@ -7,6 +7,7 @@ struct ContentView: View {
     @StateObject private var appState: AppState
     @StateObject private var downloadManager: DownloadManager
     @StateObject private var pluginImport = PluginImportCoordinator()
+    @ObservedObject private var incomingURL = IncomingURLCenter.shared
     /// 观察语言变化，让底部 Tab 标题跟着刷新。
     /// 不要再给 `SettingsView` 套 `.id(language)`：那会重建整个 Form，
     /// 把用户正在浏览的设置列表弹回顶部。
@@ -49,6 +50,15 @@ struct ContentView: View {
         // 浅色 / 深色 / 跟随系统
         .preferredColorScheme(appState.appearanceMode.colorScheme)
         .onAppear {
+            // 冷启动时 document open 可能早于视图安装，这里补一次消费。
+            // 延后一个 runloop，确保 alert 等呈现上下文已经装好。
+            if let url = incomingURL.pendingURL {
+                incomingURL.consume(url)
+                DispatchQueue.main.async {
+                    handleIncomingURL(url)
+                }
+            }
+
             // 冷启动时 `scenePhase` 的 onChange 不一定触发，这里补一次前台处理，
             // 让「启动即常驻」模式在首次进入界面时就能拉起保活。
             downloadManager.handleScenePhase(isActive: scenePhase == .active)
@@ -62,27 +72,54 @@ struct ContentView: View {
         }
         // 统一处理外部入口：
         // - nox://open?url=... 交给内置浏览器直接打开
+        // - nox://import-plugin?data=... 导入分享的插件
         // - 文件 URL 继续交给插件导入
         .onOpenURL { url in
-            if IncomingLink.isPluginImport(url) {
-                if let data = IncomingLink.pluginData(from: url) {
-                    pluginImport.importSharedPlugin(data)
-                } else {
-                    pluginImport.reportSharedPluginFailure()
-                }
-            } else if let webURL = IncomingLink.webURL(from: url) {
-                selectedTab = 0
-                browserURL = webURL
-            } else {
-                pluginImport.handleOpenURL(url)
+            IncomingURLCenter.shared.submit(url)
+        }
+        .onChange(of: incomingURL.pendingURL) { _, url in
+            guard let url else { return }
+            handleIncomingURL(url)
+            incomingURL.consume(url)
+        }
+        .alert(item: $pluginImport.prompt) { prompt in
+            switch prompt {
+            case .notice(let notice):
+                return Alert(
+                    title: Text(notice.title),
+                    message: Text(notice.message),
+                    dismissButton: .default(Text(L("确定")))
+                )
+            case .confirmation(let confirmation):
+                return Alert(
+                    title: Text(L("插件已存在")),
+                    message: Text(confirmation.message),
+                    primaryButton: .default(Text(L("确认导入"))) {
+                        pluginImport.confirmImport(confirmation)
+                    },
+                    secondaryButton: .cancel(Text(L("取消"))) {
+                        pluginImport.cancelImport(confirmation)
+                    }
+                )
             }
         }
-        .alert(item: $pluginImport.notice) { notice in
-            Alert(
-                title: Text(notice.title),
-                message: Text(notice.message),
-                dismissButton: .default(Text(L("确定")))
-            )
+    }
+
+    @MainActor
+    private func handleIncomingURL(_ url: URL) {
+        if IncomingLink.isPluginImport(url) {
+            if let data = IncomingLink.pluginData(from: url) {
+                pluginImport.importSharedPlugin(data)
+            } else {
+                LogStore.shared.error("shared plugin url decode failed")
+                pluginImport.reportSharedPluginFailure()
+            }
+        } else if let webURL = IncomingLink.webURL(from: url) {
+            selectedTab = 0
+            browserURL = webURL
+        } else {
+            pluginImport.handleOpenURL(url)
         }
     }
+
 }

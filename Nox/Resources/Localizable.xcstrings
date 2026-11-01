@@ -2045,6 +2045,94 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 가져오기 완료" } }
       }
     },
+    "未知版本" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbekannte Version" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown version" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Version inconnue" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알 수 없는 버전" } }
+      }
+    },
+    "插件已存在" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin bereits vorhanden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin Already Installed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plugin déjà installé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인이 이미 있습니다" } }
+      }
+    },
+    "确认导入" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Trotzdem importieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import Anyway" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer quand même" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "그래도 가져오기" } }
+      }
+    },
+    "以下插件已经存在。确认后会替换当前版本，无论版本升高、降低还是相同：" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die folgenden Plugins sind bereits vorhanden. Beim Bestätigen wird die aktuelle Version ersetzt, unabhängig davon, ob die neue Version höher, niedriger oder gleich ist:" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The following plugins already exist. Confirming replaces the current version whether the new version is higher, lower, or the same:" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les plugins suivants existent déjà. Confirmer remplacera la version actuelle, que la nouvelle version soit plus élevée, plus basse ou identique :" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다음 플러그인이 이미 있습니다. 확인하면 새 버전이 더 높든 낮든 같든 현재 버전을 교체합니다:" } }
+      }
+    },
+    "内置" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Integriert" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Intégré" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장" } }
+      }
+    },
+    "已导入" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Importiert" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Imported" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "가져옴" } }
+      }
+    },
+    "升级" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Upgrade" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "upgrade" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "mise à niveau" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "업그레이드" } }
+      }
+    },
+    "回退" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Downgrade" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "downgrade" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "rétrogradation" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운그레이드" } }
+      }
+    },
+    "同版本" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "gleiche Version" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "same version" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "même version" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "같은 버전" } }
+      }
+    },
+    "%@（%@）\n%@ %@ → %@（%@）" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ (%@)\n%@ %@ → %@ (%@)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ (%@)\n%@ %@ → %@ (%@)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ (%@)\n%@ %@ → %@ (%@)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@ (%@)\n%@ %@ → %@ (%@)" } }
+      }
+    },
+    "其余 %d 个新插件会一并导入。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die übrigen %d neuen Plugins werden ebenfalls importiert." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The other %d new plugin(s) will be imported as well." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les %d autres nouveaux plugins seront également importés." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "나머지 새 플러그인 %d개도 함께 가져옵니다." } }
+      }
+    },
     "插件导入失败" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Import fehlgeschlagen" } },

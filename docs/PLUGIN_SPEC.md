@@ -2,9 +2,9 @@
 
 > 状态：**草案 v1，导入与管理已实现**
 >
-> 已实现：单文件解析、元数据校验、包内插件加载、用户导入 / 更新 / 删除 / 导出、拖动排序与动态注册表刷新、隐藏 `WKWebView` 运行时，以及 `page.eval` / `page.title` / `cookies` / `http` / `log` Bridge。Pornhub 已迁为包内插件。
+> 已实现：单文件解析、元数据校验、包内插件加载、用户导入 / 更新 / 删除 / 导出、导入覆盖确认、拖动排序与动态注册表刷新、隐藏 `WKWebView` 运行时，以及 `page.eval` / `page.title` / `cookies` / `http` / `crypto` / `log` Bridge。Pornhub 已迁为包内插件。
 >
-> 未实现：签名校验、`crypto` Bridge、插件市场 / 自动更新。
+> 未实现：签名校验、插件市场 / 自动更新。
 >
 > 本文定义单文件 `.noxplugin` 的格式、站点匹配规则、JavaScript API、安装 / 更新 / 删除流程和安全边界。实现前可以继续调整字段，但已经写入插件的字段应尽量保持向后兼容。
 
@@ -143,7 +143,7 @@ JavaScript 主体
 - 建议使用反向域名：`com.example.site`
 - 发布后不能修改，否则用户保存的启用状态会丢失
 - 从内置解析器迁移的插件保留历史 ID（例如 Pornhub 使用 `pornhub`），避免用户已有开关状态失效
-- `generic`（通用 Sniffer）和 `youtube`（原生解析器）为保留 ID，插件不可使用
+- `sniffer`（通用 Sniffer）和 `youtube`（原生解析器）为保留 ID，插件不可使用
 - 用户导入插件与包内插件同 ID 时，导入版本覆盖包内版本；删除导入版本后自动回落到包内版本
 
 ### 4.2 `match` 规则
@@ -240,7 +240,7 @@ v1 不支持在 JavaScript 中实现 `canHandle` / `claimsHost`，站点匹配�
 | `ctx.page` | object | 主页面能力 |
 | `ctx.cookies(url?)` | function | 读取 Cookie 头 |
 | `ctx.http` | object | HTTP 请求 |
-| `ctx.crypto` | object | 加密工具 |
+| `ctx.crypto` | object | 哈希 / HMAC / Base64 工具（需 `crypto` 权限） |
 
 ### 5.3 `ctx.page`
 
@@ -345,9 +345,9 @@ await ctx.http.post(url, body, options);
 | `ctx.crypto.hmacSha1(key, text)` | HMAC-SHA1 十六进制 |
 | `ctx.crypto.hmacSha256(key, text)` | HMAC-SHA256 十六进制 |
 | `ctx.crypto.base64Encode(text)` | Base64 编码 |
-| `ctx.crypto.base64Decode(text)` | Base64 解码 |
+| `ctx.crypto.base64Decode(text)` | Base64 解码为 UTF-8 文本 |
 
-需要 `crypto` 权限。
+需要 `crypto` 权限。哈希与 HMAC 返回小写十六进制；`base64Decode` 遇到非法 Base64 或非 UTF-8 内容时抛错。
 
 ### 5.7 错误
 
@@ -420,15 +420,20 @@ App 会把它转换成解析失败提示，并记录到日志。不要返回 `nu
 2. 在安全作用域内通过 `NSFileCoordinator` 读取文件
 3. 校验文件大小（≤ 512 KiB）、UTF-8 编码、元数据头、JSON 字段、`apiVersion`、`minAppVersion`、权限和域名 / 正则规则
 4. 用 JavaScriptCore `new Function(source)` 编译脚本体，检查语法；**不执行插件代码**
-5. 原子写入 `Application Support/Nox/Plugins/<id>.noxplugin`
-6. 重新扫描注册表，「解析来源」列表与当前浏览页立即刷新
-7. 若文件来自系统 `Documents/Inbox` 临时副本，安装成功后删除该副本
+5. 检查同 `id` 是否已有用户导入版本或包内版本；有则弹出确认框，用户确认后才继续
+6. 原子写入 `Application Support/Nox/Plugins/<id>.noxplugin`
+7. 重新扫描注册表，「解析来源」列表与当前浏览页立即刷新
+8. 若文件来自系统 `Documents/Inbox` 临时副本，安装成功后删除该副本
 
 `UTI` / 文件类型在 `Info.plist` 中注册，因此 Nox 可以出现在系统「用其他 App 打开」列表中。
 
 ### 8.2 更新
 
 - 同 `id` 的新文件视为更新，旧文件会被原子替换
+- 导入前会先读取新文件并检查同 ID 的现有版本（用户导入版本优先，其次包内版本）
+- 只要同 ID 插件已存在，无论新版本更高、更低还是相同，都先弹出确认框，显示「当前版本 → 新版本」以及升级 / 回退 / 同版本标记
+- 用户可以选择「确认导入」或「取消」；确认前不会写入任何文件
+- 一次导入多个文件时，确认框会列出所有已存在的插件；同批次里的新插件在确认后一并导入
 - 新文件必须先通过完整校验，失败时保留旧文件
 - 更新后保留原来的启用 / 禁用状态
 - 新版本号更高时显示「已更新」

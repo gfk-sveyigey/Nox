@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import UIKit
 import WebKit
@@ -190,6 +191,18 @@ final class PluginRuntime: NSObject {
             handleCookies(id: id, params: params)
         case "http.request":
             handleHTTPRequest(id: id, params: params)
+        case "crypto.sha1":
+            handleCryptoDigest(id: id, params: params, algorithm: .sha1)
+        case "crypto.sha256":
+            handleCryptoDigest(id: id, params: params, algorithm: .sha256)
+        case "crypto.hmacSha1":
+            handleCryptoHMAC(id: id, params: params, algorithm: .sha1)
+        case "crypto.hmacSha256":
+            handleCryptoHMAC(id: id, params: params, algorithm: .sha256)
+        case "crypto.base64Encode":
+            handleBase64Encode(id: id, params: params)
+        case "crypto.base64Decode":
+            handleBase64Decode(id: id, params: params)
         default:
             reject(id, "未知插件调用：\(method)")
         }
@@ -273,6 +286,91 @@ final class PluginRuntime: NSObject {
             let value = await page.cookieHeader(matching: url) ?? ""
             self.resolve(id, value: value)
         }
+    }
+
+    // MARK: - Crypto
+
+    private enum CryptoDigestAlgorithm {
+        case sha1
+        case sha256
+    }
+
+    private func handleCryptoDigest(
+        id: Int?,
+        params: [String: Any],
+        algorithm: CryptoDigestAlgorithm
+    ) {
+        guard manifest.permissions.contains("crypto") else {
+            reject(id, "插件没有 crypto 权限")
+            return
+        }
+
+        let text = params["text"] as? String ?? ""
+        let data = Data(text.utf8)
+        let digest: [UInt8]
+
+        switch algorithm {
+        case .sha1:
+            digest = Array(Insecure.SHA1.hash(data: data))
+        case .sha256:
+            digest = Array(SHA256.hash(data: data))
+        }
+
+        resolve(id, value: digest.map { String(format: "%02x", $0) }.joined())
+    }
+
+    private func handleCryptoHMAC(
+        id: Int?,
+        params: [String: Any],
+        algorithm: CryptoDigestAlgorithm
+    ) {
+        guard manifest.permissions.contains("crypto") else {
+            reject(id, "插件没有 crypto 权限")
+            return
+        }
+
+        let keyText = params["key"] as? String ?? ""
+        let text = params["text"] as? String ?? ""
+        let key = SymmetricKey(data: Data(keyText.utf8))
+        let data = Data(text.utf8)
+        let code: [UInt8]
+
+        switch algorithm {
+        case .sha1:
+            code = Array(HMAC<Insecure.SHA1>.authenticationCode(for: data, using: key))
+        case .sha256:
+            code = Array(HMAC<SHA256>.authenticationCode(for: data, using: key))
+        }
+
+        resolve(id, value: code.map { String(format: "%02x", $0) }.joined())
+    }
+
+    private func handleBase64Encode(id: Int?, params: [String: Any]) {
+        guard manifest.permissions.contains("crypto") else {
+            reject(id, "插件没有 crypto 权限")
+            return
+        }
+
+        let text = params["text"] as? String ?? ""
+        resolve(id, value: Data(text.utf8).base64EncodedString())
+    }
+
+    private func handleBase64Decode(id: Int?, params: [String: Any]) {
+        guard manifest.permissions.contains("crypto") else {
+            reject(id, "插件没有 crypto 权限")
+            return
+        }
+
+        let text = params["text"] as? String ?? ""
+        guard
+            let data = Data(base64Encoded: text),
+            let value = String(data: data, encoding: .utf8)
+        else {
+            reject(id, "Base64 内容无法解码为 UTF-8 文本")
+            return
+        }
+
+        resolve(id, value: value)
     }
 
     private func handleHTTPRequest(id: Int?, params: [String: Any]) {
@@ -630,6 +728,26 @@ private extension PluginRuntime {
     },
     cookies: function (url) {
       return send("cookies", { url: url || null });
+    },
+    crypto: {
+      sha1: function (text) {
+        return send("crypto.sha1", { text: String(text) });
+      },
+      sha256: function (text) {
+        return send("crypto.sha256", { text: String(text) });
+      },
+      hmacSha1: function (key, text) {
+        return send("crypto.hmacSha1", { key: String(key), text: String(text) });
+      },
+      hmacSha256: function (key, text) {
+        return send("crypto.hmacSha256", { key: String(key), text: String(text) });
+      },
+      base64Encode: function (text) {
+        return send("crypto.base64Encode", { text: String(text) });
+      },
+      base64Decode: function (text) {
+        return send("crypto.base64Decode", { text: String(text) });
+      }
     },
     http: {
       request: function (options) {
