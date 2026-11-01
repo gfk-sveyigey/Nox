@@ -65,7 +65,11 @@ struct ContentView: View {
         // - 文件 URL 继续交给插件导入
         .onOpenURL { url in
             if IncomingLink.isPluginImport(url) {
-                pluginImport.importPasteboardPlugin()
+                if let data = IncomingLink.pluginData(from: url) {
+                    pluginImport.importSharedPlugin(data)
+                } else {
+                    pluginImport.reportSharedPluginFailure()
+                }
             } else if let webURL = IncomingLink.webURL(from: url) {
                 selectedTab = 0
                 browserURL = webURL

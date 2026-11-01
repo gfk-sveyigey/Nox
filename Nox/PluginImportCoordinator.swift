@@ -1,16 +1,7 @@
 import Combine
 import Foundation
-import UIKit
-import UniformTypeIdentifiers
 import NoxCore
 import NoxParsing
-
-extension UTType {
-    /// 与 Info.plist 的 `UTExportedTypeDeclarations` 保持一致。
-    /// 不使用 `UTType(filenameExtension:)` 的兜底，避免声明缺失时
-    /// 文件选择器悄悄退化成 `.data`、把所有文件都列出来。
-    static let noxPlugin = UTType(exportedAs: "com.aholic.nox.plugin")
-}
 
 /// 统一处理来自「文件」App、其他 App 的「用 Nox 打开」以及设置页文件选择器的插件导入。
 @MainActor
@@ -24,28 +15,20 @@ final class PluginImportCoordinator: ObservableObject {
     @Published var notice: Notice?
     @Published private(set) var isImporting = false
 
-    /// Share Extension 与宿主 App 没有共享容器，插件文件通过剪贴板交接。
-    /// 这个类型只用于传递单文件插件，不会覆盖普通文本剪贴板内容。
-    private static let pluginPasteboardType = "com.aholic.nox.plugin"
-
     func handleOpenURL(_ url: URL) {
         guard url.isFileURL else { return }
         importFiles([url])
     }
 
-    /// 接收分享面板写入剪贴板的插件数据，再复用文件导入流程校验。
-    func importPasteboardPlugin() {
-        guard
-            let data = UIPasteboard.general.data(forPasteboardType: Self.pluginPasteboardType),
-            !data.isEmpty
-        else {
-            notice = Notice(
-                title: L("插件导入失败"),
-                message: L("没有找到来自分享面板的插件数据，请重新分享。")
-            )
+    /// 分享扩展已按 `.noxplugin` 后缀识别并压缩插件，宿主 App 解码后
+    /// 落成临时文件，再复用同一套文件校验流程。
+    func importSharedPlugin(_ data: Data) {
+        guard !data.isEmpty else {
+            reportSharedPluginFailure()
             return
         }
 
+        LogStore.shared.info("plugin import from share: \(data.count) bytes")
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("shared-\(UUID().uuidString)")
             .appendingPathExtension("noxplugin")
@@ -59,9 +42,25 @@ final class PluginImportCoordinator: ObservableObject {
         }
     }
 
-    func importFiles(_ urls: [URL]) {
-        guard !urls.isEmpty else { return }
+    func reportSharedPluginFailure() {
+        notice = Notice(
+            title: L("插件导入失败"),
+            message: L("分享的插件数据无法读取，请重新分享。")
+        )
+    }
 
+    func importFiles(_ urls: [URL]) {
+        guard !urls.isEmpty else {
+            notice = Notice(
+                title: L("插件导入失败"),
+                message: L("无法读取所选文件，请重试。")
+            )
+            return
+        }
+
+        LogStore.shared.info(
+            "plugin import request: \(urls.map(\.lastPathComponent).joined(separator: ", "))"
+        )
         isImporting = true
         var installed: [String] = []
         var updated: [String] = []
@@ -73,6 +72,8 @@ final class PluginImportCoordinator: ObservableObject {
         var didUpdateExisting = false
 
         for url in urls {
+            defer { Self.removeTemporaryImport(at: url) }
+
             do {
                 let result = try PluginStore.shared.install(from: url)
                 successCount += 1
@@ -165,5 +166,19 @@ final class PluginImportCoordinator: ObservableObject {
             title: L("插件导入失败"),
             message: error.localizedDescription
         )
+    }
+
+    /// 清理文档选择器复制出来的临时文件。只删除本流程自己创建的副本，
+    /// 不会碰用户在「文件」里的原文件。
+    private static func removeTemporaryImport(at url: URL) {
+        let path = url.standardizedFileURL.path
+        let temporary = FileManager.default.temporaryDirectory.standardizedFileURL.path
+        guard
+            path.hasPrefix(temporary),
+            url.lastPathComponent.hasPrefix("NoxPluginImport-")
+        else {
+            return
+        }
+        try? FileManager.default.removeItem(at: url)
     }
 }

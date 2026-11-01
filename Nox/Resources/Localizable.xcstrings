@@ -2085,12 +2085,12 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "위에 있을수록 우선순위가 높으며, 일반 Sniffer는 항상 마지막에 유지됩니다." } }
       }
     },
-    "没有找到来自分享面板的插件数据，请重新分享。" : {
+    "分享的插件数据无法读取，请重新分享。" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Es wurden keine Plugin-Daten aus dem Share-Sheet gefunden. Bitte teile das Plugin erneut." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No plugin data was found from the share sheet. Please share the plugin again." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune donnée de plugin provenant de la feuille de partage n’a été trouvée. Veuillez partager à nouveau le plugin." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공유 시트에서 플러그인 데이터를 찾지 못했습니다. 플러그인을 다시 공유해 주세요." } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die geteilten Plugin-Daten konnten nicht gelesen werden. Bitte teile das Plugin erneut." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The shared plugin data couldn’t be read. Please share the plugin again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les données du plugin partagé n’ont pas pu être lues. Veuillez partager à nouveau le plugin." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공유된 플러그인 데이터를 읽지 못했습니다. 플러그인을 다시 공유해 주세요." } }
       }
     },
     "同名插件按 ID 更新现有条目，不会在列表中新增重复行。" : {
@@ -2157,14 +2157,6 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "가져온 플러그인 파일만 삭제합니다. 앱 번들에 같은 ID의 플러그인이 있으면 해당 버전이 다시 활성화됩니다." } }
       }
     },
-    "从剪贴板导入插件" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin aus Zwischenablage importieren" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import Plugin from Clipboard" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer un plugin depuis le presse-papiers" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "클립보드에서 플러그인 가져오기" } }
-      }
-    },
     "导入插件" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin importieren" } },
@@ -2219,6 +2211,14 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Plugin ID" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Copier l’ID du plugin" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 ID 복사" } }
+      }
+    },
+    "无法读取所选文件，请重试。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die ausgewählte Datei konnte nicht gelesen werden. Bitte versuche es erneut." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The selected file couldn’t be read. Please try again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le fichier sélectionné n’a pas pu être lu. Veuillez réessayer." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택한 파일을 읽지 못했습니다. 다시 시도해 주세요." } }
       }
     },
     "无法导出该插件文件。" : {

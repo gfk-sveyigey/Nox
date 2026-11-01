@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import UniformTypeIdentifiers
 import WebKit
 import NoxCore
 import NoxKeepAlive
@@ -16,7 +15,6 @@ struct SiteSettingsView: View {
     @ObservedObject var registry = VideoSiteParserRegistry.shared
 
     @State private var editMode: EditMode = .inactive
-    @State private var showImporter = false
     @State private var actionError: String?
     @State private var pendingDeleteID: String?
     @State private var pendingDeleteName = ""
@@ -49,30 +47,11 @@ struct SiteSettingsView: View {
             }
         }
         .environment(\.editMode, $editMode)
-        // 外部「用 Nox 打开」导入后直接进入本页时，再扫一次插件目录，
-        // 避免列表停留在首次创建时的快照。
-        .onAppear {
-            registry.reload()
-        }
         .navigationTitle(L("解析来源"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 trailingToolbar
-            }
-        }
-        .fileImporter(
-            isPresented: $showImporter,
-            // .plainText 作为兜底：部分文件提供方不会立刻识别自定义 UTI，
-            // 但 .noxplugin 本身声明为纯文本，仍应能在选择器中选中。
-            allowedContentTypes: [.noxPlugin, .plainText],
-            allowsMultipleSelection: true
-        ) { result in
-            switch result {
-            case .success(let urls):
-                pluginImport.importFiles(urls)
-            case .failure(let error):
-                pluginImport.report(error)
             }
         }
         .alert(
@@ -115,21 +94,9 @@ struct SiteSettingsView: View {
         } else {
             Menu {
                 Button {
-                    // 从 Menu 中直接切换 fileImporter 时，菜单收起动画可能吞掉
-                    // presentation；如果上次已被吞掉，showImporter 会一直停在 true，
-                    // 必须先归零，再等菜单退场后重新触发。
-                    showImporter = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                        showImporter = true
-                    }
+                    openPluginImporter()
                 } label: {
                     Label(L("导入插件"), systemImage: "square.and.arrow.down")
-                }
-
-                Button {
-                    pluginImport.importPasteboardPlugin()
-                } label: {
-                    Label(L("从剪贴板导入插件"), systemImage: "doc.on.clipboard")
                 }
 
                 Button {
@@ -163,6 +130,20 @@ struct SiteSettingsView: View {
                 Image(systemName: "ellipsis.circle")
             }
             .accessibilityLabel(L("解析来源操作"))
+        }
+    }
+
+    /// 从菜单里直接 present 会和菜单的收起动画抢同一个 presentation。
+    /// 等菜单退场后再由最上层控制器呈现系统文档选择器。
+    private func openPluginImporter() {
+        let coordinator = pluginImport
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            PluginDocumentPicker.shared.present(
+                onPick: { urls in
+                    coordinator.importFiles(urls)
+                },
+                onCancel: {}
+            )
         }
     }
 
