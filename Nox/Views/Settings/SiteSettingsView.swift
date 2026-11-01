@@ -49,6 +49,11 @@ struct SiteSettingsView: View {
             }
         }
         .environment(\.editMode, $editMode)
+        // 外部「用 Nox 打开」导入后直接进入本页时，再扫一次插件目录，
+        // 避免列表停留在首次创建时的快照。
+        .onAppear {
+            registry.reload()
+        }
         .navigationTitle(L("解析来源"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -263,10 +268,14 @@ struct SiteSettingsView: View {
             return (L("内置通用嗅探"), "dot.radiowaves.left.and.right")
         }
 
-        // 所有单文件 .noxplugin 都按插件展示，包括随 App 分发的 Pornhub。
-        // 包内插件无法删除文件，设置页会把它记为「从本机移除」并支持恢复。
+        // 所有单文件 .noxplugin 都按插件展示；区分包内版本与用户导入版本，
+        // 这样导入一份与内置插件同 ID 的文件时，列表里能看出它已变成用户版本。
         if parser.isImportedPlugin || parser.isBundledPlugin {
-            var parts = [L("已导入插件")]
+            var parts = [
+                parser.isImportedPlugin
+                    ? L("已导入单文件插件")
+                    : L("内置单文件插件")
+            ]
             if let version = parser.pluginVersion, !version.isEmpty {
                 parts.append("v\(version)")
             }

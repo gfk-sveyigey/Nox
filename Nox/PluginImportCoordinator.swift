@@ -39,12 +39,16 @@ final class PluginImportCoordinator: ObservableObject {
         var overriddenBundled: [String] = []
         var failures: [String] = []
         var successCount = 0
+        var didUpdateExisting = false
 
         for url in urls {
             do {
                 let result = try PluginStore.shared.install(from: url)
                 successCount += 1
-                let summary = "\(result.name) v\(result.version)"
+                if result.updateKind != .installed || result.overridesBundled {
+                    didUpdateExisting = true
+                }
+                let summary = "\(result.name) v\(result.version) · \(result.id)"
 
                 switch result.updateKind {
                 case .installed:
@@ -97,6 +101,9 @@ final class PluginImportCoordinator: ObservableObject {
         })
         if !installed.isEmpty {
             lines.append(L("新插件已加入「解析来源」；如有多个解析器匹配同一站点，可在该页面调整顺序。"))
+        }
+        if didUpdateExisting {
+            lines.append(L("同名插件按 ID 更新现有条目，不会在列表中新增重复行。"))
         }
         lines.append(contentsOf: failures)
 
