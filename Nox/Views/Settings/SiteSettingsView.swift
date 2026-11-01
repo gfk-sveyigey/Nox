@@ -20,6 +20,7 @@ struct SiteSettingsView: View {
     @State private var actionError: String?
     @State private var pendingDeleteID: String?
     @State private var pendingDeleteName = ""
+    @State private var pendingDeleteIsBundled = false
     @State private var showDeleteConfirmation = false
 
     var body: some View {
@@ -42,7 +43,7 @@ struct SiteSettingsView: View {
                     )
 
                     if !editMode.isEditing {
-                        Text(L("长按条目可导出或删除已导入插件；右上角可导入插件、调整顺序或恢复默认顺序。"))
+                        Text(L("长按条目可导出或删除插件；内置插件删除后可在右上角恢复。"))
                     }
                 }
             }
@@ -88,7 +89,11 @@ struct SiteSettingsView: View {
             }
             Button(L("取消"), role: .cancel) {}
         } message: {
-            Text(L("只删除用户导入的插件文件；如果包内有同 id 插件，会回落到包内版本。"))
+            Text(
+                pendingDeleteIsBundled
+                    ? L("这是随 App 分发的内置插件；确认后只会从本机解析来源中移除，可随时通过右上角菜单恢复。")
+                    : L("只删除用户导入的插件文件；如果包内有同 id 插件，会回落到包内版本。")
+            )
         }
     }
 
@@ -124,6 +129,17 @@ struct SiteSettingsView: View {
                     Label(L("恢复默认顺序"), systemImage: "arrow.counterclockwise")
                 }
                 .disabled(registry.parsers.count < 2)
+
+                if PluginStore.shared.hasHiddenBundledPlugins {
+                    Divider()
+
+                    Button {
+                        PluginStore.shared.restoreBundledPlugins()
+                        registry.reload()
+                    } label: {
+                        Label(L("恢复内置插件"), systemImage: "arrow.uturn.backward.circle")
+                    }
+                }
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -162,7 +178,7 @@ struct SiteSettingsView: View {
 
     @ViewBuilder
     private func contextMenu(for row: SiteRow) -> some View {
-        if row.isImported {
+        if row.isPlugin {
             Button {
                 exportPlugin(row)
             } label: {
@@ -172,6 +188,7 @@ struct SiteSettingsView: View {
             Button(role: .destructive) {
                 pendingDeleteID = row.id
                 pendingDeleteName = row.title
+                pendingDeleteIsBundled = row.isBundled
                 showDeleteConfirmation = true
             } label: {
                 Label(L("删除插件"), systemImage: "trash")
@@ -212,7 +229,7 @@ struct SiteSettingsView: View {
         pendingDeleteID = nil
 
         do {
-            try PluginStore.shared.removeImported(identifier: identifier)
+            try PluginStore.shared.removePlugin(identifier: identifier)
             registry.reload()
             // 删除后清掉禁用状态；如果包内存在同 id 插件，它会恢复为可用。
             appState.setSite(identifier, enabled: true)
@@ -231,7 +248,8 @@ struct SiteSettingsView: View {
                 title: parser.displayName,
                 subtitle: info.subtitle,
                 systemImage: info.systemImage,
-                isImported: parser.isImportedPlugin,
+                isPlugin: parser.isImportedPlugin || parser.isBundledPlugin,
+                isBundled: parser.isBundledPlugin,
                 isFixed: fixed
             )
         }
@@ -245,8 +263,8 @@ struct SiteSettingsView: View {
             return (L("内置通用嗅探"), "dot.radiowaves.left.and.right")
         }
 
-        // 所有单文件 .noxplugin 都属于导入插件，包括随 App 分发的 Pornhub；
-        // 是否允许删除仍由 SiteRow.isImported 单独控制。
+        // 所有单文件 .noxplugin 都按插件展示，包括随 App 分发的 Pornhub。
+        // 包内插件无法删除文件，设置页会把它记为「从本机移除」并支持恢复。
         if parser.isImportedPlugin || parser.isBundledPlugin {
             var parts = [L("已导入插件")]
             if let version = parser.pluginVersion, !version.isEmpty {
@@ -266,7 +284,8 @@ struct SiteSettingsView: View {
         let title: String
         let subtitle: String
         let systemImage: String
-        let isImported: Bool
+        let isPlugin: Bool
+        let isBundled: Bool
         let isFixed: Bool
     }
 }

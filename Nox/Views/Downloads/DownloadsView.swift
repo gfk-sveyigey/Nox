@@ -334,13 +334,15 @@ struct DownloadsView: View {
                     }
                 }
             } label: {
-                circleLabel(
-                    allSelected ? "checkmark.circle.fill" : "checkmark.circle",
-                    color: .primary
-                )
+                Text(allSelected ? L("取消全选") : L("全选"))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.primary)
+                    .padding(.horizontal, 20)
+                    .frame(height: 52)
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .modifier(GlassCircleBackground())
+            .modifier(GlassCapsuleBackground())
             .accessibilityLabel(allSelected ? L("取消全选") : L("全选"))
 
             Spacer(minLength: 0)
@@ -402,6 +404,22 @@ struct DownloadsView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             SharePresenter.present(items: [url])
+        }
+    }
+}
+
+/// 多选态文字按钮：与圆形玻璃按钮一致的液态玻璃效果，但使用胶囊形。
+private struct GlassCapsuleBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+                }
+                .shadow(color: Color.black.opacity(0.15), radius: 10, y: 3)
         }
     }
 }
