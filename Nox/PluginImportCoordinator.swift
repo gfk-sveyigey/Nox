@@ -91,8 +91,10 @@ final class PluginImportCoordinator: ObservableObject {
             return
         }
 
-        let pending = urls
-            .filter { $0.pathExtension.lowercased() == "noxplugin" }
+        // Documents/Inbox 与 App Group 收件箱一起扫描：后者来自分享扩展，
+        // 即使系统没有帮我们唤起 App 也能在下次前台时导入。
+        let inboxPlugins = urls.filter { $0.pathExtension.lowercased() == "noxplugin" }
+        let pending = (inboxPlugins + SharedPluginInbox.pendingPluginURLs())
             .filter { !handledPaths.contains($0.standardizedFileURL.path) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
         guard !pending.isEmpty else { return }
@@ -100,6 +102,25 @@ final class PluginImportCoordinator: ObservableObject {
         for url in pending { markHandled(url) }
         LogStore.shared.info(
             "inbox plugins: \(pending.map(\.lastPathComponent).joined(separator: ", "))"
+        )
+        importFiles(pending)
+    }
+
+    /// 分享扩展只回传一个短链接时，插件本体在 App Group 收件箱里。
+    func importPendingSharedPlugins() {
+        let pending = SharedPluginInbox.pendingPluginURLs()
+            .filter { !handledPaths.contains($0.standardizedFileURL.path) }
+        guard !pending.isEmpty else {
+            LogStore.shared.info("shared inbox is empty")
+            setNotice(
+                title: L("插件导入失败"),
+                message: L("没有找到待导入的插件，请重新分享。")
+            )
+            return
+        }
+
+        LogStore.shared.info(
+            "shared inbox plugins: \(pending.map(\.lastPathComponent).joined(separator: ", "))"
         )
         importFiles(pending)
     }
@@ -376,6 +397,12 @@ final class PluginImportCoordinator: ObservableObject {
     /// 清理选择器 / 分享扩展产生的临时副本。只删除本流程自己创建的
     /// 文件，不会碰用户在「文件」里的原文件。
     private static func removeTemporaryImport(at url: URL) {
+        // App Group 收件箱里的副本处理完就删掉，避免下次启动重复导入。
+        if SharedPluginInbox.contains(url) {
+            try? FileManager.default.removeItem(at: url)
+            return
+        }
+
         let name = url.lastPathComponent
         guard
             name.hasPrefix("NoxPluginImport-") || name.hasPrefix("shared-")

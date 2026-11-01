@@ -77,6 +77,10 @@ struct ContentView: View {
                 }
             }
 
+            LogStore.shared.info(
+                "shared inbox · \(SharedPluginInbox.isAvailable ? "available" : "unavailable")"
+            )
+
             // 有些系统版本把「拷贝到 Nox」的文件放进 Documents/Inbox
             // 却不回调 URL，这里延后扫一次兜底。
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -143,9 +147,12 @@ struct ContentView: View {
             LogStore.shared.info("handle incoming: shared plugin")
             if let data = IncomingLink.pluginData(from: url) {
                 pluginImport.importSharedPlugin(data)
-            } else {
+            } else if IncomingLink.hasInlinePluginData(url) {
                 LogStore.shared.error("shared plugin url decode failed")
                 pluginImport.reportSharedPluginFailure()
+            } else {
+                // 新版分享扩展只回传短链接，插件本体在 App Group 收件箱里。
+                pluginImport.importPendingSharedPlugins()
             }
         } else if let webURL = IncomingLink.webURL(from: url) {
             LogStore.shared.info("handle incoming: web url")
