@@ -601,7 +601,7 @@ final class ShareViewController: UIViewController {
     private func showPluginFailure() {
         showFailure(
             message: NSLocalizedString(
-                "插件分享失败。请在「文件」中选择插件并使用「用 Nox 打开」。",
+                "插件分享失败。请打开 Nox，在「设置 → 解析来源」中手动导入。",
                 comment: "Share extension plugin import fallback"
             )
         )

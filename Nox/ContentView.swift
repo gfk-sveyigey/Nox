@@ -77,6 +77,10 @@ struct ContentView: View {
                 }
             }
 
+            LogStore.shared.info(
+                "shared inbox · \(SharedPluginInbox.isAvailable ? "available" : "unavailable")"
+            )
+
             // 有些系统版本把「拷贝到 Nox」的文件放进 Documents/Inbox
             // 却不回调 URL，这里延后扫一次兜底。
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {

@@ -85,30 +85,30 @@
         }
       }
     },
-    "插件分享失败。请在「文件」中选择插件并使用「用 Nox 打开」。": {
+    "插件分享失败。请打开 Nox，在「设置 → 解析来源」中手动导入。": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn’t share the plugin. Open it from Files and choose “Open in Nox” instead."
+            "value": "Couldn’t share the plugin. Open Nox and import it manually under Settings → Parsing Sources."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "플러그인을 공유하지 못했습니다. 파일 앱에서 플러그인을 열고 “Nox에서 열기”를 선택하세요."
+            "value": "플러그인을 공유하지 못했습니다. Nox를 열고 설정 → 파싱 소스에서 직접 가져오세요."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de partager le plugin. Ouvrez-le depuis Fichiers et choisissez « Ouvrir dans Nox »."
+            "value": "Impossible de partager le plugin. Ouvrez Nox et importez-le manuellement dans Réglages → Sources d’analyse."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Plugin konnte nicht geteilt werden. Öffne es in der Dateien-App und wähle „In Nox öffnen“."
+            "value": "Das Plugin konnte nicht geteilt werden. Öffne Nox und importiere es manuell unter Einstellungen → Analysequellen."
           }
         }
       }

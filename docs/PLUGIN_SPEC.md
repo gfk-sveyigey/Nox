@@ -428,6 +428,8 @@ App 会把它转换成解析失败提示，并记录到日志。不要返回 `nu
 
 `UTI` / 文件类型在 `Info.plist` 中注册，因此 Nox 可以出现在系统「用其他 App 打开」列表中。
 
+分享扩展（NoxShare）优先把插件写入 App Group 共享目录 `group.com.aholic.nox/NoxPendingPlugins`，再尽力唤起宿主 App：Apple 文档规定 `NSExtensionContext.open(_:)` 在 iOS 上只有 Today / iMessage 扩展受支持，Share Extension 调用并不可靠。即使唤起失败，Nox 下次启动或回到前台时会自动扫描该目录并导入。App Group 不可用（签名未包含该能力）时退回把压缩后的插件塞进 `nox://import-plugin?data=…`。
+
 ### 8.2 更新
 
 - 同 `id` 的新文件视为更新，旧文件会被原子替换

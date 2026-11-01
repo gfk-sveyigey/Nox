@@ -19,6 +19,9 @@ enum SharedPluginInbox {
         return container.appendingPathComponent(directoryName, isDirectory: true)
     }
 
+    /// App Group 是否真正可用（签名没带能力时为 false）。
+    static var isAvailable: Bool { directoryURL != nil }
+
     /// 收件箱里待导入的插件，按文件名排序保证顺序稳定。
     static func pendingPluginURLs() -> [URL] {
         guard let directory = directoryURL else { return [] }
