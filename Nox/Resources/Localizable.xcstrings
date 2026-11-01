@@ -2085,6 +2085,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "위에 있을수록 우선순위가 높으며, 일반 Sniffer는 항상 마지막에 유지됩니다." } }
       }
     },
+    "同名插件按 ID 更新现有条目，不会在列表中新增重复行。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugins mit derselben ID aktualisieren den vorhandenen Eintrag und erzeugen keine doppelte Zeile." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugins with the same ID update the existing entry instead of adding a duplicate row." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les plugins ayant le même ID mettent à jour l’entrée existante au lieu d’ajouter une ligne en double." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "같은 ID의 플러그인은 기존 항목을 업데이트하며 중복 행을 추가하지 않습니다." } }
+      }
+    },
     "长按条目可导出或删除插件；内置插件删除后可在右上角恢复。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Halte einen Eintrag gedrückt, um ein Plugin zu exportieren oder zu löschen. Gelöschte integrierte Plugins lassen sich über das Menü oben rechts wiederherstellen." } },
@@ -2213,6 +2221,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "대체 Sniffer · 항상 마지막" } }
       }
     },
+    "已导入单文件插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Importiertes Datei-Plugin" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Imported File Plugin" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plugin de fichier importé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "가져온 파일 플러그인" } }
+      }
+    },
     "已导入插件" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Importiertes Plugin" } },
@@ -2235,6 +2251,14 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in Parser" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Analyseur intégré" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 분석기" } }
+      }
+    },
+    "内置单文件插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Integriertes Datei-Plugin" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in File Plugin" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plugin de fichier intégré" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 파일 플러그인" } }
       }
     },
     "内置通用嗅探" : {
