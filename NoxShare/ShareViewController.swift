@@ -537,8 +537,26 @@ final class ShareViewController: UIViewController {
     }
 
     private func openHostAppForPlugin(_ data: Data) {
-        // 先压缩：自定义 URL 太长会被系统拒绝打开，单文件插件通常能
-        // 压缩到原来的几分之一。
+        // 首选 App Group 收件箱：数据先落盘，唤起失败也不会丢。
+        if let stored = SharedPluginInbox.store(data) {
+            NSLog(
+                "NoxShare: plugin saved to shared inbox %@ (%ld bytes)",
+                stored.lastPathComponent,
+                data.count
+            )
+            guard let noxURL = URL(string: "nox://import-plugin") else {
+                showSavedMessage()
+                return
+            }
+            openNoxURL(noxURL) { [weak self] in
+                self?.showSavedMessage()
+            }
+            return
+        }
+
+        NSLog("NoxShare: shared inbox unavailable, falling back to URL payload")
+
+        // 退回旧方案：压缩后塞进 URL。自定义 URL 太长会被系统拒绝打开。
         var payload = data
         var compressed = false
         if let packed = try? (data as NSData).compressed(using: .zlib) as Data,
@@ -585,6 +603,16 @@ final class ShareViewController: UIViewController {
             message: NSLocalizedString(
                 "插件分享失败。请在「文件」中选择插件并使用「用 Nox 打开」。",
                 comment: "Share extension plugin import fallback"
+            )
+        )
+    }
+
+    private func showSavedMessage() {
+        showFailure(
+            title: NSLocalizedString("已保存到 Nox", comment: "Share extension saved title"),
+            message: NSLocalizedString(
+                "插件已保存。打开 Nox 后会自动导入。",
+                comment: "Share extension saved message"
             )
         )
     }
@@ -654,7 +682,11 @@ final class ShareViewController: UIViewController {
         onFailure()
     }
 
-    private func showFailure(message: String? = nil, copying pageURL: URL? = nil) {
+    private func showFailure(
+        title: String? = nil,
+        message: String? = nil,
+        copying pageURL: URL? = nil
+    ) {
         guard !hasFinished else { return }
 
         spinner.stopAnimating()
@@ -672,7 +704,7 @@ final class ShareViewController: UIViewController {
             ))
 
         let alert = UIAlertController(
-            title: NSLocalizedString("无法打开 Nox", comment: "Share extension failure title"),
+            title: title ?? NSLocalizedString("无法打开 Nox", comment: "Share extension failure title"),
             message: message,
             preferredStyle: .alert
         )

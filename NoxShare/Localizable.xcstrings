@@ -1,6 +1,62 @@
 {
   "sourceLanguage": "zh-Hans",
   "strings": {
+    "已保存到 Nox": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved to Nox"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nox에 저장됨"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré dans Nox"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Nox gespeichert"
+          }
+        }
+      }
+    },
+    "插件已保存。打开 Nox 后会自动导入。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plugin has been saved. Open Nox and it will be imported automatically."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "플러그인이 저장되었습니다. Nox를 열면 자동으로 가져옵니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le plugin a été enregistré. Ouvrez Nox pour l’importer automatiquement."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Plugin wurde gespeichert. Öffne Nox, um es automatisch zu importieren."
+          }
+        }
+      }
+    },
     "正在打开 Nox…": {
       "localizations": {
         "en": {

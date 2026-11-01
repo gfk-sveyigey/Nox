@@ -18,6 +18,18 @@ enum IncomingLink {
         return components.host?.lowercased() == "import-plugin"
     }
 
+    /// 链接里是否真的带了插件内容（旧版分享扩展的传参方式）。
+    static func hasInlinePluginData(_ url: URL) -> Bool {
+        guard isPluginImport(url),
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else {
+            return false
+        }
+        return components.queryItems?.contains {
+            $0.name.lowercased() == "data" && !($0.value ?? "").isEmpty
+        } ?? false
+    }
+
     /// 解码分享扩展通过 `nox://import-plugin?data=...` 传来的插件。
     /// 数据使用 URL-safe Base64 编码，避免原文中的换行和 `+` / `/` 破坏 URL。
     static func pluginData(from url: URL) -> Data? {

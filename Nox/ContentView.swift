@@ -143,9 +143,12 @@ struct ContentView: View {
             LogStore.shared.info("handle incoming: shared plugin")
             if let data = IncomingLink.pluginData(from: url) {
                 pluginImport.importSharedPlugin(data)
-            } else {
+            } else if IncomingLink.hasInlinePluginData(url) {
                 LogStore.shared.error("shared plugin url decode failed")
                 pluginImport.reportSharedPluginFailure()
+            } else {
+                // 新版分享扩展只回传短链接，插件本体在 App Group 收件箱里。
+                pluginImport.importPendingSharedPlugins()
             }
         } else if let webURL = IncomingLink.webURL(from: url) {
             LogStore.shared.info("handle incoming: web url")
