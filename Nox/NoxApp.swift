@@ -16,7 +16,11 @@ final class NoxAppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        true
+        // 少数系统版本仍会把冷启动 URL 放在 launchOptions 里。
+        if let url = launchOptions?[.url] as? URL {
+            IncomingURLCenter.shared.submit(url, source: "launch")
+        }
+        return true
     }
 
     func application(

@@ -2285,6 +2285,22 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱에 포함된 단일 파일 플러그인(예: Pornhub)이 다시 표시됩니다." } }
       }
     },
+    "已收到外部文件：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Externe Datei empfangen: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Received external file: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichier externe reçu : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "외부 파일을 받았습니다: %@" } }
+      }
+    },
+    "已收到外部链接：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Externer Link empfangen: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Received external link: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lien externe reçu : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "외부 링크를 받았습니다: %@" } }
+      }
+    },
     "恢复默认顺序" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Standardreihenfolge wiederherstellen" } },
