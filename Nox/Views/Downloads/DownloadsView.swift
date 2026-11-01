@@ -176,10 +176,10 @@ struct DownloadsView: View {
 
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItemGroup(placement: .topBarLeading) {
             if !appState.downloads.isEmpty {
                 if editMode.isEditing {
-                    // 主题色对号 = 完成，和系统「照片」的多选一致。
+                    // 多选态：完成与多功能菜单在左，全选/取消全选换到右侧。
                     Button {
                         finishSelection()
                     } label: {
@@ -187,6 +187,8 @@ struct DownloadsView: View {
                             .fontWeight(.semibold)
                     }
                     .accessibilityLabel(L("完成"))
+
+                    multiFunctionMenu
                 } else {
                     Button(L("选择")) {
                         withAnimation { editMode = .active }
@@ -195,28 +197,84 @@ struct DownloadsView: View {
             }
         }
 
-        ToolbarItem(placement: .topBarTrailing) {
-            if editMode.isEditing {
-                // 批量操作在底部操作栏；右上角只负责选择范围。
-                Button(allSelected ? L("取消全选") : L("全选")) {
-                    withAnimation {
-                        if allSelected {
-                            selection.removeAll()
-                        } else {
-                            selection = Set(appState.downloads.map(\.id))
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if !appState.downloads.isEmpty {
+                if editMode.isEditing {
+                    Button(allSelected ? L("取消全选") : L("全选")) {
+                        withAnimation {
+                            if allSelected {
+                                selection.removeAll()
+                            } else {
+                                selection = Set(appState.downloads.map(\.id))
+                            }
                         }
                     }
-                }
-                .disabled(appState.downloads.isEmpty)
-            } else if appState.downloads.contains(where: {
-                $0.status == .finished ||
-                $0.status == .failed ||
-                $0.status == .cancelled
-            }) {
-                Button(L("清空")) {
-                    showingClearConfirmation = true
+                } else {
+                    multiFunctionMenu
                 }
             }
+        }
+    }
+
+    /// 下载页右上角（多选时移到左上角）的多功能菜单。
+    ///
+    /// 非多选态提供「全选」与「清空」；多选态整合批量操作。
+    /// 菜单本身始终可用，即使没有选中项也会展开，只是不适用的操作置灰。
+    @ViewBuilder
+    var multiFunctionMenu: some View {
+        Menu {
+            if editMode.isEditing {
+                Button {
+                    manager.retryAll(ids: Set(retryableRecords.map(\.id)))
+                    finishSelection()
+                } label: {
+                    Label(retryActionTitle, systemImage: "arrow.clockwise")
+                }
+                .disabled(retryableRecords.isEmpty)
+
+                Button {
+                    manager.cancelAll(ids: Set(pausableRecords.map(\.id)))
+                    finishSelection()
+                } label: {
+                    Label(L("暂停"), systemImage: "pause.circle")
+                }
+                .disabled(pausableRecords.isEmpty)
+
+                Divider()
+
+                Button {
+                    shareSelected()
+                } label: {
+                    Label(L("分享"), systemImage: "square.and.arrow.up")
+                }
+                .disabled(shareableRecords.isEmpty)
+            } else {
+                Button {
+                    selectAllAndBeginSelection()
+                } label: {
+                    Label(L("全选"), systemImage: "checkmark.circle")
+                }
+            }
+
+            if hasClearableDownloads {
+                Divider()
+
+                Button(role: .destructive) {
+                    showingClearConfirmation = true
+                } label: {
+                    Label(L("清空"), systemImage: "trash")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityLabel(L("更多操作"))
+    }
+
+    func selectAllAndBeginSelection() {
+        withAnimation {
+            editMode = .active
+            selection = Set(appState.downloads.map(\.id))
         }
     }
 
@@ -256,46 +314,17 @@ struct DownloadsView: View {
         !appState.downloads.isEmpty && selection.count == appState.downloads.count
     }
 
-    var hasBatchActions: Bool {
-        !retryableRecords.isEmpty || !pausableRecords.isEmpty || !shareableRecords.isEmpty
+    var hasClearableDownloads: Bool {
+        appState.downloads.contains {
+            $0.status == .finished ||
+            $0.status == .failed ||
+            $0.status == .cancelled
+        }
     }
 
-    /// 多选态悬浮操作：左下角「更多」菜单，右下角删除。
-    /// 每个菜单项只对选中项里状态适用的记录生效，全部不适用时置灰。
+    /// 多选态悬浮操作：左上角多功能菜单负责批量操作，右下角只保留删除。
     var selectionFloatingActions: some View {
         HStack(alignment: .center) {
-            Menu {
-                Button {
-                    manager.retryAll(ids: Set(retryableRecords.map(\.id)))
-                    finishSelection()
-                } label: {
-                    Label(retryActionTitle, systemImage: "arrow.clockwise")
-                }
-                .disabled(retryableRecords.isEmpty)
-
-                Button {
-                    manager.cancelAll(ids: Set(pausableRecords.map(\.id)))
-                    finishSelection()
-                } label: {
-                    Label(L("暂停"), systemImage: "pause.circle")
-                }
-                .disabled(pausableRecords.isEmpty)
-
-                Divider()
-
-                Button {
-                    shareSelected()
-                } label: {
-                    Label(L("分享"), systemImage: "square.and.arrow.up")
-                }
-                .disabled(shareableRecords.isEmpty)
-            } label: {
-                circleLabel("ellipsis", color: .primary)
-            }
-            .disabled(!hasBatchActions)
-            .modifier(GlassCircleBackground())
-            .accessibilityLabel(L("更多操作"))
-
             Spacer(minLength: 0)
 
             Button(role: .destructive) {

@@ -2197,6 +2197,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 분석기" } }
       }
     },
+    "内置通用嗅探" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Integrierter universeller Sniffer" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in Generic Sniffer" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sniffer générique intégré" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 범용 스니퍼" } }
+      }
+    },
     "插件元数据超过 32 KiB" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Metadaten überschreiten 32 KiB" } },
