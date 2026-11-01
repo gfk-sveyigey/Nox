@@ -49,9 +49,12 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     private let sites: SiteAvailabilityProviding
     private let registry: VideoSiteParserRegistry
 
-    public init(sites: SiteAvailabilityProviding, registry: VideoSiteParserRegistry = .default) {
+    public init(
+        sites: SiteAvailabilityProviding,
+        registry: VideoSiteParserRegistry? = nil
+    ) {
         self.sites = sites
-        self.registry = registry
+        self.registry = registry ?? .shared
 
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
