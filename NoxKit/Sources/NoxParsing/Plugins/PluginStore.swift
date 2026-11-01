@@ -33,8 +33,15 @@ public final class PluginStore {
 
     private let fileManager = FileManager.default
     private let pluginExtension = "noxplugin"
+    /// 用户从本机移除的包内插件。包内文件无法真正删除，重启后仍会被扫描到，
+    /// 因此这里记录 id，在装配解析器时跳过；可在设置页恢复。
+    private let hiddenBundledKey = "Nox.hiddenBundledPlugins"
 
     private init() {}
+
+    public var hasHiddenBundledPlugins: Bool {
+        !hiddenBundledIDs.isEmpty
+    }
 
     private var pluginsDirectory: URL {
         DownloadStorage.rootDirectory.appendingPathComponent("Plugins", isDirectory: true)
@@ -46,7 +53,8 @@ public final class PluginStore {
     func loadParsers() -> [ScriptSiteParser] {
         var byID: [String: ScriptSiteParser] = [:]
 
-        for parser in BundledPluginLoader.load() {
+        let hidden = hiddenBundledIDs
+        for parser in BundledPluginLoader.load() where !hidden.contains(parser.identifier) {
             byID[parser.identifier] = parser
         }
 
@@ -248,9 +256,18 @@ public final class PluginStore {
     }
 
     /// 导出时复制到临时目录，避免分享面板直接暴露 Application Support 路径。
+    ///
+    /// 用户导入的同 id 插件优先；没有导入版本时回落到 App 包内的单文件插件。
     public func exportURL(for identifier: String) -> URL? {
-        let source = pluginFileURL(for: identifier)
-        guard fileManager.fileExists(atPath: source.path) else { return nil }
+        let imported = pluginFileURL(for: identifier)
+        let source: URL
+        if fileManager.fileExists(atPath: imported.path) {
+            source = imported
+        } else if let bundled = BundledPluginLoader.url(for: identifier) {
+            source = bundled
+        } else {
+            return nil
+        }
 
         do {
             let directory = fileManager.temporaryDirectory
@@ -271,14 +288,36 @@ public final class PluginStore {
         }
     }
 
-    public func removeImported(identifier: String) throws {
+    /// 从本机移除插件。
+    ///
+    /// 有用户导入的版本时直接删除文件；只有包内版本时把 id 记入隐藏列表，
+    /// 因为 App 包在运行期不可写。两种情况下注册表都会在调用方 reload 后刷新。
+    public func removePlugin(identifier: String) throws {
         let url = pluginFileURL(for: identifier)
-        guard fileManager.fileExists(atPath: url.path) else {
+        if fileManager.fileExists(atPath: url.path) {
+            try fileManager.removeItem(at: url)
+            LogStore.shared.info("plugin removed \(identifier)")
+            return
+        }
+
+        guard BundledPluginLoader.url(for: identifier) != nil else {
             throw PluginStoreError.notImported
         }
 
-        try fileManager.removeItem(at: url)
-        LogStore.shared.info("plugin removed \(identifier)")
+        var hidden = hiddenBundledIDs
+        hidden.insert(identifier)
+        UserDefaults.standard.set(hidden.sorted(), forKey: hiddenBundledKey)
+        LogStore.shared.info("bundled plugin hidden \(identifier)")
+    }
+
+    /// 恢复被「删除」的包内插件。用户再次导入的同 id 插件仍然优先。
+    public func restoreBundledPlugins() {
+        UserDefaults.standard.removeObject(forKey: hiddenBundledKey)
+        LogStore.shared.info("bundled plugins restored")
+    }
+
+    private var hiddenBundledIDs: Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: hiddenBundledKey) ?? [])
     }
 
     private func pluginFileURL(for identifier: String) -> URL {
@@ -304,7 +343,7 @@ public enum PluginStoreError: LocalizedError {
         case .notUTF8:
             return L("插件文件不是 UTF-8 文本。")
         case .notImported:
-            return L("该插件不是用户导入的插件，无法删除。")
+            return L("找不到该插件文件，无法删除。")
         case .readFailed(let message):
             return String(format: L("不能读取插件文件：%@"), message)
         case .writeFailed(let message):
