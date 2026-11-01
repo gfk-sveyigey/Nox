@@ -63,7 +63,9 @@ struct SiteSettingsView: View {
         }
         .fileImporter(
             isPresented: $showImporter,
-            allowedContentTypes: [.noxPlugin],
+            // .plainText 作为兜底：部分文件提供方不会立刻识别自定义 UTI，
+            // 但 .noxplugin 本身声明为纯文本，仍应能在选择器中选中。
+            allowedContentTypes: [.noxPlugin, .plainText],
             allowsMultipleSelection: true
         ) { result in
             switch result {
@@ -113,9 +115,21 @@ struct SiteSettingsView: View {
         } else {
             Menu {
                 Button {
-                    showImporter = true
+                    // 从 Menu 中直接切换 fileImporter 时，菜单收起动画可能吞掉
+                    // presentation；如果上次已被吞掉，showImporter 会一直停在 true，
+                    // 必须先归零，再等菜单退场后重新触发。
+                    showImporter = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        showImporter = true
+                    }
                 } label: {
                     Label(L("导入插件"), systemImage: "square.and.arrow.down")
+                }
+
+                Button {
+                    pluginImport.importPasteboardPlugin()
+                } label: {
+                    Label(L("从剪贴板导入插件"), systemImage: "doc.on.clipboard")
                 }
 
                 Button {

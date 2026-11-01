@@ -8,6 +8,16 @@ import Foundation
 enum IncomingLink {
     static let scheme = "nox"
 
+    /// 分享扩展把插件数据放进剪贴板后，用这个地址唤起宿主 App。
+    static func isPluginImport(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == scheme,
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else {
+            return false
+        }
+        return components.host?.lowercased() == "import-plugin"
+    }
+
     static func webURL(from url: URL) -> URL? {
         guard let scheme = url.scheme?.lowercased() else { return nil }
 

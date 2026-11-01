@@ -7,6 +7,14 @@ import UniformTypeIdentifiers
 /// `NSExtensionContext.open(_:)`；若系统拒绝，再走 responder chain 的兼容路径。
 /// 两条路径都失败时，把链接复制到剪贴板并提示用户手动打开。
 final class ShareViewController: UIViewController {
+    private enum SharedPayload {
+        case web(URL)
+        case plugin(Data)
+    }
+
+    /// 与宿主 App 的 PluginImportCoordinator 保持一致。
+    private static let pluginPasteboardType = "com.aholic.nox.plugin"
+
     private let spinner = UIActivityIndicatorView(style: .medium)
     private let statusLabel = UILabel()
 
@@ -45,17 +53,135 @@ final class ShareViewController: UIViewController {
         guard !hasStarted else { return }
         hasStarted = true
 
-        loadSharedPageURL { [weak self] url in
+        loadSharedPayload { [weak self] payload in
             DispatchQueue.main.async {
                 guard let self else { return }
-                guard let url else {
+                guard let payload else {
                     self.showFailure()
                     return
                 }
 
-                self.openHostApp(with: url)
+                switch payload {
+                case .web(let url):
+                    self.openHostApp(with: url)
+                case .plugin(let data):
+                    self.openHostAppForPlugin(data)
+                }
             }
         }
+    }
+
+    private func loadSharedPayload(completion: @escaping (SharedPayload?) -> Void) {
+        let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
+            .flatMap { $0.attachments ?? [] }
+
+        loadPluginData(from: providers) { [weak self] data in
+            DispatchQueue.main.async {
+                if let data {
+                    completion(.plugin(data))
+                    return
+                }
+                self?.loadSharedPageURL { url in
+                    completion(url.map(SharedPayload.web))
+                }
+            }
+        }
+    }
+
+    /// 分享面板可能把 `.noxplugin` 提供成文件 URL、自定义 UTI 或纯文本。
+    /// 三种形式都先读成 Data，再用插件头判断，避免把普通文本误当插件。
+    private func loadPluginData(
+        from providers: [NSItemProvider],
+        completion: @escaping (Data?) -> Void
+    ) {
+        let identifiers = [
+            Self.pluginPasteboardType,
+            UTType.fileURL.identifier,
+            UTType.url.identifier,
+            UTType.plainText.identifier
+        ]
+        var remaining = providers
+
+        func loadNext() {
+            guard !remaining.isEmpty else {
+                completion(nil)
+                return
+            }
+
+            let provider = remaining.removeFirst()
+            guard let typeIdentifier = identifiers.first(where: {
+                provider.hasItemConformingToTypeIdentifier($0)
+            }) else {
+                loadNext()
+                return
+            }
+
+            provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { [weak self] item, _ in
+                guard let self else {
+                    completion(nil)
+                    return
+                }
+
+                if let data = self.pluginData(from: item), self.isPluginData(data) {
+                    completion(data)
+                } else {
+                    loadNext()
+                }
+            }
+        }
+
+        loadNext()
+    }
+
+    private func pluginData(from item: Any) -> Data? {
+        if let data = item as? Data {
+            if isPluginData(data) {
+                return data
+            }
+            // 文件 URL 有时以 UTF-8 文本形式出现在 Data 里。
+            if let value = String(data: data, encoding: .utf8),
+               let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+               url.isFileURL {
+                return fileData(at: url)
+            }
+            return data
+        }
+
+        if let text = item as? String {
+            return text.data(using: .utf8)
+        }
+
+        if let text = item as? NSAttributedString {
+            return text.string.data(using: .utf8)
+        }
+
+        if let url = item as? URL {
+            return fileData(at: url)
+        }
+
+        if let url = item as? NSURL {
+            return fileData(at: url as URL)
+        }
+
+        return nil
+    }
+
+    private func fileData(at url: URL) -> Data? {
+        guard url.isFileURL else { return nil }
+
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+        return try? Data(contentsOf: url)
+    }
+
+    private func isPluginData(_ data: Data) -> Bool {
+        guard let text = String(data: data, encoding: .utf8) else { return false }
+        let normalized = text
+            .replacingOccurrences(of: "\u{FEFF}", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return normalized.hasPrefix("/* ==NoxPlugin==")
     }
 
     private func loadSharedPageURL(completion: @escaping (URL?) -> Void) {
@@ -201,25 +327,54 @@ final class ShareViewController: UIViewController {
             return
         }
 
-        guard let extensionContext else {
-            openUsingResponderChain(noxURL, fallbackURL: pageURL)
+        openNoxURL(noxURL) { [weak self] in
+            self?.showFailure(copying: pageURL)
+        }
+    }
+
+    private func openHostAppForPlugin(_ data: Data) {
+        UIPasteboard.general.setData(data, forPasteboardType: Self.pluginPasteboardType)
+
+        guard let noxURL = URL(string: "nox://import-plugin") else {
+            showFailure(
+                message: NSLocalizedString(
+                    "插件已复制。请打开 Nox，在「解析来源」右上角选择「从剪贴板导入插件」。",
+                    comment: "Share extension plugin import fallback"
+                )
+            )
             return
         }
 
-        extensionContext.open(noxURL) { [weak self] opened in
+        openNoxURL(noxURL) { [weak self] in
+            self?.showFailure(
+                message: NSLocalizedString(
+                    "插件已复制。请打开 Nox，在「解析来源」右上角选择「从剪贴板导入插件」。",
+                    comment: "Share extension plugin import fallback"
+                )
+            )
+        }
+    }
+
+    private func openNoxURL(_ url: URL, onFailure: @escaping () -> Void) {
+        guard let extensionContext else {
+            openUsingResponderChain(url, onFailure: onFailure)
+            return
+        }
+
+        extensionContext.open(url) { [weak self] opened in
             DispatchQueue.main.async {
                 guard let self else { return }
 
                 if opened {
                     self.finish()
                 } else {
-                    self.openUsingResponderChain(noxURL, fallbackURL: pageURL)
+                    self.openUsingResponderChain(url, onFailure: onFailure)
                 }
             }
         }
     }
 
-    private func openUsingResponderChain(_ url: URL, fallbackURL: URL) {
+    private func openUsingResponderChain(_ url: URL, onFailure: @escaping () -> Void) {
         let selector = NSSelectorFromString("openURL:")
         var responder: UIResponder? = self
 
@@ -234,10 +389,10 @@ final class ShareViewController: UIViewController {
             responder = current.next
         }
 
-        showFailure(copying: fallbackURL)
+        onFailure()
     }
 
-    private func showFailure(copying pageURL: URL? = nil) {
+    private func showFailure(message: String? = nil, copying pageURL: URL? = nil) {
         guard !hasFinished else { return }
 
         spinner.stopAnimating()
@@ -247,12 +402,12 @@ final class ShareViewController: UIViewController {
             UIPasteboard.general.string = pageURL.absoluteString
         }
 
-        let message = pageURL == nil
+        let message = message ?? (pageURL == nil
             ? NSLocalizedString("未能从分享内容中读取网页链接。", comment: "Share extension no URL")
             : NSLocalizedString(
                 "链接已复制。请打开 Nox，在地址栏中粘贴并访问。",
                 comment: "Share extension manual fallback"
-            )
+            ))
 
         let alert = UIAlertController(
             title: NSLocalizedString("无法打开 Nox", comment: "Share extension failure title"),

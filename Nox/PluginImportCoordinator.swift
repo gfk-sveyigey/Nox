@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import UIKit
 import UniformTypeIdentifiers
 import NoxCore
 import NoxParsing
@@ -23,9 +24,39 @@ final class PluginImportCoordinator: ObservableObject {
     @Published var notice: Notice?
     @Published private(set) var isImporting = false
 
+    /// Share Extension 与宿主 App 没有共享容器，插件文件通过剪贴板交接。
+    /// 这个类型只用于传递单文件插件，不会覆盖普通文本剪贴板内容。
+    private static let pluginPasteboardType = "com.aholic.nox.plugin"
+
     func handleOpenURL(_ url: URL) {
         guard url.isFileURL else { return }
         importFiles([url])
+    }
+
+    /// 接收分享面板写入剪贴板的插件数据，再复用文件导入流程校验。
+    func importPasteboardPlugin() {
+        guard
+            let data = UIPasteboard.general.data(forPasteboardType: Self.pluginPasteboardType),
+            !data.isEmpty
+        else {
+            notice = Notice(
+                title: L("插件导入失败"),
+                message: L("没有找到来自分享面板的插件数据，请重新分享。")
+            )
+            return
+        }
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("shared-\(UUID().uuidString)")
+            .appendingPathExtension("noxplugin")
+
+        do {
+            try data.write(to: url, options: .atomic)
+            importFiles([url])
+            try? FileManager.default.removeItem(at: url)
+        } catch {
+            report(error)
+        }
     }
 
     func importFiles(_ urls: [URL]) {

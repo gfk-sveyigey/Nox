@@ -2085,6 +2085,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "위에 있을수록 우선순위가 높으며, 일반 Sniffer는 항상 마지막에 유지됩니다." } }
       }
     },
+    "没有找到来自分享面板的插件数据，请重新分享。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Es wurden keine Plugin-Daten aus dem Share-Sheet gefunden. Bitte teile das Plugin erneut." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No plugin data was found from the share sheet. Please share the plugin again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune donnée de plugin provenant de la feuille de partage n’a été trouvée. Veuillez partager à nouveau le plugin." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공유 시트에서 플러그인 데이터를 찾지 못했습니다. 플러그인을 다시 공유해 주세요." } }
+      }
+    },
     "同名插件按 ID 更新现有条目，不会在列表中新增重复行。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugins mit derselben ID aktualisieren den vorhandenen Eintrag und erzeugen keine doppelte Zeile." } },
@@ -2147,6 +2155,14 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Only the imported plugin file is deleted. If the app bundle contains a plugin with the same ID, that version becomes active again." } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Seul le fichier du plugin importé est supprimé. Si le bundle de l’app contient un plugin avec le même ID, cette version redevient active." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "가져온 플러그인 파일만 삭제합니다. 앱 번들에 같은 ID의 플러그인이 있으면 해당 버전이 다시 활성화됩니다." } }
+      }
+    },
+    "从剪贴板导入插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin aus Zwischenablage importieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import Plugin from Clipboard" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer un plugin depuis le presse-papiers" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "클립보드에서 플러그인 가져오기" } }
       }
     },
     "导入插件" : {
