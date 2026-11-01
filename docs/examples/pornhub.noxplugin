@@ -1,0 +1,114 @@
+/* ==NoxPlugin==
+{
+  "apiVersion": 1,
+  "id": "com.example.pornhub",
+  "name": "Pornhub",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "author": "Nox Examples",
+  "description": "把现有 Pornhub 解析逻辑迁成单文件插件的参考实现",
+  "icon": "play.rectangle.fill",
+  "priority": 500,
+  "match": {
+    "schemes": ["https"],
+    "hosts": ["pornhub.com", "pornhubpremium.com"],
+    "pathPrefixes": ["/view_video.php"],
+    "requiredQueryKeys": ["viewkey"]
+  },
+  "permissions": ["page.eval", "cookies", "http", "log"],
+  "network": [
+    "pornhub.com",
+    "pornhubpremium.com",
+    "phncdn.com"
+  ]
+}
+==NoxPlugin== */
+
+Nox.register({
+  async parse(ctx) {
+    const payload = await ctx.page.eval(`
+      (() => {
+        const keys = Object.getOwnPropertyNames(window)
+          .filter(key => key.startsWith("flashvars_"));
+
+        for (const key of keys) {
+          try {
+            const value = window[key];
+            if (value && Array.isArray(value.mediaDefinitions)) {
+              return { mediaDefinitions: value.mediaDefinitions };
+            }
+          } catch (_) {}
+        }
+
+        return { error: "no_mediaDefinitions" };
+      })()
+    `);
+
+    if (!payload || payload.error || !Array.isArray(payload.mediaDefinitions)) {
+      throw new Error("页面中没有找到 mediaDefinitions");
+    }
+
+    const remote = payload.mediaDefinitions.find(item => {
+      if (!item) return false;
+      if (typeof item.remote === "boolean") return item.remote;
+      if (typeof item.remote === "string") return item.remote === "true";
+      return false;
+    });
+
+    if (!remote || !remote.videoUrl) {
+      throw new Error("没有找到远程视频清单");
+    }
+
+    const manifestURL = new URL(remote.videoUrl, ctx.url).href;
+    const cookieHeader = await ctx.cookies(manifestURL);
+
+    const response = await ctx.http.request({
+      url: manifestURL,
+      method: "GET",
+      headers: {
+        "Accept": "application/json,text/plain,*/*",
+        "Referer": ctx.url,
+        "User-Agent": ctx.userAgent || "",
+        "Cookie": cookieHeader
+      },
+      responseType: "text",
+      timeoutMs: 20000
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`视频清单请求失败：HTTP ${response.status}`);
+    }
+
+    let items;
+    try {
+      items = JSON.parse(response.body);
+    } catch (_) {
+      throw new Error("视频清单不是有效 JSON");
+    }
+
+    if (!Array.isArray(items)) {
+      throw new Error("视频清单格式无法识别");
+    }
+
+    const variants = items
+      .map(item => {
+        if (!item || typeof item.videoUrl !== "string") return null;
+        try {
+          return {
+            quality: String(item.quality ?? ""),
+            format: String(item.format ?? ""),
+            url: new URL(item.videoUrl, ctx.url).href
+          };
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    if (variants.length === 0) {
+      throw new Error("没有找到可下载的视频清晰度");
+    }
+
+    return { variants };
+  }
+});

@@ -26,8 +26,9 @@
 
 ### 解析（可扩展的站点插件）
 
+- 单文件插件规范（草案）：[`docs/PLUGIN_SPEC.md`](docs/PLUGIN_SPEC.md)
 - 解析规则按站点实现，通过注册表按 URL 匹配，`VideoBrowserView` 等调用方无需改动
-- 当前内置：Pornhub / Pornhub Premium / YouTube
+- 当前内置：YouTube（原生）、Pornhub / Pornhub Premium（单文件插件 `Nox/Resources/pornhub.noxplugin`）；包内插件启动时自动加载，用户导入 / 删除插件的入口尚未接入
 - YouTube 走「页面播放器数据 → InnerTube」多来源尝试：页面把播放器数据压缩成直链字段回传；被风控（「确认你不是聊天机器人」）或被判「视频无法播放」时自动改用 Android VR / iOS / TV / WEB 客户端再试，任一来源拿到直链即可；WebView 使用完整的移动版 Safari UA，WEB 客户端请求带上 `SAPISIDHASH`（由页面 Cookie 算出），保证「已登录」状态被 YouTube 认到；每个来源的结果都会写进日志页（`youtube source …`），失败原因在解析面板里也会区分「被拦」「需要签名解密」「无数据」
 - 每个站点在「设置 → 解析来源」里有独立开关；关闭后该站点的页面无法解析，解析入口不再出现
 - 通用兜底解析器在界面里直接显示为 Sniffer
@@ -80,26 +81,34 @@
 ├── NOTICE                          # 第三方署名与免责声明（PiP / GlobalRefresh-PiP）
 ├── .github/workflows/
 │   ├── build-and-release.yml       # 合并到 main 后构建无签名 IPA 并发 Release
-│   └── build-dev.yml               # 推送到 dev 时编译并打包无签名 IPA，上传为 Actions 工件；仅改 VERSION 的推送不触发
+│   └── build-dev.yml               # 推送到 dev 时编译并打包无签名 IPA，上传为 Actions 工件
 ├── Nox/
 │   ├── NoxApp.swift                # @main，注入语言环境
+│   ├── AppWiring.swift             # 依赖装配
 │   ├── ContentView.swift           # TabView：浏览 / 下载 / 历史 / 设置
-│   ├── Models.swift                # 领域模型、错误、传输统计
-│   ├── AppState.swift              # 全局状态与持久化；AppLocale / L(_:) / 语言管理
-│   ├── VideoParser.swift           # WKWebView 宿主 + 解析调度
-│   ├── Parsers/
-│   │   ├── VideoSiteParser.swift           # 协议、页面上下文、通用请求与清单解析
-│   │   ├── VideoSiteParserRegistry.swift   # 站点注册表
-│   │   ├── PornhubParser.swift             # Pornhub 解析实现
-│   │   └── YouTubeParser.swift             # YouTube 解析实现（页面/InnerTube 取直链）
-│   ├── DownloadManager.swift       # 分片下载、续传、合并、进度统计
-│   ├── VideoBrowserView.swift      # 浏览页
-│   ├── DownloadsView.swift         # 下载页
-│   ├── HistoryView.swift           # 历史页
-│   ├── SettingsView.swift          # 设置页 + 下载设置 / 解析来源 / 储存空间二级页
-│   ├── Localizable.xcstrings       # 字符串目录（5 种语言）
-│   └── Assets.xcassets/            # AppIcon 与设置页用的 AppIconPreview
-└── Nox.xcodeproj/                  # 手写工程文件
+│   ├── Resources/
+│   │   ├── Localizable.xcstrings   # 字符串目录（5 种语言）
+│   │   ├── MediaSniffer.js         # 页面嗅探脚本
+│   │   ├── pornhub.noxplugin       # Pornhub 单文件插件（运行时加载）
+│   │   └── Assets.xcassets/        # AppIcon 与设置页预览图
+│   └── Views/                      # Browser / Downloads / History / Settings / Sniffer
+├── NoxKit/
+│   ├── Package.swift               # 本地 SPM 模块
+│   └── Sources/
+│       ├── NoxCore/                # 模型、日志、本地化、存储路径
+│       ├── NoxParsing/
+│       │   ├── Plugins/            # .noxplugin 解析、校验、运行时与 Bridge
+│       │   ├── Sniffer/            # 通用嗅探
+│       │   ├── YouTube/            # YouTube 原生解析
+│       │   └── VideoSiteParser*.swift
+│       ├── NoxBrowser/             # WKWebView 宿主与解析调度
+│       ├── NoxDownload/            # 分片下载、续传、合并
+│       ├── NoxKeepAlive/           # 后台保活策略
+│       └── NoxState/               # 全局 AppState
+├── docs/
+│   ├── PLUGIN_SPEC.md              # 单文件插件规范
+│   └── examples/                   # 示例插件
+└── Nox.xcodeproj/                  # 工程文件
 ```
 
 ---
@@ -168,48 +177,24 @@ plutil -p "$APP/Info.plist" | grep -E "CFBundleDisplayName|CFBundleIdentifier"
 graph LR
     V[VideoBrowserView] --> P[VideoParser<br/>WKWebView 宿主 + 调度]
     P --> R[VideoSiteParserRegistry]
-    R --> A[PornhubParser]
+    R --> A["pornhub.noxplugin<br/>ScriptSiteParser"]
     R --> Y[YouTubeParser]
-    R -.-> B["新增站点…"]
-    A --> C[WebPageContext<br/>WKWebPageContext]
-    A --> L[MediaResourceLoader]
-    L --> D[MediaManifestDecoder]
+    R -.-> B["后续用户插件…"]
+    A --> RT[PluginRuntime<br/>隐藏 WKWebView]
+    RT --> C[WebPageContext / 原生 Bridge<br/>page.eval / cookies / http]
 ```
 
-`VideoSiteParser` 定义单个站点的规则，`WebPageContext` 把 `WKWebView` 隔离在协议之后，`MediaResourceLoader` / `MediaManifestDecoder` 提供多数站点通用的"带 Referer/Cookie 请求清单 → 解析清晰度"流程。
+`VideoSiteParser` 定义单个站点的规则，`WebPageContext` 把 `WKWebView` 隔离在协议之后。Pornhub 已迁为单文件插件：`PluginPackage` 解析元数据，`ScriptSiteParser` 适配现有注册表，`PluginRuntime` 在独立 `WKWebView` 中执行 JavaScript，并通过 Bridge 访问页面、Cookie 和网络。YouTube 暂时保留原生实现。
 
 **新增一个站点：**
 
-1. 在 `Nox/Parsers/` 新建 `XxxParser.swift`：
+优先写单文件插件，不需要改 Swift 工程：
 
-```swift
-import Foundation
+1. 按 [`docs/PLUGIN_SPEC.md`](docs/PLUGIN_SPEC.md) 写一个 `.noxplugin`
+2. 把文件放进 `Nox/Resources/`（`.noxplugin` 会自动作为资源拷贝进 App）
+3. 启动时会由 `BundledPluginLoader` 加载，设置页与解析调度自动出现该站点
 
-@MainActor
-final class XxxParser: VideoSiteParser {
-    // 稳定标识，用于持久化开关状态；一经发布不要再改
-    let identifier = "xxx"
-    let displayName = "XXX"
-
-    func canHandle(_ url: URL) -> Bool {
-        guard url.scheme == "https", let host = url.host else { return false }
-        return host == "xxx.com" || host.hasSuffix(".xxx.com")
-    }
-
-    func parse(page: WebPageContext) async throws -> [VideoVariant] {
-        // 1) page.evaluate(js) 从页面取数据
-        // 2) 需要额外请求用 MediaResourceLoader.fetch(...)
-        // 3) 结构是 [{ videoUrl, quality, format }] 时用 MediaManifestDecoder.variants(from:)
-        // 4) 都不符合时抛 ParserError 中最贴近的 case
-        throw ParserError.noMediaDefinitions
-    }
-}
-```
-
-2. 在 `VideoSiteParserRegistry.swift` 的 `all` 里追加 `XxxParser(),`
-3. 把新文件加入 `Nox.xcodeproj` 的 `Nox` 组与 target（Xcode 里拖入勾选 target 即可；本项目是手写 pbxproj，不会自动同步目录）
-
-设置页的站点开关会自动出现，`VideoParser`、各视图无需改动。
+只有确实需要原生能力（例如 YouTube 的 InnerTube 多来源与签名解密）时才新增 `VideoSiteParser` 实现，并加入 `VideoSiteParserRegistry`。
 
 ### 分片下载
 
