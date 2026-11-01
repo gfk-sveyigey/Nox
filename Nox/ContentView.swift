@@ -64,7 +64,9 @@ struct ContentView: View {
         // - nox://open?url=... 交给内置浏览器直接打开
         // - 文件 URL 继续交给插件导入
         .onOpenURL { url in
-            if let webURL = IncomingLink.webURL(from: url) {
+            if IncomingLink.isPluginImport(url) {
+                pluginImport.importPasteboardPlugin()
+            } else if let webURL = IncomingLink.webURL(from: url) {
                 selectedTab = 0
                 browserURL = webURL
             } else {

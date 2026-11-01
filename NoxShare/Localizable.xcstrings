@@ -29,6 +29,34 @@
         }
       }
     },
+    "插件已复制。请打开 Nox，在「解析来源」右上角选择「从剪贴板导入插件」。" : {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plugin has been copied. Open Nox and choose “Import Plugin from Clipboard” from the top-right menu in Parsing Sources."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "플러그인이 복사되었습니다. Nox를 열고 분석 소스 오른쪽 상단 메뉴에서 “클립보드에서 플러그인 가져오기”를 선택하세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le plugin a été copié. Ouvrez Nox et choisissez « Importer un plugin depuis le presse-papiers » dans le menu en haut à droite des Sources d’analyse."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Plugin wurde kopiert. Öffne Nox und wähle oben rechts unter „Analysequellen“ „Plugin aus Zwischenablage importieren“."
+          }
+        }
+      }
+    },
     "无法打开 Nox": {
       "localizations": {
         "en": {
