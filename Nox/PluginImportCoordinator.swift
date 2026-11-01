@@ -40,6 +40,9 @@ final class PluginImportCoordinator: ObservableObject {
     @Published var prompt: Prompt?
     @Published private(set) var isImporting = false
 
+    /// 本次运行里已经交给导入流程的文件。`Documents/Inbox` 兜底扫描用它去重。
+    private var handledPaths = Set<String>()
+
     func handleOpenURL(_ url: URL) {
         guard url.isFileURL else {
             LogStore.shared.error(
@@ -48,6 +51,7 @@ final class PluginImportCoordinator: ObservableObject {
             return
         }
         LogStore.shared.info("open file: \(url.lastPathComponent)")
+        markHandled(url)
         importFiles([url])
     }
 
@@ -70,6 +74,39 @@ final class PluginImportCoordinator: ObservableObject {
         } catch {
             report(error)
         }
+    }
+
+    /// 兜底：部分 iOS 版本把「拷贝到 Nox」的文件放进 `Documents/Inbox`
+    /// 却不回调 open URL。回到前台时扫一次，同一个文件只处理一次。
+    func importPendingInboxPluginsIfNeeded() {
+        guard !isImporting, prompt == nil else { return }
+
+        let inbox = DownloadStorage.documentsDirectory
+            .appendingPathComponent("Inbox", isDirectory: true)
+        guard let urls = try? FileManager.default.contentsOfDirectory(
+            at: inbox,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
+        }
+
+        let pending = urls
+            .filter { $0.pathExtension.lowercased() == "noxplugin" }
+            .filter { !handledPaths.contains($0.standardizedFileURL.path) }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        guard !pending.isEmpty else { return }
+
+        for url in pending { markHandled(url) }
+        LogStore.shared.info(
+            "inbox plugins: \(pending.map(\.lastPathComponent).joined(separator: ", "))"
+        )
+        importFiles(pending)
+    }
+
+    private func markHandled(_ url: URL) {
+        guard url.isFileURL else { return }
+        handledPaths.insert(url.standardizedFileURL.path)
     }
 
     func reportSharedPluginFailure() {
@@ -99,6 +136,7 @@ final class PluginImportCoordinator: ObservableObject {
         LogStore.shared.info(
             "plugin import request: \(urls.map(\.lastPathComponent).joined(separator: ", "))"
         )
+        for url in urls { markHandled(url) }
 
         var items: [ImportConfirmation.Item] = []
         var failures: [String] = []
@@ -251,7 +289,7 @@ final class PluginImportCoordinator: ObservableObject {
         lines.append(contentsOf: downgraded)
         lines.append(contentsOf: overriddenBundled.map {
             String(
-                format: L("已覆盖同名内置插件：%@。删除导入版本后会恢复内置版本。"),
+                format: L("已覆盖同名内置插件：%@。删除后不会恢复内置版本。"),
                 $0
             )
         })

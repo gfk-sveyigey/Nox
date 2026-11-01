@@ -9,6 +9,9 @@ import NoxCore
 /// “从其他 App 用 Nox 打开文件”属于 document open，在部分 iOS 版本上
 /// 不会走 `.onOpenURL`。这里再加一层 `UIApplicationDelegate` 兜底，
 /// 两条路径都汇入同一个中心，并按 URL + 时间做去重，避免重复导入。
+///
+/// 冷启动时如果系统把 URL 丢给了 scene 而没有回调上面两条路径，
+/// `ContentView` 还会兜底扫描 `Documents/Inbox`（见导入协调器）。
 @MainActor
 final class IncomingURLCenter: ObservableObject {
     static let shared = IncomingURLCenter()
@@ -20,11 +23,11 @@ final class IncomingURLCenter: ObservableObject {
 
     private init() {}
 
-    func submit(_ url: URL) {
+    func submit(_ url: URL, source: String = "app") {
         let key = url.absoluteString
         let now = Date()
         if key == lastKey, now.timeIntervalSince(lastTime) < 2 {
-            LogStore.shared.info("incoming url duplicate ignored")
+            LogStore.shared.info("incoming url duplicate ignored (\(source))")
             return
         }
 
@@ -32,7 +35,7 @@ final class IncomingURLCenter: ObservableObject {
         lastTime = now
         pendingURL = url
 
-        LogStore.shared.info("incoming url: \(Self.describe(url))")
+        LogStore.shared.info("incoming url (\(source)): \(Self.describe(url))")
     }
 
     /// 只在仍是同一个 URL 时清空，避免把紧接着到达的新 URL 一起吞掉。
@@ -60,7 +63,7 @@ final class NoxAppDelegate: NSObject, UIApplicationDelegate {
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
-        IncomingURLCenter.shared.submit(url)
+        IncomingURLCenter.shared.submit(url, source: "delegate")
         return true
     }
 }
