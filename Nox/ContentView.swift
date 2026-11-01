@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import NoxCore
 import NoxDownload
 import NoxState
@@ -50,6 +51,14 @@ struct ContentView: View {
         // 浅色 / 深色 / 跟随系统
         .preferredColorScheme(appState.appearanceMode.colorScheme)
         .onAppear {
+            // 冷启动时 URL 可能只出现在 scene 的 connectionOptions 里，
+            // 且 willConnect 通知可能早于监听注册；这里按当前 scene 再补读一次。
+            for scene in UIApplication.shared.connectedScenes {
+                for context in scene.connectionOptions.urlContexts {
+                    incomingURL.submit(context.url, source: "scene")
+                }
+            }
+
             // 冷启动时 document open 可能早于视图安装，这里补一次消费。
             // 延后一个 runloop，确保 alert 等呈现上下文已经装好。
             if let url = incomingURL.pendingURL {
@@ -57,6 +66,12 @@ struct ContentView: View {
                 DispatchQueue.main.async {
                     handleIncomingURL(url)
                 }
+            }
+
+            // 有些系统版本把「拷贝到 Nox」的文件放进 Documents/Inbox
+            // 却不回调 URL，这里延后扫一次兜底。
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                pluginImport.importPendingInboxPluginsIfNeeded()
             }
 
             // 冷启动时 `scenePhase` 的 onChange 不一定触发，这里补一次前台处理，
@@ -69,6 +84,12 @@ struct ContentView: View {
         // 回到前台：重置速度采样（后台期间定时器不触发），并让后台保活自愈。
         .onChange(of: scenePhase) { _, phase in
             downloadManager.handleScenePhase(isActive: phase == .active)
+
+            if phase == .active {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    pluginImport.importPendingInboxPluginsIfNeeded()
+                }
+            }
         }
         // 统一处理外部入口：
         // - nox://open?url=... 交给内置浏览器直接打开
@@ -108,6 +129,7 @@ struct ContentView: View {
     @MainActor
     private func handleIncomingURL(_ url: URL) {
         if IncomingLink.isPluginImport(url) {
+            LogStore.shared.info("handle incoming: shared plugin")
             if let data = IncomingLink.pluginData(from: url) {
                 pluginImport.importSharedPlugin(data)
             } else {
@@ -115,9 +137,11 @@ struct ContentView: View {
                 pluginImport.reportSharedPluginFailure()
             }
         } else if let webURL = IncomingLink.webURL(from: url) {
+            LogStore.shared.info("handle incoming: web url")
             selectedTab = 0
             browserURL = webURL
         } else {
+            LogStore.shared.info("handle incoming: file")
             pluginImport.handleOpenURL(url)
         }
     }

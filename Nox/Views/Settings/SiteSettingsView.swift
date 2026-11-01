@@ -41,7 +41,7 @@ struct SiteSettingsView: View {
                     )
 
                     if !editMode.isEditing {
-                        Text(L("长按条目可导出或删除插件；内置插件删除后可在右上角恢复。"))
+                        Text(L("长按条目可导出或删除插件；删除后不会自动恢复。"))
                     }
                 }
             }
@@ -77,8 +77,8 @@ struct SiteSettingsView: View {
         } message: {
             Text(
                 pendingDeleteIsBundled
-                    ? L("这是随 App 分发的内置插件；确认后只会从本机解析来源中移除，可随时通过右上角菜单恢复。")
-                    : L("只删除用户导入的插件文件；如果包内有同 id 插件，会回落到包内版本。")
+                    ? L("这是随 App 分发的内置插件；确认后只会从本机解析来源中移除，之后不会再出现。")
+                    : L("只删除本机上的插件文件；如果包内有同 id 插件，也不会再恢复。")
             )
         }
     }
@@ -115,17 +115,6 @@ struct SiteSettingsView: View {
                     Label(L("恢复默认顺序"), systemImage: "arrow.counterclockwise")
                 }
                 .disabled(registry.parsers.count < 2)
-
-                if PluginStore.shared.hasHiddenBundledPlugins {
-                    Divider()
-
-                    Button {
-                        PluginStore.shared.restoreBundledPlugins()
-                        registry.reload()
-                    } label: {
-                        Label(L("恢复内置插件"), systemImage: "arrow.uturn.backward.circle")
-                    }
-                }
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -231,7 +220,7 @@ struct SiteSettingsView: View {
         do {
             try PluginStore.shared.removePlugin(identifier: identifier)
             registry.reload()
-            // 删除后清掉禁用状态；如果包内存在同 id 插件，它会恢复为可用。
+            // 删除后清掉禁用状态；包内同 id 插件会一起隐藏，不会重新出现。
             appState.setSite(identifier, enabled: true)
         } catch {
             actionError = error.localizedDescription

@@ -2005,12 +2005,12 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "업데이트됨: %@" } }
       }
     },
-    "已覆盖同名内置插件：%@。删除导入版本后会恢复内置版本。" : {
+    "已覆盖同名内置插件：%@。删除后不会恢复内置版本。" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Überschreibt das integrierte Plugin mit derselben ID: %@. Beim Löschen der importierten Version wird die integrierte Version wiederhergestellt." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Overrides the built-in plugin with the same ID: %@. Deleting the imported version restores the built-in version." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Remplace le plugin intégré ayant le même ID : %@. La suppression de la version importée restaure la version intégrée." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "같은 ID의 내장 플러그인을 덮어씁니다: %@. 가져온 버전을 삭제하면 내장 버전이 복원됩니다." } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Überschreibt das integrierte Plugin mit derselben ID: %@. Beim Löschen wird die integrierte Version nicht wiederhergestellt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Overrides the built-in plugin with the same ID: %@. Deleting it will not restore the built-in version." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Remplace le plugin intégré de même ID : %@. Sa suppression ne restaure pas la version intégrée." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "같은 ID의 내장 플러그인을 덮어썼습니다: %@. 삭제해도 내장 버전은 복원되지 않습니다." } }
       }
     },
     "提示：当前未验证插件签名，请只导入可信来源。" : {
@@ -2189,12 +2189,12 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "같은 ID의 플러그인은 기존 항목을 업데이트하며 중복 행을 추가하지 않습니다." } }
       }
     },
-    "长按条目可导出或删除插件；内置插件删除后可在右上角恢复。" : {
+    "长按条目可导出或删除插件；删除后不会自动恢复。" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Halte einen Eintrag gedrückt, um ein Plugin zu exportieren oder zu löschen. Gelöschte integrierte Plugins lassen sich über das Menü oben rechts wiederherstellen." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Touch and hold an item to export or delete a plugin. Deleted built-in plugins can be restored from the top-right menu." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez et maintenez un élément pour exporter ou supprimer un plugin. Les plugins intégrés supprimés peuvent être restaurés depuis le menu en haut à droite." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "항목을 길게 눌러 플러그인을 내보내거나 삭제하세요. 삭제한 내장 플러그인은 오른쪽 상단 메뉴에서 복원할 수 있습니다." } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Halte einen Eintrag gedrückt, um ein Plugin zu exportieren oder zu löschen. Gelöschte Plugins werden nicht automatisch wiederhergestellt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Touch and hold an item to export or delete a plugin. Deleted plugins do not come back automatically." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez et maintenez un élément pour exporter ou supprimer un plugin. Un plugin supprimé ne revient pas automatiquement." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "항목을 길게 눌러 플러그인을 내보내거나 삭제할 수 있습니다. 삭제한 플러그인은 자동으로 복원되지 않습니다." } }
       }
     },
     "操作失败" : {
@@ -2229,20 +2229,20 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 파일을 찾을 수 없어 삭제할 수 없습니다." } }
       }
     },
-    "这是随 App 分发的内置插件；确认后只会从本机解析来源中移除，可随时通过右上角菜单恢复。" : {
+    "这是随 App 分发的内置插件；确认后只会从本机解析来源中移除，之后不会再出现。" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dies ist ein mit der App geliefertes integriertes Plugin. Beim Entfernen wird es nur auf diesem Gerät ausgeblendet; du kannst es jederzeit über das Menü oben rechts wiederherstellen." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "This is a built-in plugin shipped with the app. Removing it only hides it from this device; you can restore it anytime from the top-right menu." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Il s’agit d’un plugin intégré livré avec l’app. Le supprimer ne le masque que sur cet appareil ; vous pouvez le restaurer à tout moment depuis le menu en haut à droite." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱과 함께 제공되는 내장 플러그인입니다. 삭제하면 이 기기에서만 숨겨지며, 오른쪽 상단 메뉴에서 언제든 복원할 수 있습니다." } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieses Plugin ist in der App enthalten. Beim Entfernen wird es nur auf diesem Gerät ausgeblendet und erscheint nicht wieder." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This plugin ships with the app. Removing it only hides it on this device; it will not come back." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce plugin est fourni avec l’app. Le supprimer ne le masque que sur cet appareil ; il ne réapparaîtra pas." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱에 포함된 내장 플러그인입니다. 삭제하면 이 기기에서만 제거되며 다시 나타나지 않습니다." } }
       }
     },
-    "只删除用户导入的插件文件；如果包内有同 id 插件，会回落到包内版本。" : {
+    "只删除本机上的插件文件；如果包内有同 id 插件，也不会再恢复。" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur die importierte Plugin-Datei wird gelöscht. Enthält das App-Bundle ein Plugin mit derselben ID, wird diese Version wieder aktiv." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only the imported plugin file is deleted. If the app bundle contains a plugin with the same ID, that version becomes active again." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Seul le fichier du plugin importé est supprimé. Si le bundle de l’app contient un plugin avec le même ID, cette version redevient active." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "가져온 플러그인 파일만 삭제합니다. 앱 번들에 같은 ID의 플러그인이 있으면 해당 버전이 다시 활성화됩니다." } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur die Plugin-Datei auf diesem Gerät wird gelöscht. Ein integriertes Plugin mit derselben ID wird nicht wiederhergestellt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only the plugin file on this device is deleted. A built-in plugin with the same ID will not be restored." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Seul le fichier de plugin sur cet appareil est supprimé. Un plugin intégré avec le même ID ne sera pas restauré." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 기기의 플러그인 파일만 삭제됩니다. 같은 ID의 내장 플러그인도 복원되지 않습니다." } }
       }
     },
     "导入插件" : {
@@ -2259,14 +2259,6 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Reorder" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réorganiser" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "순서 변경" } }
-      }
-    },
-    "恢复内置插件" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Integrierte Plugins wiederherstellen" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore Built-in Plugins" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Restaurer les plugins intégrés" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 플러그인 복원" } }
       }
     },
     "恢复默认顺序" : {

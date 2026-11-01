@@ -281,7 +281,35 @@ final class ShareViewController: UIViewController {
         defer {
             if accessed { url.stopAccessingSecurityScopedResource() }
         }
-        return try? Data(contentsOf: url)
+
+        // iCloud Drive / 第三方文件提供方可能只给了占位文件，先请求下载。
+        let status = try? url.resourceValues(
+            forKeys: [.ubiquitousItemDownloadingStatusKey]
+        ).ubiquitousItemDownloadingStatus
+        if status != nil, status != .current {
+            try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+            for _ in 0..<20 {
+                let current = try? url.resourceValues(
+                    forKeys: [.ubiquitousItemDownloadingStatusKey]
+                ).ubiquitousItemDownloadingStatus
+                if current == .current { break }
+                Thread.sleep(forTimeInterval: 0.1)
+            }
+        }
+
+        var coordinationError: NSError?
+        var data: Data?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) {
+            data = try? Data(contentsOf: $0)
+        }
+        if let coordinationError {
+            NSLog(
+                "NoxShare: read %@ failed: %@",
+                url.lastPathComponent,
+                coordinationError.localizedDescription
+            )
+        }
+        return data
     }
 
     private func isPluginData(_ data: Data) -> Bool {

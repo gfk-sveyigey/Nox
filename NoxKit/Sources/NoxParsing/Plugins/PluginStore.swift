@@ -23,7 +23,8 @@ public final class PluginStore {
         public let version: String
         public let previousVersion: String?
         public let updateKind: UpdateKind
-        /// 导入的同 id 插件覆盖了 App 包内插件；删除导入版本后会回落到包内版本。
+        /// 导入的同 id 插件覆盖了 App 包内插件。删除导入版本时会把包内版本一并隐藏，
+        /// 不会自动回落到包内版本。
         public let overridesBundled: Bool
 
         public var isUpdate: Bool { updateKind != .installed }
@@ -72,10 +73,6 @@ public final class PluginStore {
     private let hiddenBundledKey = "Nox.hiddenBundledPlugins"
 
     private init() {}
-
-    public var hasHiddenBundledPlugins: Bool {
-        !hiddenBundledIDs.isEmpty
-    }
 
     private var pluginsDirectory: URL {
         DownloadStorage.rootDirectory.appendingPathComponent("Plugins", isDirectory: true)
@@ -362,30 +359,32 @@ public final class PluginStore {
 
     /// 从本机移除插件。
     ///
-    /// 有用户导入的版本时直接删除文件；只有包内版本时把 id 记入隐藏列表，
-    /// 因为 App 包在运行期不可写。两种情况下注册表都会在调用方 reload 后刷新。
+    /// 有用户导入的版本时删除文件，并同时隐藏同 ID 的包内版本——否则删除后
+    /// 包内版本会立刻重新出现，看起来像没删掉。只有包内版本时把 id 记入
+    /// 隐藏列表，因为 App 包在运行期不可写。调用方 reload 后列表会刷新。
     public func removePlugin(identifier: String) throws {
         let url = pluginFileURL(for: identifier)
+        let bundledExists = BundledPluginLoader.url(for: identifier) != nil
+
         if fileManager.fileExists(atPath: url.path) {
             try fileManager.removeItem(at: url)
+            if bundledExists { hideBundledPlugin(identifier) }
             LogStore.shared.info("plugin removed \(identifier)")
             return
         }
 
-        guard BundledPluginLoader.url(for: identifier) != nil else {
+        guard bundledExists else {
             throw PluginStoreError.notImported
         }
 
-        var hidden = hiddenBundledIDs
-        hidden.insert(identifier)
-        UserDefaults.standard.set(hidden.sorted(), forKey: hiddenBundledKey)
+        hideBundledPlugin(identifier)
         LogStore.shared.info("bundled plugin hidden \(identifier)")
     }
 
-    /// 恢复被「删除」的包内插件。用户再次导入的同 id 插件仍然优先。
-    public func restoreBundledPlugins() {
-        UserDefaults.standard.removeObject(forKey: hiddenBundledKey)
-        LogStore.shared.info("bundled plugins restored")
+    private func hideBundledPlugin(_ identifier: String) {
+        var hidden = hiddenBundledIDs
+        guard hidden.insert(identifier).inserted else { return }
+        UserDefaults.standard.set(hidden.sorted(), forKey: hiddenBundledKey)
     }
 
     private var hiddenBundledIDs: Set<String> {
