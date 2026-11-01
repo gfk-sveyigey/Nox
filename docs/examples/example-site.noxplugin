@@ -1,0 +1,55 @@
+/* ==NoxPlugin==
+{
+  "apiVersion": 1,
+  "id": "com.example.example-site",
+  "name": "Example Site",
+  "localizedNames": {
+    "zh-Hans": "示例站点",
+    "en": "Example Site"
+  },
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "author": "Nox Examples",
+  "description": "演示单文件解析插件的最小结构",
+  "icon": "play.rectangle",
+  "priority": 100,
+  "match": {
+    "schemes": ["https"],
+    "hosts": ["example.com"],
+    "pathPrefixes": ["/video/"]
+  },
+  "permissions": ["page.eval", "page.title", "log"]
+}
+==NoxPlugin== */
+
+Nox.register({
+  async parse(ctx) {
+    const info = await ctx.page.eval(`
+      (() => {
+        const video = document.querySelector("video");
+        return {
+          title: document.title || "",
+          src: video ? (video.currentSrc || video.src || "") : ""
+        };
+      })()
+    `);
+
+    if (!info || !info.src) {
+      throw new Error("页面中没有找到 video 地址");
+    }
+
+    // 允许页面里写相对地址。
+    const absoluteURL = new URL(info.src, ctx.url).href;
+
+    return {
+      title: info.title || undefined,
+      variants: [
+        {
+          quality: "auto",
+          format: "mp4",
+          url: absoluteURL
+        }
+      ]
+    };
+  }
+});

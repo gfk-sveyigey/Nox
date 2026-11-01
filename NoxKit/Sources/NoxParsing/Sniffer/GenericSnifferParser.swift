@@ -11,6 +11,8 @@ final class GenericSnifferParser: VideoSiteParser {
     let identifier = SnifferSite.identifier
     /// 面向用户的名称：直接叫 Sniffer，不再翻译成「通用嗅探」之类的说明性文字。
     let displayName = "Sniffer"
+    /// 必须排在所有具名站点之后。
+    let priority = -10_000
 
     init() {}
 

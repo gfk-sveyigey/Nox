@@ -13,6 +13,9 @@ public protocol VideoSiteParser: AnyObject {
     /// 一经发布就不要改，否则用户已保存的开关状态会失效。
     var identifier: String { get }
 
+    /// 匹配优先级：数值越大越先命中。通用 Sniffer 使用负数，永远垫底。
+    var priority: Int { get }
+
     /// 站点展示名，用于设置页与调试提示
     var displayName: String { get }
 
@@ -29,6 +32,11 @@ public protocol VideoSiteParser: AnyObject {
 
     /// 在当前页面上抓取可下载的清晰度列表；失败时抛 `ParserError`
     func parse(page: WebPageContext) async throws -> [VideoVariant]
+}
+
+extension VideoSiteParser {
+    /// 普通站点默认优先级；需要覆盖其它解析器的插件可在 manifest 里声明更高值。
+    public var priority: Int { 0 }
 }
 
 extension WebPageContext {
