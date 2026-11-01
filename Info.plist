@@ -46,5 +46,59 @@
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>CFBundleURLName</key>
+            <string>com.aholic.nox.link</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>nox</string>
+            </array>
+        </dict>
+    </array>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Nox Plugin</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>noxplugin</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.aholic.nox.plugin</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.aholic.nox.plugin</string>
+            <key>UTTypeDescription</key>
+            <string>Nox Plugin</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.plain-text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>noxplugin</string>
+                </array>
+                <key>public.mime-type</key>
+                <string>application/x-nox-plugin</string>
+            </dict>
+        </dict>
+    </array>
 </dict>
 </plist>

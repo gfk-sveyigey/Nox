@@ -49,9 +49,12 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     private let sites: SiteAvailabilityProviding
     private let registry: VideoSiteParserRegistry
 
-    public init(sites: SiteAvailabilityProviding, registry: VideoSiteParserRegistry = .default) {
+    public init(
+        sites: SiteAvailabilityProviding,
+        registry: VideoSiteParserRegistry? = nil
+    ) {
         self.sites = sites
-        self.registry = registry
+        self.registry = registry ?? .shared
 
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
@@ -160,6 +163,11 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     /// 用户已看过提示，清掉失败原因。
     public func clearLoadError() {
         loadErrorMessage = nil
+    }
+
+    /// 站点列表或开关发生变化后，重新计算当前页面是否可解析。
+    public func refreshSiteRules() {
+        pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
     public func parseCurrentPage() async throws -> ParsedVideo {

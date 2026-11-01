@@ -40,6 +40,12 @@ struct PluginManifest: Decodable {
         "log"
     ]
 
+    /// App 内建解析器占用的标识。插件不能覆盖它们，否则注册表会出现重复 id。
+    private static let reservedIDs: Set<String> = [
+        SnifferSite.identifier,
+        "youtube"
+    ]
+
     var effectivePriority: Int { priority ?? 0 }
 
     var displayName: String {
@@ -77,35 +83,35 @@ struct PluginManifest: Decodable {
         guard apiVersion == Self.supportedAPIVersion else {
             throw PluginError.unsupportedAPIVersion(apiVersion)
         }
-        guard Self.isValidID(id), id != SnifferSite.identifier else {
-            throw PluginError.invalidManifest("插件 id 不合法或被保留：\(id)")
+        guard Self.isValidID(id), !Self.reservedIDs.contains(id) else {
+            throw PluginError.invalidManifest(String(format: L("插件 id 不合法或被保留：%@"), id))
         }
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw PluginError.invalidManifest("插件 name 不能为空")
+            throw PluginError.invalidManifest(L("插件 name 不能为空"))
         }
         guard !version.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw PluginError.invalidManifest("插件 version 不能为空")
+            throw PluginError.invalidManifest(L("插件 version 不能为空"))
         }
         guard !match.hosts.isEmpty else {
-            throw PluginError.invalidManifest("match.hosts 不能为空")
+            throw PluginError.invalidManifest(L("match.hosts 不能为空"))
         }
 
         let unknown = Set(permissions).subtracting(Self.knownPermissions)
         guard unknown.isEmpty else {
-            throw PluginError.invalidManifest("未知权限：\(unknown.sorted().joined(separator: ", "))")
+            throw PluginError.invalidManifest(String(format: L("未知权限：%@"), unknown.sorted().joined(separator: ", ")))
         }
 
         for pattern in match.pathRegex ?? [] {
             do {
                 _ = try NSRegularExpression(pattern: pattern)
             } catch {
-                throw PluginError.invalidManifest("pathRegex 不合法：\(pattern)")
+                throw PluginError.invalidManifest(String(format: L("pathRegex 不合法：%@"), pattern))
             }
         }
 
         for pattern in match.hosts + (network ?? []) {
             guard Self.isValidHostPattern(pattern) else {
-                throw PluginError.invalidManifest("域名规则不合法：\(pattern)")
+                throw PluginError.invalidManifest(String(format: L("域名规则不合法：%@"), pattern))
             }
         }
 
@@ -217,24 +223,31 @@ enum PluginError: LocalizedError {
     case appVersionTooOld(required: String, current: String)
     case emptyBody
     case fileTooLarge
+    case invalidSource(String)
     case executionFailed(String)
 
     var errorDescription: String? {
         switch self {
         case .invalidHeader:
-            return "插件缺少有效的 NoxPlugin 元数据头。"
+            return L("插件缺少有效的 NoxPlugin 元数据头。")
         case .invalidManifest(let message):
-            return "插件元数据不合法：\(message)"
+            return String(format: L("插件元数据不合法：%@"), message)
         case .unsupportedAPIVersion(let version):
-            return "不支持的插件 API 版本：\(version)。"
+            return String(format: L("不支持的插件 API 版本：%d。"), version)
         case .appVersionTooOld(let required, let current):
-            return "插件要求 Nox \(required) 或更高版本，当前为 \(current)。"
+            return String(
+                format: L("插件要求 Nox %@ 或更高版本，当前为 %@。"),
+                required,
+                current
+            )
         case .emptyBody:
-            return "插件没有 JavaScript 代码。"
+            return L("插件没有 JavaScript 代码。")
         case .fileTooLarge:
-            return "插件文件超过 512 KiB 限制。"
+            return L("插件文件超过 512 KiB 限制。")
+        case .invalidSource(let message):
+            return String(format: L("插件 JavaScript 语法错误：%@"), message)
         case .executionFailed(let message):
-            return "插件执行失败：\(message)"
+            return String(format: L("插件执行失败：%@"), message)
         }
     }
 }

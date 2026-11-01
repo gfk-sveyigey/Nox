@@ -23,14 +23,15 @@
 - 打开过的视频页面会记入历史；保留条数或保留天数可在「设置 → 历史记录」里配置
 - 历史标题用下载文件名去掉扩展名；真正入队成功即记入历史，且**取消任务不会移除历史记录**（只有「只解析、不下载」才不记）
 - 打开无效 / 被拒绝访问的地址时，页面区域会直接显示错误与「重试」，不再弹窗盖在旧页面上；从地址栏打开新地址时会先收起旧页面再显示加载状态
+- **接收外部网页链接**：在 Safari 或其他 App 的分享面板中选择 Nox，即可把当前网页链接交给 Nox 并直接在浏览页打开；也注册了 `nox://` URL Scheme，快捷指令或自动化可调用 `nox://open?url=<百分号编码的网页地址>`。只接受 `http` / `https`，不会把 `javascript:` 等地址交给 WebView
 
 ### 解析（可扩展的站点插件）
 
 - 单文件插件规范（草案）：[`docs/PLUGIN_SPEC.md`](docs/PLUGIN_SPEC.md)
 - 解析规则按站点实现，通过注册表按 URL 匹配，`VideoBrowserView` 等调用方无需改动
-- 当前内置：YouTube（原生）、Pornhub / Pornhub Premium（单文件插件 `Nox/Resources/pornhub.noxplugin`）；包内插件启动时自动加载，用户导入 / 删除插件的入口尚未接入
+- 当前内置：YouTube（原生）、Pornhub / Pornhub Premium（单文件插件 `Nox/Resources/pornhub.noxplugin`）；包内插件启动时自动加载，用户也可以从「文件」App、AirDrop 或其他 App 的「用 Nox 打开」导入 `.noxplugin`，导入后立即出现在解析来源并生效。导入时会校验扩展名、大小、UTF-8、元数据与 JavaScript 语法，但不会执行插件代码
 - YouTube 走「页面播放器数据 → InnerTube」多来源尝试：页面把播放器数据压缩成直链字段回传；被风控（「确认你不是聊天机器人」）或被判「视频无法播放」时自动改用 Android VR / iOS / TV / WEB 客户端再试，任一来源拿到直链即可；WebView 使用完整的移动版 Safari UA，WEB 客户端请求带上 `SAPISIDHASH`（由页面 Cookie 算出），保证「已登录」状态被 YouTube 认到；每个来源的结果都会写进日志页（`youtube source …`），失败原因在解析面板里也会区分「被拦」「需要签名解密」「无数据」
-- 每个站点在「设置 → 解析来源」里有独立开关；关闭后该站点的页面无法解析，解析入口不再出现
+- 每个站点在「设置 → 解析来源」里有独立开关；关闭后该站点的页面无法解析，解析入口不再出现。列表顺序就是匹配优先级，可拖动调整；用户导入的插件支持长按导出 / 删除
 - 通用兜底解析器在界面里直接显示为 Sniffer
 - 解析成功后可选清晰度，或按「设置 → 下载设置 → 下载清晰度」的偏好自动选择（每次询问 / 最佳 / 1080 / 720 / 480 / 360）
 
@@ -56,7 +57,7 @@
 - 所有设置项收在同一组里（尽量少的组）：下载设置 / 储存空间 / 解析来源 / Cookie 管理 / 历史记录 / 日志 / 后台保活 / 开源许可与致谢 / 外观 / 语言
 - 下载设置（二级页）：同时下载任务数、下载清晰度、多线程下载 / 下载线程数 / m3u8 分片并发
 - 后台保活：相关设置收在二级页「后台保活」里。保活方式：关闭 / 静音音频 / 画中画 (PiP)（默认画中画），选中项即当前生效的保活方式；选画中画时还会多出「画中画窗口大小」滑块（最左 = 最小：窗口高 0.1pt、视觉隐藏、不影响操作；越往右窗口越大，最大 300×225）与「共存保护不可用时」——继续用画中画（可能挤掉其它画中画）/ 改用静音音频 / 停止保活（默认继续用画中画）。保活模式：跟随下载任务（默认，有「排队中 / 下载中」任务时自动开启、全部结束自动停止）/ 启动即常驻（只要保活方式不是「关闭」，进入前台即拉起并一直保持）；画中画不占用音频会话，切回前台若发现保活已被系统结束会自动重建
-- 解析来源（二级页）：各站点与 Sniffer 的开关
+- 解析来源（二级页）：各站点与 Sniffer 的开关；列表从上到下即匹配优先级（通用 Sniffer 固定最后），右上角菜单可导入插件、进入排序或恢复默认顺序；长按用户导入的插件可导出或删除，删除后若包内存在同 ID 插件会自动回落
 - 储存空间（二级页）：按「已下载视频 / 下载分片 / 临时文件 / 网络缓存 / 网站数据」分类列出各自占用；已下载视频只统计 App 实际下载且文件仍在的成品，网络缓存按沙盒 `Library/Caches` 统计（不再恒为 0）；双指下滑进入多选，进入后返回键位置变为「完成」，右上角为刷新按钮（多选态下变为红色「清理」）
 - Cookie 管理（二级页）：列出各站点保存的 Cookie 数量，可单独删除某个站点或一次清空；`WKWebView` 使用持久化数据存储，登录状态本就跨启动保留，这里用于查看与清理
 - 历史记录（二级页）：保留方式（按条数 / 按时间），两种方式都可设为「无限制」
@@ -70,13 +71,27 @@
 
 `Info.plist` 已开启 `UIFileSharingEnabled` 与 `LSSupportsOpeningDocumentsInPlace`，下载完成的视频可在「文件」App → 我的 iPhone → Nox 下直接查看、播放、导出。
 
+### 外部链接与分享扩展
+
+- **从分享面板接收**：`NoxShare` Share Extension 支持网页 URL、网页与纯文本链接。选择 Nox 后，扩展读取链接、生成 `nox://open?url=...`，切回宿主 App 并直接加载页面。
+- **通过 URL Scheme 接收**：主 App 的 `Info.plist` 注册了 `nox`。网页地址需要作为 `url` 查询参数传入，并进行百分号编码：
+
+```text
+nox://open?url=https%3A%2F%2Fexample.com%2Fwatch%3Fv%3D1
+```
+
+在快捷指令中，可直接用「URL」动作构造上述地址，再用「打开 URL」动作启动 Nox。收到网页链接后会切换到浏览标签页并加载网页；普通文件链接仍走既有的 `.noxplugin` 导入流程。
+
+> Apple 没有向 Share Extension 开放官方的「打开宿主 App」API。这里先调用 `NSExtensionContext.open(_:)`，失败时使用 responder chain 兼容路径；两条路径都不可用时会把链接复制到剪贴板并提示手动打开。该兼容路径适合自签 / 侧载构建，若计划上架 App Store 需要重新评估。
+
 ---
 
 ## 目录结构
 
 ```
 .
-├── Info.plist                      # 真实生效的 Info.plist（GENERATE_INFOPLIST_FILE = NO）
+├── Info.plist                      # 主 App 的 Info.plist（GENERATE_INFOPLIST_FILE = NO）
+├── NoxShare-Info.plist             # Share Extension 的 Info.plist
 ├── VERSION                         # 版本号，CI 据此打 tag
 ├── NOTICE                          # 第三方署名与免责声明（PiP / GlobalRefresh-PiP）
 ├── .github/workflows/
@@ -86,12 +101,17 @@
 │   ├── NoxApp.swift                # @main，注入语言环境
 │   ├── AppWiring.swift             # 依赖装配
 │   ├── ContentView.swift           # TabView：浏览 / 下载 / 历史 / 设置
+│   ├── IncomingLink.swift          # nox:// 与网页链接解析
+│   ├── PluginImportCoordinator.swift # 外部文件导入与结果提示
 │   ├── Resources/
 │   │   ├── Localizable.xcstrings   # 字符串目录（5 种语言）
 │   │   ├── MediaSniffer.js         # 页面嗅探脚本
 │   │   ├── pornhub.noxplugin       # Pornhub 单文件插件（运行时加载）
 │   │   └── Assets.xcassets/        # AppIcon 与设置页预览图
 │   └── Views/                      # Browser / Downloads / History / Settings / Sniffer
+├── NoxShare/
+│   ├── ShareViewController.swift   # 从系统分享面板接收链接并切回宿主 App
+│   └── Localizable.xcstrings       # 分享扩展文案（5 种语言）
 ├── NoxKit/
 │   ├── Package.swift               # 本地 SPM 模块
 │   └── Sources/
@@ -179,7 +199,7 @@ graph LR
     P --> R[VideoSiteParserRegistry]
     R --> A["pornhub.noxplugin<br/>ScriptSiteParser"]
     R --> Y[YouTubeParser]
-    R -.-> B["后续用户插件…"]
+    R -.-> B["用户导入的 .noxplugin"]
     A --> RT[PluginRuntime<br/>隐藏 WKWebView]
     RT --> C[WebPageContext / 原生 Bridge<br/>page.eval / cookies / http]
 ```
@@ -191,8 +211,8 @@ graph LR
 优先写单文件插件，不需要改 Swift 工程：
 
 1. 按 [`docs/PLUGIN_SPEC.md`](docs/PLUGIN_SPEC.md) 写一个 `.noxplugin`
-2. 把文件放进 `Nox/Resources/`（`.noxplugin` 会自动作为资源拷贝进 App）
-3. 启动时会由 `BundledPluginLoader` 加载，设置页与解析调度自动出现该站点
+2. 把文件放进 `Nox/Resources/`（`.noxplugin` 会自动作为资源拷贝进 App），或直接发给用户从「文件」App 导入
+3. 包内插件启动时由 `BundledPluginLoader` 加载；用户插件由 `PluginStore` 校验后保存到沙箱并触发表刷新，设置页与解析调度自动出现该站点
 
 只有确实需要原生能力（例如 YouTube 的 InnerTube 多来源与签名解密）时才新增 `VideoSiteParser` 实现，并加入 `VideoSiteParserRegistry`。
 

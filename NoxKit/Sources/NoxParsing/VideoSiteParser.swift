@@ -5,8 +5,9 @@ import NoxCore
 
 /// 单个视频站点的解析规则。
 ///
-/// 新增站点：实现本协议 → 在 `VideoSiteParserRegistry.all` 里注册一行即可。
-/// 不需要改动 `VideoParser`、`VideoBrowserView` 等任何调用方。
+/// 新增站点优先写 `.noxplugin`，由注册表自动发现；只有确实需要原生能力时
+/// 才实现本协议并加入 `VideoSiteParserRegistry.makeParsers()`。
+/// 两种方式都不需要改动 `VideoParser`、`VideoBrowserView` 等调用方。
 @MainActor
 public protocol VideoSiteParser: AnyObject {
     /// 稳定标识，用于持久化「站点开关」。
@@ -15,6 +16,14 @@ public protocol VideoSiteParser: AnyObject {
 
     /// 匹配优先级：数值越大越先命中。通用 Sniffer 使用负数，永远垫底。
     var priority: Int { get }
+
+    // 以下元数据只用于设置页展示。写成协议要求而不是单纯 extension 成员，
+    // 这样通过 `any VideoSiteParser` 访问时也能拿到插件的真实实现。
+    var isBundledPlugin: Bool { get }
+    var isImportedPlugin: Bool { get }
+    var pluginVersion: String? { get }
+    var pluginAuthor: String? { get }
+    var pluginDescription: String? { get }
 
     /// 站点展示名，用于设置页与调试提示
     var displayName: String { get }
@@ -37,6 +46,21 @@ public protocol VideoSiteParser: AnyObject {
 extension VideoSiteParser {
     /// 普通站点默认优先级；需要覆盖其它解析器的插件可在 manifest 里声明更高值。
     public var priority: Int { 0 }
+
+    /// 是否是随 App 包分发、但由 `.noxplugin` 加载的插件。
+    public var isBundledPlugin: Bool { false }
+
+    /// 是否是用户从文件导入、存放在沙箱里的插件。
+    public var isImportedPlugin: Bool { false }
+
+    /// 插件版本；内置原生解析器为 nil。
+    public var pluginVersion: String? { nil }
+
+    /// 插件作者；内置原生解析器为 nil。
+    public var pluginAuthor: String? { nil }
+
+    /// 插件说明；内置原生解析器为 nil。
+    public var pluginDescription: String? { nil }
 }
 
 extension WebPageContext {

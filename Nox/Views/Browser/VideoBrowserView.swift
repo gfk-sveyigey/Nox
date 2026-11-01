@@ -15,6 +15,7 @@ struct VideoBrowserView: View {
     @StateObject var parser: VideoParser
     @ObservedObject var downloads: DownloadManager
     @ObservedObject var sniffer = SnifferBridge.shared
+    @ObservedObject var registry = VideoSiteParserRegistry.shared
 
     @Binding var requestedURL: URL?
 
@@ -112,14 +113,12 @@ struct VideoBrowserView: View {
             .animation(.easeInOut(duration: 0.2), value: isParseBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: showingHome)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            // 导航栏是空的，但默认半透明材质在浅色模式下会比页面背景更浅。
-            // 用不透明的系统背景填满，避免顶部出现一条突兀的色带。
-            .toolbarBackground(Color(.systemBackground), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            // 浏览页没有导航栏内容。保留空 NavigationStack 的导航栏会在地址栏上方
+            // 多出一条空白，直接隐藏；顶部安全区仍由系统保留。
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 loadRequestedURLIfNeeded()
+                parser.refreshSiteRules()
                 // 切走再切回来时 `isLoading` 不一定有变化，这里按当前状态补一次。
                 updateProgressAppearance(isLoading: showsLoadingIndicator)
             }
@@ -129,6 +128,16 @@ struct VideoBrowserView: View {
             // 地址栏跟随 WebView 的实际地址：页面内点链接、重定向、后退/前进都会更新。
             .onChange(of: parser.currentURL) { _, newValue in
                 syncAddress(with: newValue)
+            }
+            // 导入 / 删除插件或调整匹配顺序后，立即刷新当前页面能否解析。
+            // 监听 revision 而不是只比较 id 列表：同 id 插件原位更新时
+            // id 列表不变，但匹配规则可能已经变了。
+            .onChange(of: registry.revision) { _, _ in
+                parser.refreshSiteRules()
+            }
+            // 在设置里开关站点后，无需等下一次导航再更新解析入口。
+            .onChange(of: appState.siteAvailabilityRevision) { _, _ in
+                parser.refreshSiteRules()
             }
             // 加载提示：开 / 关看合并后的状态（真实导航 or 同文档换页），
             // 具体进度按 estimatedProgress 走。

@@ -1964,6 +1964,454 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réponse de segment vide" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "세그먼트 응답이 비어 있음" } }
       }
+    },
+    "已回退：%@（%@ → %@）" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heruntergestuft: %@ (%@ → %@)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downgraded: %@ (%@ → %@)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rétrogradé : %@ (%@ → %@)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운그레이드됨: %@ (%@ → %@)" } }
+      }
+    },
+    "已导入：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Importiert: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Imported: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importé : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "가져옴: %@" } }
+      }
+    },
+    "已更新：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktualisiert: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Updated: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mis à jour : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "업데이트됨: %@" } }
+      }
+    },
+    "已覆盖同名内置插件：%@。删除导入版本后会恢复内置版本。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Überschreibt das integrierte Plugin mit derselben ID: %@. Beim Löschen der importierten Version wird die integrierte Version wiederhergestellt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Overrides the built-in plugin with the same ID: %@. Deleting the imported version restores the built-in version." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Remplace le plugin intégré ayant le même ID : %@. La suppression de la version importée restaure la version intégrée." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "같은 ID의 내장 플러그인을 덮어씁니다: %@. 가져온 버전을 삭제하면 내장 버전이 복원됩니다." } }
+      }
+    },
+    "提示：当前未验证插件签名，请只导入可信来源。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hinweis: Plugin-Signaturen werden noch nicht überprüft. Importiere nur Plugins aus vertrauenswürdigen Quellen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Note: Plugin signatures are not verified yet. Only import plugins from trusted sources." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Remarque : les signatures des plugins ne sont pas encore vérifiées. Importez uniquement des plugins provenant de sources fiables." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "참고: 플러그인 서명은 아직 확인하지 않습니다. 신뢰할 수 있는 출처의 플러그인만 가져오세요." } }
+      }
+    },
+    "插件已导入" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin importiert" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin Imported" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plugin importé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 가져옴" } }
+      }
+    },
+    "插件已更新" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin aktualisiert" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin Updated" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plugin mis à jour" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 업데이트됨" } }
+      }
+    },
+    "插件导入完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Import abgeschlossen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin Import Complete" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importation du plugin terminée" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 가져오기 완료" } }
+      }
+    },
+    "插件导入失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Import fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin Import Failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l’importation du plugin" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 가져오기 실패" } }
+      }
+    },
+    "部分插件未导入" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einige Plugins wurden nicht importiert" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Some Plugins Were Not Imported" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Certains plugins n’ont pas été importés" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일부 플러그인을 가져오지 못함" } }
+      }
+    },
+    "匹配顺序" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Reihenfolge" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Matching Order" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ordre de correspondance" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일치 순서" } }
+      }
+    },
+    "拖动右侧手柄调整顺序；越靠前优先级越高，通用 Sniffer 固定最后。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ziehe den Griff rechts, um die Reihenfolge zu ändern. Weiter oben bedeutet höhere Priorität; der generische Sniffer bleibt immer zuletzt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Drag the handle on the right to reorder. Items higher in the list have higher priority; Generic Sniffer always stays last." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Faites glisser la poignée à droite pour réorganiser. Plus un élément est haut, plus sa priorité est élevée ; le Sniffer générique reste toujours en dernier." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오른쪽 핸들을 드래그해 순서를 변경하세요. 위에 있을수록 우선순위가 높으며, 일반 Sniffer는 항상 마지막에 유지됩니다." } }
+      }
+    },
+    "越靠前优先级越高，通用 Sniffer 固定最后。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Weiter oben bedeutet höhere Priorität. Der generische Sniffer bleibt immer zuletzt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Items higher in the list have higher priority. Generic Sniffer always stays last." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plus un élément est haut, plus sa priorité est élevée. Le Sniffer générique reste toujours en dernier." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "위에 있을수록 우선순위가 높으며, 일반 Sniffer는 항상 마지막에 유지됩니다." } }
+      }
+    },
+    "长按条目可导出或删除已导入插件；右上角可导入插件、调整顺序或恢复默认顺序。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Halte einen Eintrag gedrückt, um ein importiertes Plugin zu exportieren oder zu löschen. Über die Schaltfläche oben rechts kannst du Plugins importieren, die Reihenfolge ändern oder die Standardreihenfolge wiederherstellen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Touch and hold an item to export or delete an imported plugin. Use the top-right button to import plugins, reorder, or restore the default order." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez et maintenez un élément pour exporter ou supprimer un plugin importé. Le bouton en haut à droite permet d’importer des plugins, de réorganiser ou de restaurer l’ordre par défaut." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "항목을 길게 눌러 가져온 플러그인을 내보내거나 삭제하세요. 오른쪽 상단 버튼에서 플러그인 가져오기, 순서 변경, 기본 순서 복원을 할 수 있습니다." } }
+      }
+    },
+    "操作失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktion fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Action Failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l’opération" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 실패" } }
+      }
+    },
+    "删除 %@？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "„%@“ löschen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete %@?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer %@ ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@ 삭제?" } }
+      }
+    },
+    "删除插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin löschen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete Plugin" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer le plugin" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 삭제" } }
+      }
+    },
+    "只删除用户导入的插件文件；如果包内有同 id 插件，会回落到包内版本。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur die importierte Plugin-Datei wird gelöscht. Enthält das App-Bundle ein Plugin mit derselben ID, wird diese Version wieder aktiv." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only the imported plugin file is deleted. If the app bundle contains a plugin with the same ID, that version becomes active again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Seul le fichier du plugin importé est supprimé. Si le bundle de l’app contient un plugin avec le même ID, cette version redevient active." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "가져온 플러그인 파일만 삭제합니다. 앱 번들에 같은 ID의 플러그인이 있으면 해당 버전이 다시 활성화됩니다." } }
+      }
+    },
+    "导入插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin importieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import Plugin" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer un plugin" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 가져오기" } }
+      }
+    },
+    "调整顺序" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Reihenfolge ändern" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reorder" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réorganiser" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "순서 변경" } }
+      }
+    },
+    "恢复默认顺序" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Standardreihenfolge wiederherstellen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore Default Order" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rétablir l’ordre par défaut" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기본 순서 복원" } }
+      }
+    },
+    "解析来源操作" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktionen für Analysequellen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing Source Actions" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Actions des sources d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 소스 작업" } }
+      }
+    },
+    "导出插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin exportieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export Plugin" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exporter le plugin" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 내보내기" } }
+      }
+    },
+    "复制插件 ID" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-ID kopieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Plugin ID" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Copier l’ID du plugin" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 ID 복사" } }
+      }
+    },
+    "无法导出该插件文件。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Diese Plugin-Datei kann nicht exportiert werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to export this plugin file." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible d’exporter ce fichier de plugin." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 플러그인 파일을 내보낼 수 없습니다." } }
+      }
+    },
+    "兜底嗅探器 · 固定最后" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fallback-Sniffer · immer zuletzt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Fallback Sniffer · Always Last" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sniffer de secours · toujours en dernier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "대체 Sniffer · 항상 마지막" } }
+      }
+    },
+    "已导入插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Importiertes Plugin" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Imported Plugin" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plugin importé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "가져온 플러그인" } }
+      }
+    },
+    "内置插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Integriertes Plugin" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in Plugin" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plugin intégré" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 플러그인" } }
+      }
+    },
+    "内置解析器" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Integrierter Parser" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in Parser" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Analyseur intégré" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 분석기" } }
+      }
+    },
+    "插件元数据超过 32 KiB" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Metadaten überschreiten 32 KiB" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin metadata exceeds 32 KiB" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les métadonnées du plugin dépassent 32 Kio" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 메타데이터가 32 KiB를 초과합니다" } }
+      }
+    },
+    "插件 id 不合法或被保留：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ungültige oder reservierte Plugin-ID: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid or reserved plugin ID: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "ID de plugin non valide ou réservé : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 ID가 잘못되었거나 예약되어 있습니다: %@" } }
+      }
+    },
+    "插件 name 不能为空" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Name darf nicht leer sein" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin name cannot be empty" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le nom du plugin ne peut pas être vide" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 이름은 비워 둘 수 없습니다" } }
+      }
+    },
+    "插件 version 不能为空" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Version darf nicht leer sein" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin version cannot be empty" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La version du plugin ne peut pas être vide" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 버전은 비워 둘 수 없습니다" } }
+      }
+    },
+    "match.hosts 不能为空" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "`match.hosts` darf nicht leer sein" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "`match.hosts` cannot be empty" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "`match.hosts` ne peut pas être vide" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "`match.hosts`는 비워 둘 수 없습니다" } }
+      }
+    },
+    "未知权限：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbekannte Berechtigungen: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown permissions: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Autorisations inconnues : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알 수 없는 권한: %@" } }
+      }
+    },
+    "pathRegex 不合法：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ungültiger pathRegex: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid pathRegex: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "pathRegex non valide : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "pathRegex가 잘못되었습니다: %@" } }
+      }
+    },
+    "域名规则不合法：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ungültige Host-Regel: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid host rule: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Règle d’hôte non valide : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "호스트 규칙이 잘못되었습니다: %@" } }
+      }
+    },
+    "插件缺少有效的 NoxPlugin 元数据头。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dem Plugin fehlt ein gültiger NoxPlugin-Metadatenkopf." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The plugin is missing a valid NoxPlugin metadata header." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le plugin ne contient pas d’en-tête de métadonnées NoxPlugin valide." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인에 유효한 NoxPlugin 메타데이터 헤더가 없습니다." } }
+      }
+    },
+    "插件元数据不合法：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ungültige Plugin-Metadaten: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid plugin metadata: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Métadonnées du plugin non valides : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 메타데이터가 잘못되었습니다: %@" } }
+      }
+    },
+    "不支持的插件 API 版本：%d。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht unterstützte Plugin-API-Version: %d." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unsupported plugin API version: %d." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Version d’API du plugin non prise en charge : %d." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "지원하지 않는 플러그인 API 버전: %d." } }
+      }
+    },
+    "插件要求 Nox %@ 或更高版本，当前为 %@。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieses Plugin erfordert Nox %@ oder neuer; aktuell ist %@." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This plugin requires Nox %@ or later; current version is %@." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce plugin nécessite Nox %@ ou une version ultérieure ; version actuelle : %@." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 플러그인은 Nox %@ 이상이 필요합니다. 현재 버전: %@." } }
+      }
+    },
+    "插件没有 JavaScript 代码。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das Plugin enthält keinen JavaScript-Code." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The plugin has no JavaScript code." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le plugin ne contient pas de code JavaScript." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인에 JavaScript 코드가 없습니다." } }
+      }
+    },
+    "插件文件超过 512 KiB 限制。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Plugin-Datei überschreitet das Limit von 512 KiB." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The plugin file exceeds the 512 KiB limit." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le fichier du plugin dépasse la limite de 512 Kio." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 파일이 512 KiB 제한을 초과합니다." } }
+      }
+    },
+    "插件执行失败：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Ausführung fehlgeschlagen: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin execution failed: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l’exécution du plugin : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 실행 실패: %@" } }
+      }
+    },
+    "文件协调器没有返回可读取的插件副本。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der Dateikoordinator hat keine lesbare Plugin-Kopie zurückgegeben." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The file coordinator did not return a readable plugin copy." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le coordinateur de fichiers n’a pas renvoyé de copie lisible du plugin." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 코디네이터가 읽을 수 있는 플러그인 사본을 반환하지 않았습니다." } }
+      }
+    },
+    "不是有效的 .noxplugin 文件。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine gültige .noxplugin-Datei." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not a valid .noxplugin file." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichier .noxplugin non valide." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "유효한 .noxplugin 파일이 아닙니다." } }
+      }
+    },
+    "插件路径不是普通文件。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der Plugin-Pfad ist keine reguläre Datei." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The plugin path is not a regular file." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le chemin du plugin n’est pas un fichier ordinaire." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 경로가 일반 파일이 아닙니다." } }
+      }
+    },
+    "插件文件不是 UTF-8 文本。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Plugin-Datei ist kein UTF-8-Text." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The plugin file is not UTF-8 text." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le fichier du plugin n’est pas un texte UTF-8." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 파일이 UTF-8 텍스트가 아닙니다." } }
+      }
+    },
+    "该插件不是用户导入的插件，无法删除。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieses Plugin wurde nicht vom Benutzer importiert und kann nicht gelöscht werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This plugin was not imported by the user and cannot be deleted." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce plugin n’a pas été importé par l’utilisateur et ne peut pas être supprimé." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용자가 가져온 플러그인이 아니므로 삭제할 수 없습니다." } }
+      }
+    },
+    "不能读取插件文件：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin-Datei kann nicht gelesen werden: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to read the plugin file: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de lire le fichier du plugin : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 파일을 읽을 수 없습니다: %@" } }
+      }
+    },
+    "插件写入失败：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugin konnte nicht geschrieben werden: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to write the plugin: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l’écriture du plugin : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인을 쓰지 못했습니다: %@" } }
+      }
+    },
+    "无法创建 JavaScript 语法检查器。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "JavaScript-Syntaxprüfer kann nicht erstellt werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to create a JavaScript syntax checker." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de créer le vérificateur de syntaxe JavaScript." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "JavaScript 구문 검사기를 만들 수 없습니다." } }
+      }
+    },
+    "JavaScript 语法检查器不可用。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der JavaScript-Syntaxprüfer ist nicht verfügbar." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The JavaScript syntax checker is unavailable." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le vérificateur de syntaxe JavaScript n’est pas disponible." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "JavaScript 구문 검사기를 사용할 수 없습니다." } }
+      }
+    },
+    "未知语法错误" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbekannter Syntaxfehler" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown syntax error" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur de syntaxe inconnue" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알 수 없는 구문 오류" } }
+      }
+    },
+    "插件 JavaScript 语法错误：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "JavaScript-Syntaxfehler im Plugin: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugin JavaScript syntax error: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur de syntaxe JavaScript du plugin : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인 JavaScript 구문 오류: %@" } }
+      }
+    },
+    "新插件已加入「解析来源」；如有多个解析器匹配同一站点，可在该页面调整顺序。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das neue Plugin wurde zu „Analysequellen“ hinzugefügt. Wenn mehrere Parser dieselbe Website abdecken, kannst du die Reihenfolge auf dieser Seite ändern." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The new plugin has been added to Parsing Sources. If multiple parsers match the same site, you can reorder them on that page." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le nouveau plugin a été ajouté à « Sources d’analyse ». Si plusieurs analyseurs correspondent au même site, vous pouvez réorganiser leur ordre sur cette page." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "새 플러그인을 '분석 소스'에 추가했습니다. 여러 분석기가 같은 사이트와 일치하면 해당 페이지에서 순서를 조정할 수 있습니다." } }
+      }
     }
   },
   "version" : "1.0"

@@ -12,6 +12,7 @@ struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject var localization = LocalizationManager.shared
     @ObservedObject var manager: DownloadManager
+    @ObservedObject var registry = VideoSiteParserRegistry.shared
 
     init(manager: DownloadManager) {
         _manager = ObservedObject(wrappedValue: manager)
@@ -98,7 +99,7 @@ struct SettingsView: View {
             } label: {
                 LabeledContent(
                     L("解析来源"),
-                    value: "\(enabledSiteCount)/\(VideoSiteParserRegistry.all.count)"
+                    value: "\(enabledSiteCount)/\(registry.parsers.count)"
                 )
             }
 
@@ -166,7 +167,7 @@ struct SettingsView: View {
     }
 
     var enabledSiteCount: Int {
-        VideoSiteParserRegistry.all.filter { appState.isSiteEnabled($0.identifier) }.count
+        registry.parsers.filter { appState.isSiteEnabled($0.identifier) }.count
     }
 
     // MARK: - Bundle 信息
