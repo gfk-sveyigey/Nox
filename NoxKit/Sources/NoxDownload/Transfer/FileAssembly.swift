@@ -10,18 +10,26 @@ import NoxKeepAlive
 extension DownloadManager {
     func assemble(
         recordID: UUID,
+        token: UUID,
         segments: [DownloadSegment],
         partsDirectory: URL
     ) async {
-        // 同一任务只允许合并一次。合并要读写整份文件、可能持续很久，
-        // 期间若被再次触发（多个分片几乎同时收尾、或重试）就会各写一份成品，
-        // 于是同一个任务冒出多个大小、时长都不同的文件。
-        guard assemblingIDs.insert(recordID).inserted else { return }
+        guard isCurrentRun(recordID, token: token) else { return }
+
+        // 同一次 run 只允许合并一次。合并要读写整份文件、可能持续很久，
+        // 期间若被再次触发（多个分片几乎同时收尾）就会各写一份成品。
+        // 按 token 而不是 recordID 去重：重试后的新 run 不应被旧 run 的
+        // 未退出合并流程挡住。
+        guard assemblingTokens.insert(token).inserted else { return }
 
         defer {
-            assemblingIDs.remove(recordID)
-            resetScheduling(for: recordID)
-            releaseSlot(recordID)
+            assemblingTokens.remove(token)
+
+            // 旧 run 做完时新 run 可能已经占住槽位，不能替它收尾。
+            if isCurrentRun(recordID, token: token) {
+                resetScheduling(for: recordID)
+                releaseSlot(recordID, token: token)
+            }
         }
 
         guard var record = store.downloads.first(where: { $0.id == recordID }) else { return }
@@ -63,8 +71,9 @@ extension DownloadManager {
                 try DownloadStorage.concatenate(parts, into: temporary)
             }.value
 
-            // 合并期间用户取消了：不要再写成「已完成」，避免覆盖取消状态
-            guard !cancellingIDs.contains(recordID) else {
+            // 合并期间用户暂停 / 删除 / 重试了：不要再写成「已完成」，
+            // 也不要动新 run 的调度状态。
+            guard isCurrentRun(recordID, token: token) else {
                 try? FileManager.default.removeItem(at: temporary)
                 return
             }

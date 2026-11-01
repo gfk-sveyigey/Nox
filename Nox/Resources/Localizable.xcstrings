@@ -2628,6 +2628,22 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le nouveau plugin a été ajouté à « Sources d’analyse ». Si plusieurs analyseurs correspondent au même site, vous pouvez réorganiser leur ordre sur cette page." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "새 플러그인을 '분석 소스'에 추가했습니다. 여러 분석기가 같은 사이트와 일치하면 해당 페이지에서 순서를 조정할 수 있습니다." } }
       }
+    },
+    "达到上限后，新任务会自动排队；完成任务、暂停或删除任务后，等待中的任务会自动补位。调小上限不会打断正在下载的任务。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ist das Limit erreicht, werden neue Downloads in die Warteschlange gestellt. Wenn eine Aufgabe abgeschlossen, pausiert oder gelöscht wird, startet automatisch die nächste. Eine niedrigere Grenze unterbricht laufende Downloads nicht." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When the limit is reached, new downloads wait in a queue. Completing, pausing, or deleting a task automatically starts the next one. Lowering the limit does not interrupt active downloads." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lorsque la limite est atteinte, les nouveaux téléchargements sont mis en file d'attente. La fin, la pause ou la suppression d'une tâche lance automatiquement la suivante. Réduire la limite n'interrompt pas les téléchargements en cours." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "제한에 도달하면 새 다운로드가 대기열에 추가됩니다. 작업이 완료되거나 일시정지 또는 삭제되면 다음 작업이 자동으로 시작됩니다. 제한을 낮춰도 진행 중인 다운로드는 중단되지 않습니다." } }
+      }
+    },
+    "排队中 · 等待空闲下载位" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "In Warteschlange · Wartet auf einen freien Download-Platz" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Queued · Waiting for a free download slot" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En attente · En attente d’un créneau de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "대기 중 · 빈 다운로드 자리를 기다리는 중" } }
+      }
     }
   },
   "version" : "1.0"

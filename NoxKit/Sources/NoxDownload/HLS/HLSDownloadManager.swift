@@ -10,9 +10,9 @@ import NoxKeepAlive
 extension DownloadManager {
     // MARK: - HLS（m3u8）
 
-    func beginHLS(_ record: DownloadRecord) async {
+    func beginHLS(_ record: DownloadRecord, token: UUID) async {
         let id = record.id
-        cancellingIDs.remove(id)
+        guard isCurrentRun(id, token: token) else { return }
 
         var updated = record
         updated.status = .downloading
@@ -57,26 +57,38 @@ extension DownloadManager {
                 // 只记录，不在回调里算速度：分片常成批完成，
                 // 由 1 秒定时器统一计算，速度才稳。
                 Task { @MainActor in
-                    self?.hlsProgress[id] = progress
+                    guard let self, self.isCurrentRun(id, token: token) else { return }
+                    self.hlsProgress[id] = progress
                 }
             }
 
-            guard !cancellingIDs.contains(id) else { return }
+            guard isCurrentRun(id, token: token) else {
+                // 旧 run 失效后才下载完的临时合并文件没人接手，直接清掉
+                try? FileManager.default.removeItem(at: merged)
+                return
+            }
 
-            finishHLS(recordID: id, mergedFile: merged)
+            finishHLS(recordID: id, token: token, mergedFile: merged)
         } catch is CancellationError {
-            // cancel() 已经改过状态并清了统计
+            // 暂停 / 删除 / 重试时令牌已失效，调用方已经改过状态并清了统计
             return
         } catch {
-            guard !cancellingIDs.contains(id) else { return }
-            abort(id: id, message: downloadErrorMessage(for: error))
+            guard isCurrentRun(id, token: token) else { return }
+            abort(id: id, token: token, message: downloadErrorMessage(for: error))
         }
     }
 
-    func finishHLS(recordID: UUID, mergedFile: URL) {
+    func finishHLS(recordID: UUID, token: UUID, mergedFile: URL) {
+        guard isCurrentRun(recordID, token: token) else {
+            try? FileManager.default.removeItem(at: mergedFile)
+            return
+        }
+
         defer {
-            resetScheduling(for: recordID)
-            releaseSlot(recordID)
+            if isCurrentRun(recordID, token: token) {
+                resetScheduling(for: recordID)
+                releaseSlot(recordID, token: token)
+            }
         }
 
         guard var record = store.downloads.first(where: { $0.id == recordID }) else { return }
