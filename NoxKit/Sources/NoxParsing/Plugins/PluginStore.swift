@@ -253,7 +253,9 @@ public final class PluginStore {
     }
 
     private func loadPackage(at url: URL) throws -> (package: PluginPackage, data: Data) {
-        guard url.isFileURL, url.pathExtension.lowercased() == pluginExtension else {
+        // 不强制要求 `.noxplugin` 后缀：从其他 App 打开时，系统可能把文件
+        // 复制/重命名成没有后缀的临时副本。真正的校验由元数据头与字段完成。
+        guard url.isFileURL else {
             throw PluginStoreError.notPluginFile
         }
 

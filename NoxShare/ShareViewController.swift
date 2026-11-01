@@ -1,11 +1,12 @@
 import UIKit
 import UniformTypeIdentifiers
 
-/// 从系统分享面板接收网页链接，再交给 Nox 的浏览页打开。
+/// 从系统分享面板接收网页链接或插件文件。
 ///
-/// Share Extension 没有官方的「打开宿主 App」能力，因此先尝试
-/// `NSExtensionContext.open(_:)`；若系统拒绝，再走 responder chain 的兼容路径。
-/// 两条路径都失败时，把链接复制到剪贴板并提示用户手动打开。
+/// 插件文件会先写入 App Group 共享目录，再让用户选择「导入并打开」或
+/// 「仅导入」——即使系统拒绝 Share Extension 唤起宿主 App（Apple 文档：
+/// iOS 只有 Today / iMessage 扩展支持 `NSExtensionContext.open`），
+/// 数据也已经保存，打开 Nox 时仍会自动导入。
 final class ShareViewController: UIViewController {
     private enum SharedPayload {
         case web(URL)
@@ -21,33 +22,77 @@ final class ShareViewController: UIViewController {
 
     private let spinner = UIActivityIndicatorView(style: .medium)
     private let statusLabel = UILabel()
+    private let scrollView = UIScrollView()
+    private let contentStack = UIStackView()
 
     private var hasStarted = false
     private var hasFinished = false
+    private var sharedFileName: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
 
-        spinner.translatesAutoresizingMaskIntoConstraints = false
         spinner.startAnimating()
 
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.text = NSLocalizedString("正在打开 Nox…", comment: "Share extension opening status")
         statusLabel.font = .preferredFont(forTextStyle: .body)
         statusLabel.textColor = .label
         statusLabel.textAlignment = .center
         statusLabel.numberOfLines = 0
 
-        view.addSubview(spinner)
-        view.addSubview(statusLabel)
+        // 分享面板的高度由系统决定，可能是半屏也可能被用户拖得更矮。
+        // 用滚动视图 + 居中的内容栈，按钮多时仍能完整显示。
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsVerticalScrollIndicator = false
+        view.addSubview(scrollView)
+
+        let contentView = UIView()
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(contentView)
+
+        contentStack.axis = .vertical
+        contentStack.alignment = .fill
+        contentStack.spacing = 12
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(contentStack)
+
+        contentStack.addArrangedSubview(spinner)
+        contentStack.addArrangedSubview(statusLabel)
+
+        // 内容少时与分享面板等高；内容多时由下面的约束撑高并允许滚动。
+        let fitHeight = contentView.heightAnchor.constraint(
+            equalTo: scrollView.frameLayoutGuide.heightAnchor
+        )
+        fitHeight.priority = .defaultLow
 
         NSLayoutConstraint.activate([
-            spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -16),
-            statusLabel.topAnchor.constraint(equalTo: spinner.bottomAnchor, constant: 12),
-            statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            contentView.heightAnchor.constraint(
+                greaterThanOrEqualTo: scrollView.frameLayoutGuide.heightAnchor
+            ),
+            fitHeight,
+
+            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
+            contentStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            contentStack.topAnchor.constraint(
+                greaterThanOrEqualTo: contentView.topAnchor,
+                constant: 20
+            ),
+            contentStack.bottomAnchor.constraint(
+                lessThanOrEqualTo: contentView.bottomAnchor,
+                constant: -20
+            )
         ])
     }
 
@@ -76,7 +121,7 @@ final class ShareViewController: UIViewController {
                 case .web(let url):
                     self.openHostApp(with: url)
                 case .plugin(let data):
-                    self.openHostAppForPlugin(data)
+                    self.presentPluginOptions(for: data)
                 case .invalidFile:
                     self.showFailure(
                         message: NSLocalizedString(
@@ -107,6 +152,7 @@ final class ShareViewController: UIViewController {
             providers.count,
             providers.map(\.registeredTypeIdentifiers).description
         )
+        sharedFileName = providers.compactMap(\.suggestedName).first
 
         loadPluginData(from: providers) { [weak self] data in
             DispatchQueue.main.async {
@@ -536,27 +582,125 @@ final class ShareViewController: UIViewController {
         }
     }
 
-    private func openHostAppForPlugin(_ data: Data) {
-        // 首选 App Group 收件箱：数据先落盘，唤起失败也不会丢。
+    // MARK: - 插件导入选项
+
+    private func presentPluginOptions(for data: Data) {
+        spinner.stopAnimating()
+        spinner.isHidden = true
+
+        statusLabel.font = .preferredFont(forTextStyle: .headline)
+        statusLabel.text = pluginSummary(for: data)
+
+        let openButton = makeActionButton(
+            title: NSLocalizedString("导入并打开", comment: "Share extension import and open"),
+            subtitle: NSLocalizedString("保存后立即打开 Nox", comment: "Share extension import and open subtitle"),
+            prominent: true
+        )
+        let saveButton = makeActionButton(
+            title: NSLocalizedString("仅导入", comment: "Share extension import only"),
+            subtitle: NSLocalizedString("打开 Nox 时自动导入", comment: "Share extension import only subtitle"),
+            prominent: false
+        )
+        let cancelButton = UIButton(type: .system)
+        cancelButton.setTitle(
+            NSLocalizedString("取消", comment: "Share extension cancel import"),
+            for: .normal
+        )
+        cancelButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
+
+        contentStack.addArrangedSubview(openButton)
+        contentStack.addArrangedSubview(saveButton)
+        contentStack.addArrangedSubview(cancelButton)
+
+        openButton.addAction(UIAction { [weak self] _ in
+            self?.importPlugin(data, openApp: true)
+        }, for: .touchUpInside)
+        saveButton.addAction(UIAction { [weak self] _ in
+            self?.importPlugin(data, openApp: false)
+        }, for: .touchUpInside)
+        cancelButton.addAction(UIAction { [weak self] _ in
+            self?.finish()
+        }, for: .touchUpInside)
+    }
+
+    private func makeActionButton(
+        title: String,
+        subtitle: String,
+        prominent: Bool
+    ) -> UIButton {
+        var configuration = prominent
+            ? UIButton.Configuration.filled()
+            : UIButton.Configuration.gray()
+        configuration.title = title
+        configuration.subtitle = subtitle
+        configuration.titleAlignment = .center
+        configuration.cornerStyle = .large
+        configuration.contentInsets = NSDirectionalEdgeInsets(
+            top: 14, leading: 20, bottom: 14, trailing: 20
+        )
+        if prominent {
+            configuration.baseBackgroundColor = .systemBlue
+            configuration.baseForegroundColor = .white
+        }
+
+        let button = UIButton(configuration: configuration)
+        button.titleLabel?.numberOfLines = 2
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.heightAnchor.constraint(equalToConstant: 64).isActive = true
+        return button
+    }
+
+    private func pluginSummary(for data: Data) -> String {
+        let name = sharedFileName ?? "plugin.noxplugin"
+        let size = ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)
+        return "\(name)\n\(size) · \(NSLocalizedString("Nox 插件", comment: "Share extension plugin kind"))"
+    }
+
+    private func importPlugin(_ data: Data, openApp: Bool) {
+        contentStack.isUserInteractionEnabled = false
+
         if let stored = SharedPluginInbox.store(data) {
             NSLog(
                 "NoxShare: plugin saved to shared inbox %@ (%ld bytes)",
                 stored.lastPathComponent,
                 data.count
             )
-            guard let noxURL = URL(string: "nox://import-plugin") else {
+            if openApp {
+                openPluginImportURL { [weak self] in
+                    self?.showSavedMessage()
+                }
+            } else {
                 showSavedMessage()
-                return
-            }
-            openNoxURL(noxURL) { [weak self] in
-                self?.showSavedMessage()
             }
             return
         }
 
-        NSLog("NoxShare: shared inbox unavailable, falling back to URL payload")
+        NSLog("NoxShare: shared inbox unavailable")
+        guard openApp else {
+            showFailure(
+                title: NSLocalizedString("无法仅导入", comment: "Share extension import only unavailable title"),
+                message: NSLocalizedString(
+                    "当前安装不支持共享存储，请使用「导入并打开」。",
+                    comment: "Share extension import only unavailable message"
+                )
+            )
+            return
+        }
 
-        // 退回旧方案：压缩后塞进 URL。自定义 URL 太长会被系统拒绝打开。
+        openHostAppForPluginViaURL(data)
+    }
+
+    private func openPluginImportURL(onFailure: @escaping () -> Void) {
+        guard let url = URL(string: "nox://import-plugin") else {
+            onFailure()
+            return
+        }
+        openNoxURL(url, onFailure: onFailure)
+    }
+
+    private func openHostAppForPluginViaURL(_ data: Data) {
+        // 没有 App Group 时退回旧方案：压缩后塞进 URL。
+        // 自定义 URL 太长会被系统拒绝打开。
         var payload = data
         var compressed = false
         if let packed = try? (data as NSData).compressed(using: .zlib) as Data,
