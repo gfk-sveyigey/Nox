@@ -51,14 +51,6 @@ struct ContentView: View {
         // 浅色 / 深色 / 跟随系统
         .preferredColorScheme(appState.appearanceMode.colorScheme)
         .onAppear {
-            // 冷启动时 URL 可能只出现在 scene 的 connectionOptions 里，
-            // 且 willConnect 通知可能早于监听注册；这里按当前 scene 再补读一次。
-            for scene in UIApplication.shared.connectedScenes {
-                for context in scene.connectionOptions.urlContexts {
-                    incomingURL.submit(context.url, source: "scene")
-                }
-            }
-
             // 冷启动时 document open 可能早于视图安装，这里补一次消费。
             // 延后一个 runloop，确保 alert 等呈现上下文已经装好。
             if let url = incomingURL.pendingURL {

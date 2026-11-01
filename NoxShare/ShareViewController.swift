@@ -57,10 +57,17 @@ final class ShareViewController: UIViewController {
         guard !hasStarted else { return }
         hasStarted = true
 
-        loadSharedPayload { [weak self] payload in
-            DispatchQueue.main.async {
+        // 读取附件 / 打开宿主 App 都可能卡住。加一个总超时，避免扩展一直
+        // 停在「正在打开 Nox…」，让用户至少能看到失败提示。
+        var didResolve = false
+        func resolve(_ payload: SharedPayload?) {
+            guard !didResolve else { return }
+            didResolve = true
+
+            DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 guard let payload else {
+                    NSLog("NoxShare: payload timeout or unreadable")
                     self.showFailure()
                     return
                 }
@@ -81,6 +88,14 @@ final class ShareViewController: UIViewController {
                     self.showPluginFailure()
                 }
             }
+        }
+
+        loadSharedPayload { payload in
+            resolve(payload)
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            resolve(nil)
         }
     }
 
@@ -153,14 +168,28 @@ final class ShareViewController: UIViewController {
                 provider.hasItemConformingToTypeIdentifier($0)
             }
             guard !types.isEmpty else {
-                loadProvider()
+                loadFileRepresentationData(from: provider) { data in
+                    if let data {
+                        completion(data)
+                    } else {
+                        loadProvider()
+                    }
+                }
                 return
             }
 
             var typeIndex = 0
             func loadType() {
                 guard typeIndex < types.count else {
-                    loadProvider()
+                    // 有的文件提供方只实现了 loadFileRepresentation，
+                    // loadItem 永远拿不到可用对象，这里再兜一次。
+                    loadFileRepresentationData(from: provider) { data in
+                        if let data {
+                            completion(data)
+                        } else {
+                            loadProvider()
+                        }
+                    }
                     return
                 }
 
@@ -185,6 +214,45 @@ final class ShareViewController: UIViewController {
         }
 
         loadProvider()
+    }
+
+    /// 一些文件提供方（iCloud Drive、第三方网盘）只通过
+    /// `loadFileRepresentation` 提供实际文件内容。
+    private func loadFileRepresentationData(
+        from provider: NSItemProvider,
+        completion: @escaping (Data?) -> Void
+    ) {
+        guard
+            provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+                || provider.hasItemConformingToTypeIdentifier(Self.pluginTypeIdentifier)
+        else {
+            completion(nil)
+            return
+        }
+
+        let typeIdentifier = provider.hasItemConformingToTypeIdentifier(Self.pluginTypeIdentifier)
+            ? Self.pluginTypeIdentifier
+            : UTType.data.identifier
+
+        provider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { [weak self] url, error in
+            if let error {
+                NSLog(
+                    "NoxShare: loadFileRepresentation failed: %@",
+                    error.localizedDescription
+                )
+            }
+            guard let self, let url, let data = self.fileData(at: url) else {
+                completion(nil)
+                return
+            }
+            // 临时副本不一定保留原文件名，用插件头再确认一次，避免把
+            // 普通文件当成插件交给宿主 App。
+            guard self.isPluginName(url.lastPathComponent) || self.isPluginData(data) else {
+                completion(nil)
+                return
+            }
+            completion(data)
+        }
     }
 
     private func pluginData(from item: Any, provider: NSItemProvider) -> Data? {
