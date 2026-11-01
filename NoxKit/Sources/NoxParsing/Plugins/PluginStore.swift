@@ -69,10 +69,18 @@ public final class PluginStore {
     private let fileManager = FileManager.default
     private let pluginExtension = "noxplugin"
     /// 用户从本机移除的包内插件。包内文件无法真正删除，重启后仍会被扫描到，
-    /// 因此这里记录 id，在装配解析器时跳过；可在设置页恢复。
+    /// 因此这里记录 id，在装配解析器时跳过。
     private let hiddenBundledKey = "Nox.hiddenBundledPlugins"
+    /// 是否显示随 App 分发的单文件插件。默认关闭，避免内置 Pornhub 之类的
+    /// 插件占着解析来源；在设置页连续点击标题十次可以恢复。
+    private let bundledEnabledKey = "Nox.bundledPluginsEnabled"
 
     private init() {}
+
+    /// 包内单文件插件默认不显示，只有用户显式恢复后才参与装配。
+    public var showsBundledPlugins: Bool {
+        UserDefaults.standard.bool(forKey: bundledEnabledKey)
+    }
 
     private var pluginsDirectory: URL {
         DownloadStorage.rootDirectory.appendingPathComponent("Plugins", isDirectory: true)
@@ -84,9 +92,11 @@ public final class PluginStore {
     func loadParsers() -> [ScriptSiteParser] {
         var byID: [String: ScriptSiteParser] = [:]
 
-        let hidden = hiddenBundledIDs
-        for parser in BundledPluginLoader.load() where !hidden.contains(parser.identifier) {
-            byID[parser.identifier] = parser
+        if showsBundledPlugins {
+            let hidden = hiddenBundledIDs
+            for parser in BundledPluginLoader.load() where !hidden.contains(parser.identifier) {
+                byID[parser.identifier] = parser
+            }
         }
 
         for parser in loadImportedParsers() {
@@ -148,7 +158,7 @@ public final class PluginStore {
         let destination = pluginFileURL(for: package.manifest.id)
         let existed = fileManager.fileExists(atPath: destination.path)
         let previousVersion = existed ? installedVersion(at: destination) : nil
-        let overridesBundled = BundledPluginLoader.load().contains {
+        let overridesBundled = showsBundledPlugins && BundledPluginLoader.load().contains {
             $0.identifier == package.manifest.id
         }
 
@@ -213,9 +223,11 @@ public final class PluginStore {
 
         let importedURL = pluginFileURL(for: package.manifest.id)
         let importedExists = fileManager.fileExists(atPath: importedURL.path)
-        let bundledVersion = BundledPluginLoader.load()
-            .first { $0.identifier == package.manifest.id }?
-            .pluginVersion
+        let bundledVersion = showsBundledPlugins
+            ? BundledPluginLoader.load()
+                .first { $0.identifier == package.manifest.id }?
+                .pluginVersion
+            : nil
 
         let existingVersion: String?
         let existing: Inspection.Existing?
@@ -379,6 +391,13 @@ public final class PluginStore {
 
         hideBundledPlugin(identifier)
         LogStore.shared.info("bundled plugin hidden \(identifier)")
+    }
+
+    /// 重新显示全部包内插件：打开总开关并清掉逐个删除的记录。
+    public func restoreBundledPlugins() {
+        UserDefaults.standard.set(true, forKey: bundledEnabledKey)
+        UserDefaults.standard.removeObject(forKey: hiddenBundledKey)
+        LogStore.shared.info("bundled plugins restored")
     }
 
     private func hideBundledPlugin(_ identifier: String) {

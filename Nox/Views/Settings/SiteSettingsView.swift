@@ -20,6 +20,10 @@ struct SiteSettingsView: View {
     @State private var pendingDeleteName = ""
     @State private var pendingDeleteIsBundled = false
     @State private var showDeleteConfirmation = false
+    /// 连续点击标题十次可以恢复默认隐藏的包内插件。
+    @State private var titleTapCount = 0
+    @State private var lastTitleTap = Date.distantPast
+    @State private var showRestoreBundledAlert = false
 
     var body: some View {
         Form {
@@ -50,6 +54,15 @@ struct SiteSettingsView: View {
         .navigationTitle(L("解析来源"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Button(action: handleTitleTap) {
+                    Text(L("解析来源"))
+                        .font(.headline)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(.isHeader)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 trailingToolbar
             }
@@ -81,6 +94,29 @@ struct SiteSettingsView: View {
                     : L("只删除本机上的插件文件；如果包内有同 id 插件，也不会再恢复。")
             )
         }
+        .alert(L("恢复内置插件"), isPresented: $showRestoreBundledAlert) {
+            Button(L("恢复")) {
+                PluginStore.shared.restoreBundledPlugins()
+                registry.reload()
+            }
+            Button(L("取消"), role: .cancel) {}
+        } message: {
+            Text(L("恢复后会重新显示随 App 分发的单文件插件，例如 Pornhub。"))
+        }
+    }
+
+    /// 标题十连击：每次点击间隔超过 2 秒就重新计数。
+    private func handleTitleTap() {
+        let now = Date()
+        if now.timeIntervalSince(lastTitleTap) > 2 {
+            titleTapCount = 0
+        }
+        lastTitleTap = now
+        titleTapCount += 1
+
+        guard titleTapCount >= 10 else { return }
+        titleTapCount = 0
+        showRestoreBundledAlert = true
     }
 
     @ViewBuilder

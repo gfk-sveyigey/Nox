@@ -2261,6 +2261,30 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "순서 변경" } }
       }
     },
+    "恢复" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wiederherstellen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Restaurer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "복원" } }
+      }
+    },
+    "恢复内置插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Integrierte Plugins wiederherstellen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore Built-in Plugins" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Restaurer les plugins intégrés" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 플러그인 복원" } }
+      }
+    },
+    "恢复后会重新显示随 App 分发的单文件插件，例如 Pornhub。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mit der App gelieferte Einzeldatei-Plugins (z. B. Pornhub) werden wieder angezeigt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in single-file plugins shipped with the app (for example, Pornhub) will be shown again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les plugins monofichiers fournis avec l’app (par exemple Pornhub) seront de nouveau affichés." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱에 포함된 단일 파일 플러그인(예: Pornhub)이 다시 표시됩니다." } }
+      }
+    },
     "恢复默认顺序" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Standardreihenfolge wiederherstellen" } },
