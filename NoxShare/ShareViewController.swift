@@ -87,12 +87,18 @@ final class ShareViewController: UIViewController {
     private func loadSharedPayload(completion: @escaping (SharedPayload?) -> Void) {
         let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
             .flatMap { $0.attachments ?? [] }
+        NSLog(
+            "NoxShare: %ld attachment(s) %@",
+            providers.count,
+            providers.map(\.registeredTypeIdentifiers).description
+        )
 
         loadPluginData(from: providers) { [weak self] data in
             DispatchQueue.main.async {
                 guard let self else { return }
 
                 if let data {
+                    NSLog("NoxShare: plugin payload %ld bytes", data.count)
                     completion(.plugin(data))
                     return
                 }
@@ -462,9 +468,16 @@ final class ShareViewController: UIViewController {
         guard let noxURL = components.url,
               noxURL.absoluteString.utf8.count <= 180_000
         else {
+            NSLog("NoxShare: import url too long")
             showPluginFailure()
             return
         }
+
+        NSLog(
+            "NoxShare: import url %d bytes (compressed=%@)",
+            noxURL.absoluteString.utf8.count,
+            compressed ? "yes" : "no"
+        )
 
         openNoxURL(noxURL) { [weak self] in
             self?.showPluginFailure()
@@ -481,21 +494,44 @@ final class ShareViewController: UIViewController {
     }
 
     private func openNoxURL(_ url: URL, onFailure: @escaping () -> Void) {
+        NSLog("NoxShare: opening host app via %@", url.host ?? "?")
+
         guard let extensionContext else {
             openUsingResponderChain(url, onFailure: onFailure)
             return
         }
 
-        extensionContext.open(url) { [weak self] opened in
-            DispatchQueue.main.async {
-                guard let self else { return }
+        var resolved = false
+        func resolve(opened: Bool) {
+            guard !resolved else { return }
+            resolved = true
 
-                if opened {
-                    self.finish()
-                } else {
-                    self.openUsingResponderChain(url, onFailure: onFailure)
+            if opened {
+                NSLog("NoxShare: extensionContext.open succeeded")
+                // 不要立刻 completeRequest：个别系统版本会抢在宿主 App
+                // 真正收到 URL 之前收掉扩展进程。
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                    self?.finish()
                 }
+            } else {
+                NSLog("NoxShare: extensionContext.open failed, trying responder chain")
+                openUsingResponderChain(url, onFailure: onFailure)
             }
+        }
+
+        extensionContext.open(url) { opened in
+            DispatchQueue.main.async {
+                resolve(opened: opened)
+            }
+        }
+
+        // 少数系统版本上 open 的 completion 可能永远不回调，超时后改走
+        // responder chain，避免扩展一直停在转圈界面。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard !resolved else { return }
+            resolved = true
+            NSLog("NoxShare: extensionContext.open timed out, trying responder chain")
+            self.openUsingResponderChain(url, onFailure: onFailure)
         }
     }
 
@@ -505,8 +541,12 @@ final class ShareViewController: UIViewController {
 
         while let current = responder {
             if current.responds(to: selector) {
+                NSLog(
+                    "NoxShare: %@ handled openURL",
+                    String(describing: type(of: current))
+                )
                 _ = current.perform(selector, with: url)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
                     self?.finish()
                 }
                 return
@@ -514,6 +554,7 @@ final class ShareViewController: UIViewController {
             responder = current.next
         }
 
+        NSLog("NoxShare: no responder handled openURL")
         onFailure()
     }
 

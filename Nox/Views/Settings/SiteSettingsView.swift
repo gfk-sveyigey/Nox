@@ -263,21 +263,24 @@ struct SiteSettingsView: View {
             return (L("内置通用嗅探"), "dot.radiowaves.left.and.right")
         }
 
-        // 所有单文件 .noxplugin 都按插件展示；区分包内版本与用户导入版本，
-        // 这样导入一份与内置插件同 ID 的文件时，列表里能看出它已变成用户版本。
+        // 所有单文件 .noxplugin 都按插件展示。小字优先显示版本号和
+        // description；两者都缺失时才回落到来源说明，避免出现空行。
         if parser.isImportedPlugin || parser.isBundledPlugin {
-            var parts = [
-                parser.isImportedPlugin
-                    ? L("已导入单文件插件")
-                    : L("内置单文件插件")
-            ]
+            var parts: [String] = []
             if let version = parser.pluginVersion, !version.isEmpty {
                 parts.append("v\(version)")
             }
-            if let author = parser.pluginAuthor, !author.isEmpty {
-                parts.append(author)
+            if let description = parser.pluginDescription, !description.isEmpty {
+                parts.append(description)
             }
-            return (parts.joined(separator: " · "), "puzzlepiece.extension")
+
+            let subtitle = parts.isEmpty
+                ? (parser.isImportedPlugin
+                    ? L("已导入单文件插件")
+                    : L("内置单文件插件"))
+                : parts.joined(separator: " · ")
+
+            return (subtitle, "puzzlepiece.extension")
         }
 
         return (L("内置解析器"), "bolt.horizontal.circle")

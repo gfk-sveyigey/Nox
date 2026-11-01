@@ -407,7 +407,12 @@ public final class AppState: ObservableObject {
 
         pipVerboseLogging = defaults.bool(forKey: pipVerboseLoggingKey)
 
-        disabledSiteIDs = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
+        var disabled = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
+        // 通用 Sniffer 的旧 ID 是 "generic"，迁移到 "sniffer"。
+        if disabled.remove("generic") != nil {
+            disabled.insert("sniffer")
+        }
+        disabledSiteIDs = disabled
 
         // 读盘后先按当前保留策略裁剪一次，避免旧数据一直撑着。
         applyHistoryRetention()

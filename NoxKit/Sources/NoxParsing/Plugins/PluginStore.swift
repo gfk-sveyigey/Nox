@@ -29,6 +29,40 @@ public final class PluginStore {
         public var isUpdate: Bool { updateKind != .installed }
     }
 
+    /// 导入前的只读检查结果：插件是谁、当前有没有同 ID 的版本。
+    public struct Inspection {
+        public enum Existing: Equatable {
+            case imported
+            case bundled
+        }
+
+        public enum Change: Equatable {
+            case new
+            case upgrade
+            case downgrade
+            case same
+        }
+
+        public let id: String
+        public let name: String
+        public let version: String
+        /// 同 ID 已存在的版本号；导入版本优先，其次包内版本。
+        public let existingVersion: String?
+        public let existing: Existing?
+
+        public var exists: Bool { existing != nil }
+
+        public var change: Change {
+            guard existing != nil, let existingVersion else { return .new }
+            guard existingVersion != "?" else { return .same }
+
+            let comparison = PluginManifest.compareVersion(version, existingVersion)
+            if comparison > 0 { return .upgrade }
+            if comparison < 0 { return .downgrade }
+            return .same
+        }
+    }
+
     public static let shared = PluginStore()
 
     private let fileManager = FileManager.default
@@ -112,22 +146,7 @@ public final class PluginStore {
     /// 文件来自「文件」App、iCloud Drive 或其他 App 时可能带安全作用域，
     /// 这里用 `NSFileCoordinator` 读取，避免 File Provider 尚未同步完时拿到半个文件。
     public func install(from url: URL) throws -> InstallResult {
-        guard url.isFileURL, url.pathExtension.lowercased() == pluginExtension else {
-            throw PluginStoreError.notPluginFile
-        }
-
-        let accessed = url.startAccessingSecurityScopedResource()
-        defer {
-            if accessed { url.stopAccessingSecurityScopedResource() }
-        }
-
-        let data = try readPluginData(at: url)
-        guard let text = String(data: data, encoding: .utf8) else {
-            throw PluginStoreError.notUTF8
-        }
-
-        let package = try PluginPackage(text: text)
-        try package.validateJavaScriptSyntax()
+        let (package, data) = try loadPackage(at: url)
 
         let destination = pluginFileURL(for: package.manifest.id)
         let existed = fileManager.fileExists(atPath: destination.path)
@@ -189,6 +208,59 @@ public final class PluginStore {
             updateKind: updateKind,
             overridesBundled: overridesBundled
         )
+    }
+
+    /// 只读取并校验，不写入磁盘。用于导入前询问用户是否覆盖已存在的插件。
+    public func inspect(from url: URL) throws -> Inspection {
+        let (package, _) = try loadPackage(at: url)
+
+        let importedURL = pluginFileURL(for: package.manifest.id)
+        let importedExists = fileManager.fileExists(atPath: importedURL.path)
+        let bundledVersion = BundledPluginLoader.load()
+            .first { $0.identifier == package.manifest.id }?
+            .pluginVersion
+
+        let existingVersion: String?
+        let existing: Inspection.Existing?
+
+        if importedExists {
+            existingVersion = installedVersion(at: importedURL) ?? "?"
+            existing = .imported
+        } else if let bundledVersion {
+            existingVersion = bundledVersion
+            existing = .bundled
+        } else {
+            existingVersion = nil
+            existing = nil
+        }
+
+        return Inspection(
+            id: package.manifest.id,
+            name: package.manifest.displayName,
+            version: package.manifest.version,
+            existingVersion: existingVersion,
+            existing: existing
+        )
+    }
+
+    private func loadPackage(at url: URL) throws -> (package: PluginPackage, data: Data) {
+        guard url.isFileURL, url.pathExtension.lowercased() == pluginExtension else {
+            throw PluginStoreError.notPluginFile
+        }
+
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+
+        let data = try readPluginData(at: url)
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw PluginStoreError.notUTF8
+        }
+
+        let package = try PluginPackage(text: text)
+        try package.validateJavaScriptSyntax()
+        return (package, data)
     }
 
     private func readPluginData(at url: URL) throws -> Data {

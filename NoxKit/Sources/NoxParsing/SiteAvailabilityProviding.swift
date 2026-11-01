@@ -13,5 +13,5 @@ public protocol SiteAvailabilityProviding: AnyObject {
 /// 视图层用它判断「当前页面是不是靠嗅探兜底」，因此单独公开；
 /// 具体的解析器实现仍然保持模块内可见。
 public enum SnifferSite {
-    public static let identifier = "generic"
+    public static let identifier = "sniffer"
 }
