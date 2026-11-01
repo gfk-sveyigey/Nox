@@ -33,8 +33,6 @@ struct SiteSettingsView: View {
                 .onMove { source, destination in
                     registry.move(fromOffsets: source, toOffset: destination)
                 }
-            } header: {
-                Text(L("匹配顺序"))
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(
@@ -133,21 +131,31 @@ struct SiteSettingsView: View {
         }
     }
 
+    @ViewBuilder
     private func rowView(_ row: SiteRow) -> some View {
-        Toggle(isOn: siteBinding(for: row.id)) {
-            HStack(spacing: 10) {
-                Image(systemName: row.systemImage)
-                    .foregroundStyle(row.isFixed ? Color.secondary : Color.accentColor)
-                    .frame(width: 24)
+        if editMode.isEditing {
+            // 排序态只保留拖动手柄，隐藏开关，避免误触改变启用状态。
+            rowLabel(row)
+        } else {
+            Toggle(isOn: siteBinding(for: row.id)) {
+                rowLabel(row)
+            }
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(row.title)
-                        .lineLimit(1)
-                    Text(row.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+    private func rowLabel(_ row: SiteRow) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: row.systemImage)
+                .foregroundStyle(row.isFixed ? Color.secondary : Color.accentColor)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.title)
+                    .lineLimit(1)
+                Text(row.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
         }
     }
@@ -234,10 +242,12 @@ struct SiteSettingsView: View {
         fixed: Bool
     ) -> (subtitle: String, systemImage: String) {
         if fixed {
-            return (L("兜底嗅探器 · 固定最后"), "dot.radiowaves.left.and.right")
+            return (L("内置通用嗅探"), "dot.radiowaves.left.and.right")
         }
 
-        if parser.isImportedPlugin {
+        // 所有单文件 .noxplugin 都属于导入插件，包括随 App 分发的 Pornhub；
+        // 是否允许删除仍由 SiteRow.isImported 单独控制。
+        if parser.isImportedPlugin || parser.isBundledPlugin {
             var parts = [L("已导入插件")]
             if let version = parser.pluginVersion, !version.isEmpty {
                 parts.append("v\(version)")
@@ -246,14 +256,6 @@ struct SiteSettingsView: View {
                 parts.append(author)
             }
             return (parts.joined(separator: " · "), "puzzlepiece.extension")
-        }
-
-        if parser.isBundledPlugin {
-            var parts = [L("内置插件")]
-            if let version = parser.pluginVersion, !version.isEmpty {
-                parts.append("v\(version)")
-            }
-            return (parts.joined(separator: " · "), "shippingbox")
         }
 
         return (L("内置解析器"), "bolt.horizontal.circle")
