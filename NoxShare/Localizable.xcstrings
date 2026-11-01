@@ -29,30 +29,30 @@
         }
       }
     },
-    "插件已复制。请打开 Nox，在「解析来源」右上角选择「从剪贴板导入插件」。" : {
+    "插件分享失败。请在「文件」中选择插件并使用「用 Nox 打开」。": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The plugin has been copied. Open Nox and choose “Import Plugin from Clipboard” from the top-right menu in Parsing Sources."
+            "value": "Couldn’t share the plugin. Open it from Files and choose “Open in Nox” instead."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "플러그인이 복사되었습니다. Nox를 열고 분석 소스 오른쪽 상단 메뉴에서 “클립보드에서 플러그인 가져오기”를 선택하세요."
+            "value": "플러그인을 공유하지 못했습니다. 파일 앱에서 플러그인을 열고 “Nox에서 열기”를 선택하세요."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le plugin a été copié. Ouvrez Nox et choisissez « Importer un plugin depuis le presse-papiers » dans le menu en haut à droite des Sources d’analyse."
+            "value": "Impossible de partager le plugin. Ouvrez-le depuis Fichiers et choisissez « Ouvrir dans Nox »."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Plugin wurde kopiert. Öffne Nox und wähle oben rechts unter „Analysequellen“ „Plugin aus Zwischenablage importieren“."
+            "value": "Das Plugin konnte nicht geteilt werden. Öffne es in der Dateien-App und wähle „In Nox öffnen“."
           }
         }
       }
@@ -137,6 +137,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "Der Link wurde kopiert. Öffne Nox, füge ihn in die Adressleiste ein und rufe ihn auf."
+          }
+        }
+      }
+    },
+    "这个文件不是 Nox 插件。请分享 .noxplugin 插件文件，或网页链接。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file isn’t a Nox plugin. Share a .noxplugin file or a web link."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일은 Nox 플러그인이 아닙니다. .noxplugin 파일이나 웹 링크를 공유해 주세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier n’est pas un plugin Nox. Partagez un fichier .noxplugin ou un lien web."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Datei ist kein Nox-Plugin. Teile eine .noxplugin-Datei oder einen Weblink."
           }
         }
       }

@@ -40,6 +40,9 @@
                 <integer>1</integer>
                 <key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
                 <integer>1</integer>
+                <!-- 分享 .noxplugin 文件时扩展必须能拿到附件；是否插件由扩展按后缀判断。 -->
+                <key>NSExtensionActivationSupportsFileWithMaxCount</key>
+                <integer>4</integer>
             </dict>
         </dict>
         <key>NSExtensionPointIdentifier</key>

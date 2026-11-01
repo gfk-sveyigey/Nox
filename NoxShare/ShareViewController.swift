@@ -10,10 +10,14 @@ final class ShareViewController: UIViewController {
     private enum SharedPayload {
         case web(URL)
         case plugin(Data)
+        /// 分享的是文件，但后缀不是 `.noxplugin`。
+        case invalidFile
+        /// 看起来是插件文件，但没能读取内容。
+        case unreadablePlugin
     }
 
-    /// 与宿主 App 的 PluginImportCoordinator 保持一致。
-    private static let pluginPasteboardType = "com.aholic.nox.plugin"
+    /// 与宿主 App 的 Info.plist / 插件文件类型保持一致。
+    private static let pluginTypeIdentifier = "com.aholic.nox.plugin"
 
     private let spinner = UIActivityIndicatorView(style: .medium)
     private let statusLabel = UILabel()
@@ -66,6 +70,15 @@ final class ShareViewController: UIViewController {
                     self.openHostApp(with: url)
                 case .plugin(let data):
                     self.openHostAppForPlugin(data)
+                case .invalidFile:
+                    self.showFailure(
+                        message: NSLocalizedString(
+                            "这个文件不是 Nox 插件。请分享 .noxplugin 插件文件，或网页链接。",
+                            comment: "Share extension non-plugin file"
+                        )
+                    )
+                case .unreadablePlugin:
+                    self.showPluginFailure()
                 }
             }
         }
@@ -77,11 +90,27 @@ final class ShareViewController: UIViewController {
 
         loadPluginData(from: providers) { [weak self] data in
             DispatchQueue.main.async {
+                guard let self else { return }
+
                 if let data {
                     completion(.plugin(data))
                     return
                 }
-                self?.loadSharedPageURL { url in
+
+                // 明确分享的是文件时，不再把它当网页链接解析，
+                // 否则只会得到含糊的“未能读取网页链接”。
+                switch self.sharedFileKind(providers) {
+                case .plugin?:
+                    completion(.unreadablePlugin)
+                    return
+                case .other?:
+                    completion(.invalidFile)
+                    return
+                case nil:
+                    break
+                }
+
+                self.loadSharedPageURL { url in
                     completion(url.map(SharedPayload.web))
                 }
             }
@@ -89,81 +118,154 @@ final class ShareViewController: UIViewController {
     }
 
     /// 分享面板可能把 `.noxplugin` 提供成文件 URL、自定义 UTI 或纯文本。
-    /// 三种形式都先读成 Data，再用插件头判断，避免把普通文本误当插件。
+    /// 优先看文件名后缀；没有文件名时再用插件头兜底，普通网页文本不会被误判。
     private func loadPluginData(
         from providers: [NSItemProvider],
         completion: @escaping (Data?) -> Void
     ) {
         let identifiers = [
-            Self.pluginPasteboardType,
+            Self.pluginTypeIdentifier,
             UTType.fileURL.identifier,
-            UTType.url.identifier,
+            UTType.data.identifier,
             UTType.plainText.identifier
         ]
-        var remaining = providers
+        var providerIndex = 0
 
-        func loadNext() {
-            guard !remaining.isEmpty else {
+        // 同一个提供方可能同时声明插件 UTI、file-url 和 plain-text。
+        // 某种表示加载失败时，要继续尝试它的下一种表示，而不是直接跳过
+        // 这个附件——否则“文件明明在，却什么都没读到”。
+        func loadProvider() {
+            guard providerIndex < providers.count else {
                 completion(nil)
                 return
             }
 
-            let provider = remaining.removeFirst()
-            guard let typeIdentifier = identifiers.first(where: {
+            let provider = providers[providerIndex]
+            providerIndex += 1
+
+            let types = identifiers.filter {
                 provider.hasItemConformingToTypeIdentifier($0)
-            }) else {
-                loadNext()
+            }
+            guard !types.isEmpty else {
+                loadProvider()
                 return
             }
 
-            provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { [weak self] item, _ in
-                guard let self else {
-                    completion(nil)
+            var typeIndex = 0
+            func loadType() {
+                guard typeIndex < types.count else {
+                    loadProvider()
                     return
                 }
 
-                if let data = self.pluginData(from: item), self.isPluginData(data) {
-                    completion(data)
-                } else {
-                    loadNext()
+                let typeIdentifier = types[typeIndex]
+                typeIndex += 1
+
+                provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { [weak self] item, _ in
+                    guard let self else {
+                        completion(nil)
+                        return
+                    }
+
+                    if let data = self.pluginData(from: item, provider: provider) {
+                        completion(data)
+                    } else {
+                        loadType()
+                    }
                 }
             }
+
+            loadType()
         }
 
-        loadNext()
+        loadProvider()
     }
 
-    private func pluginData(from item: Any) -> Data? {
-        if let data = item as? Data {
-            if isPluginData(data) {
-                return data
+    private func pluginData(from item: Any, provider: NSItemProvider) -> Data? {
+        let declaredPlugin = provider.hasItemConformingToTypeIdentifier(
+            Self.pluginTypeIdentifier
+        )
+        let namedPlugin = isPluginName(provider.suggestedName)
+
+        if let url = fileURL(from: item) {
+            // 插件判定以文件后缀为准；只有系统或提供方明确标注了
+            // 自定义 UTI 时才允许没有扩展名的文件。
+            guard
+                declaredPlugin || namedPlugin || isPluginName(url.lastPathComponent)
+            else {
+                return nil
             }
-            // 文件 URL 有时以 UTF-8 文本形式出现在 Data 里。
-            if let value = String(data: data, encoding: .utf8),
-               let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
-               url.isFileURL {
-                return fileData(at: url)
-            }
-            return data
-        }
-
-        if let text = item as? String {
-            return text.data(using: .utf8)
-        }
-
-        if let text = item as? NSAttributedString {
-            return text.string.data(using: .utf8)
-        }
-
-        if let url = item as? URL {
             return fileData(at: url)
         }
 
-        if let url = item as? NSURL {
-            return fileData(at: url as URL)
+        guard let data = data(from: item) else { return nil }
+        guard declaredPlugin || namedPlugin || isPluginData(data) else {
+            return nil
         }
+        return data
+    }
 
+    private enum SharedFileKind {
+        case plugin
+        case other
+    }
+
+    /// 判断分享内容里是否包含文件附件。
+    ///
+    /// 只在提供方明确给出 `public.file-url` 时才认定是“文件”，避免把
+    /// 网页链接的 suggestedName（例如 example.com）误判成文件。
+    private func sharedFileKind(_ providers: [NSItemProvider]) -> SharedFileKind? {
+        for provider in providers
+        where provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            if let name = provider.suggestedName, isPluginName(name) {
+                return .plugin
+            }
+            // 文件名丢失时无法按后缀判断，按插件读取失败处理更贴近实际。
+            if provider.suggestedName == nil {
+                return .plugin
+            }
+            return .other
+        }
         return nil
+    }
+
+    private func fileURL(from item: Any) -> URL? {
+        if let url = item as? URL {
+            return url.isFileURL ? url : nil
+        }
+        if let url = item as? NSURL {
+            let value = url as URL
+            return value.isFileURL ? value : nil
+        }
+        if let data = item as? Data,
+           let value = String(data: data, encoding: .utf8),
+           let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+           url.isFileURL {
+            return url
+        }
+        if let value = item as? String,
+           let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+           url.isFileURL {
+            return url
+        }
+        return nil
+    }
+
+    private func data(from item: Any) -> Data? {
+        if let data = item as? Data {
+            return data
+        }
+        if let text = item as? String {
+            return text.data(using: .utf8)
+        }
+        if let text = item as? NSAttributedString {
+            return text.string.data(using: .utf8)
+        }
+        return nil
+    }
+
+    private func isPluginName(_ name: String?) -> Bool {
+        name?.lowercased().hasSuffix(".noxplugin") == true
     }
 
     private func fileData(at url: URL) -> Data? {
@@ -333,26 +435,49 @@ final class ShareViewController: UIViewController {
     }
 
     private func openHostAppForPlugin(_ data: Data) {
-        UIPasteboard.general.setData(data, forPasteboardType: Self.pluginPasteboardType)
+        // 先压缩：自定义 URL 太长会被系统拒绝打开，单文件插件通常能
+        // 压缩到原来的几分之一。
+        var payload = data
+        var compressed = false
+        if let packed = try? (data as NSData).compressed(using: .zlib) as Data,
+           packed.count < data.count {
+            payload = packed
+            compressed = true
+        }
 
-        guard let noxURL = URL(string: "nox://import-plugin") else {
-            showFailure(
-                message: NSLocalizedString(
-                    "插件已复制。请打开 Nox，在「解析来源」右上角选择「从剪贴板导入插件」。",
-                    comment: "Share extension plugin import fallback"
-                )
-            )
+        let encoded = payload.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+
+        var components = URLComponents()
+        components.scheme = "nox"
+        components.host = "import-plugin"
+        var items = [URLQueryItem(name: "data", value: encoded)]
+        if compressed {
+            items.append(URLQueryItem(name: "compressed", value: "1"))
+        }
+        components.queryItems = items
+
+        guard let noxURL = components.url,
+              noxURL.absoluteString.utf8.count <= 180_000
+        else {
+            showPluginFailure()
             return
         }
 
         openNoxURL(noxURL) { [weak self] in
-            self?.showFailure(
-                message: NSLocalizedString(
-                    "插件已复制。请打开 Nox，在「解析来源」右上角选择「从剪贴板导入插件」。",
-                    comment: "Share extension plugin import fallback"
-                )
-            )
+            self?.showPluginFailure()
         }
+    }
+
+    private func showPluginFailure() {
+        showFailure(
+            message: NSLocalizedString(
+                "插件分享失败。请在「文件」中选择插件并使用「用 Nox 打开」。",
+                comment: "Share extension plugin import fallback"
+            )
+        )
     }
 
     private func openNoxURL(_ url: URL, onFailure: @escaping () -> Void) {
