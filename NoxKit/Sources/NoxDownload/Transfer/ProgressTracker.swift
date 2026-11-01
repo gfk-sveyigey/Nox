@@ -37,6 +37,9 @@ extension DownloadManager {
 
         guard !activeRecords.isEmpty else {
             stopProgressTimer()
+            // 兜底：如果有任务结束回调丢失，activeIDs 里可能还留着幽灵槽位。
+            // 定时器停之前统一对齐一次，让排队任务能补上空出来的位置。
+            reconcileTaskQueue(reason: "idle")
             return
         }
 
@@ -49,7 +52,9 @@ extension DownloadManager {
         for record in activeRecords {
             let id = record.id
 
-            guard !cancellingIDs.contains(id) else { continue }
+            // 只有当前 run 还活着的记录才更新实时统计。状态已变成下载中但
+            // 调度器没有对应 run 的情况，交给下一次 reconcile 自愈。
+            guard runTokens[id] != nil else { continue }
 
             let isHLS = record.format.lowercased() == "m3u8"
 

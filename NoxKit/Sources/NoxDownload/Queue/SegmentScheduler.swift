@@ -11,11 +11,13 @@ extension DownloadManager {
     /// 登记分片计划并启动第一批下载。
     func schedule(
         record: DownloadRecord,
+        token: UUID,
         segments: [DownloadSegment],
         totalBytes: Int64,
         concurrency: Int
     ) {
         let id = record.id
+        guard isCurrentRun(id, token: token) else { return }
         let partsDirectory = DownloadStorage.partsDirectory(for: id)
 
         var onDisk: Int64 = 0
@@ -58,13 +60,13 @@ extension DownloadManager {
         )
         speedMeters[id] = nil
 
-        pumpSegments(recordID: id)
+        pumpSegments(recordID: id, token: token)
         startProgressTimerIfNeeded()
     }
 
     /// 在并发上限内继续取分片开工；全部完成时收尾。
-    func pumpSegments(recordID: UUID) {
-        guard !cancellingIDs.contains(recordID) else { return }
+    func pumpSegments(recordID: UUID, token: UUID) {
+        guard isCurrentRun(recordID, token: token) else { return }
         guard let segments = plannedSegments[recordID] else { return }
 
         let limit = recordConcurrency[recordID] ?? 1
@@ -76,16 +78,18 @@ extension DownloadManager {
             pendingSegments[recordID] = queue
 
             guard index < segments.count else { continue }
-            startSegment(recordID: recordID, segment: segments[index], index: index)
+            startSegment(recordID: recordID, token: token, segment: segments[index], index: index)
         }
 
         if (pendingSegments[recordID] ?? []).isEmpty, (inFlightSegments[recordID] ?? 0) == 0 {
-            Task { await finishIfComplete(recordID: recordID) }
+            Task { await finishIfComplete(recordID: recordID, token: token) }
         }
     }
 
-    func startSegment(recordID: UUID, segment: DownloadSegment, index: Int) {
-        guard let record = store.downloads.first(where: { $0.id == recordID }) else { return }
+    func startSegment(recordID: UUID, token: UUID, segment: DownloadSegment, index: Int) {
+        guard isCurrentRun(recordID, token: token) else { return }
+        guard let record = store.downloads.first(where: { $0.id == recordID }),
+              record.status == .downloading else { return }
 
         let partsDirectory = DownloadStorage.partsDirectory(for: recordID)
         let partURL = DownloadStorage.partURL(in: partsDirectory, index: index)
@@ -117,6 +121,7 @@ extension DownloadManager {
 
         contexts[task.taskIdentifier] = SegmentContext(
             recordID: recordID,
+            runToken: token,
             segmentIndex: index,
             partURL: partURL,
             alreadyWritten: existing,

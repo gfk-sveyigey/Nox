@@ -128,6 +128,11 @@ struct DownloadRow: View {
                 .font(.footnote)
                 .foregroundStyle(.red)
                 .lineLimit(1)
+        } else if record.status == .queued {
+            Text(L("排队中 · 等待空闲下载位"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         } else if record.status == .downloading {
             Text(stats?.displayText ?? TransferStats().displayText)
                 .font(.footnote)
@@ -165,7 +170,8 @@ struct DownloadRow: View {
         case .finished: return .green
         case .failed: return .red
         case .cancelled: return .gray
-        case .queued, .downloading: return .accentColor
+        case .queued: return .secondary
+        case .downloading: return .accentColor
         }
     }
 
@@ -174,7 +180,8 @@ struct DownloadRow: View {
         case .finished: return .green
         case .failed: return .red
         case .cancelled: return .secondary
-        case .queued, .downloading: return .accentColor
+        case .queued: return .secondary
+        case .downloading: return .accentColor
         }
     }
 
@@ -183,7 +190,8 @@ struct DownloadRow: View {
         case .finished: return "checkmark.circle.fill"
         case .failed: return "exclamationmark.circle.fill"
         case .cancelled: return "arrow.clockwise.circle"
-        case .queued, .downloading: return "arrow.down.circle"
+        case .queued: return "clock"
+        case .downloading: return "arrow.down.circle"
         }
     }
 }

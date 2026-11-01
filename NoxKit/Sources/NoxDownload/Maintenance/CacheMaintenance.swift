@@ -74,6 +74,9 @@ extension DownloadManager {
         guard isActive else { return }
         resetSpeedSamples()
         keepAlive.didEnterForeground()
+        // 后台期间可能错过了某个下载结束回调；回前台时重新对齐队列，
+        // 让等待中的任务补上空出来的槽位。
+        reconcileTaskQueue(reason: "foreground")
     }
 
     /// 清空缓存：删除未完成下载的分片与暂存文件，以及 HTTP 网络缓存。
@@ -91,7 +94,7 @@ extension DownloadManager {
     public func clearParts() {
         Self.removeSubdirectories(
             in: DownloadStorage.partsRoot,
-            keeping: activeIDs.union(pendingQueue)
+            keeping: protectedDownloadIDs
         )
     }
 
@@ -99,7 +102,7 @@ extension DownloadManager {
     public func clearStaging() {
         Self.removeSubdirectories(
             in: DownloadStorage.stagingRoot,
-            keeping: activeIDs.union(pendingQueue)
+            keeping: protectedDownloadIDs
         )
     }
 

@@ -25,10 +25,13 @@ extension DownloadManager {
         }
     }
 
-    func abort(id: UUID, message: String) {
+    func abort(id: UUID, token: UUID, message: String) {
+        // 旧 run 的失败不能污染重试后的新 run
+        guard isCurrentRun(id, token: token) else { return }
+
         defer {
             resetScheduling(for: id)
-            releaseSlot(id)
+            releaseSlot(id, token: token)
         }
 
         // 一个分片失败即整体失败；其余分片取消，但分片文件保留，方便重试续传

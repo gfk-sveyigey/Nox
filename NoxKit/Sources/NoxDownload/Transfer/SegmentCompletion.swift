@@ -22,13 +22,18 @@ extension DownloadManager {
             return
         }
 
+        let identifier = downloadTask.taskIdentifier
+
         // 服务器用 4xx/5xx 响应时，URLSession 仍会把响应体落成临时文件。
         // 不检查状态码就会把错误页当成视频存下来 —— 表现就是「任务成功但文件不对」。
         if let http = downloadTask.response as? HTTPURLResponse, http.statusCode >= 400 {
+            let statusCode = http.statusCode
             Task { @MainActor in
+                guard let context = self.contexts[identifier] else { return }
                 self.abort(
-                    id: recordID,
-                    message: String(format: L("服务器返回错误：HTTP %d"), http.statusCode)
+                    id: context.recordID,
+                    token: context.runToken,
+                    message: String(format: L("服务器返回错误：HTTP %d"), statusCode)
                 )
             }
             return
@@ -38,7 +43,7 @@ extension DownloadManager {
         // 所以这里同步搬到 Staging，再回主线程追加到分片文件。
         let stagingDirectory = DownloadStorage.stagingDirectory(for: recordID)
         let stagingURL = stagingDirectory
-            .appendingPathComponent("staging-\(downloadTask.taskIdentifier).part")
+            .appendingPathComponent("staging-\(identifier).part")
 
         do {
             try FileManager.default.createDirectory(
@@ -50,12 +55,15 @@ extension DownloadManager {
             try FileManager.default.copyItem(at: location, to: stagingURL)
         } catch {
             Task { @MainActor in
-                self.abort(id: recordID, message: error.localizedDescription)
+                guard let context = self.contexts[identifier] else { return }
+                self.abort(
+                    id: context.recordID,
+                    token: context.runToken,
+                    message: error.localizedDescription
+                )
             }
             return
         }
-
-        let identifier = downloadTask.taskIdentifier
 
         Task { @MainActor in
             await self.completeSegment(
@@ -71,7 +79,16 @@ extension DownloadManager {
         stagingURL: URL,
         recordID: UUID
     ) async {
-        guard let context = contexts.removeValue(forKey: taskIdentifier) else {
+        guard let context = contexts.removeValue(forKey: taskIdentifier),
+              context.recordID == recordID else {
+            try? FileManager.default.removeItem(at: stagingURL)
+            return
+        }
+
+        let token = context.runToken
+
+        // 暂停 / 删除 / 重试后旧请求可能刚好落地；它不能再改新 run 的分片状态。
+        guard isCurrentRun(recordID, token: token) else {
             try? FileManager.default.removeItem(at: stagingURL)
             return
         }
@@ -88,20 +105,21 @@ extension DownloadManager {
 
         try? FileManager.default.removeItem(at: stagingURL)
 
+        // 追加是后台异步完成的，期间用户可能已经暂停 / 重试。
+        guard isCurrentRun(recordID, token: token) else { return }
+
         guard appended else {
-            abort(id: recordID, message: L("写入分片文件失败"))
+            abort(id: recordID, token: token, message: L("写入分片文件失败"))
             return
         }
 
         completedSegments[recordID, default: []].insert(segmentIndex)
 
-        guard !cancellingIDs.contains(recordID) else { return }
-
-        pumpSegments(recordID: recordID)
+        pumpSegments(recordID: recordID, token: token)
     }
 
-    func finishIfComplete(recordID: UUID) async {
-        guard !cancellingIDs.contains(recordID) else { return }
+    func finishIfComplete(recordID: UUID, token: UUID) async {
+        guard isCurrentRun(recordID, token: token) else { return }
         guard let segments = plannedSegments[recordID], !segments.isEmpty else { return }
 
         let partsDirectory = DownloadStorage.partsDirectory(for: recordID)
@@ -117,7 +135,12 @@ extension DownloadManager {
 
         guard allDone else { return }
 
-        await assemble(recordID: recordID, segments: segments, partsDirectory: partsDirectory)
+        await assemble(
+            recordID: recordID,
+            token: token,
+            segments: segments,
+            partsDirectory: partsDirectory
+        )
     }
 
     public nonisolated func urlSession(
@@ -132,24 +155,11 @@ extension DownloadManager {
 
         Task { @MainActor in
             guard let context = self.contexts.removeValue(forKey: identifier) else { return }
-
-            let id = context.recordID
-
-            if self.cancellingIDs.remove(id) != nil {
-                // 用户在 cancel() 里已经改过状态，这里只做兜底
-                if var record = self.store.downloads.first(where: { $0.id == id }),
-                   record.status != .cancelled {
-                    record.status = .cancelled
-                    record.errorMessage = nil
-                    self.store.updateDownload(record)
-                }
-                self.resetScheduling(for: id)
-                self.releaseSlot(id)
-                return
-            }
+            guard self.isCurrentRun(context.recordID, token: context.runToken) else { return }
 
             self.abort(
-                id: id,
+                id: context.recordID,
+                token: context.runToken,
                 message: self.downloadErrorMessage(for: error)
             )
         }

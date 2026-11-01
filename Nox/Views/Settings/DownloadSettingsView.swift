@@ -31,6 +31,8 @@ struct DownloadSettingsView: View {
                 .onChange(of: appState.preferredQuality) { _, _ in
                     appState.persist()
                 }
+            } footer: {
+                Text(L("达到上限后，新任务会自动排队；完成任务、暂停或删除任务后，等待中的任务会自动补位。调小上限不会打断正在下载的任务。"))
             }
 
             Section {

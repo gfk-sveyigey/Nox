@@ -104,6 +104,11 @@ struct ContentView: View {
                 }
             }
         }
+        // 调整「同时下载任务数」后立即补位；调小时不打断正在跑的任务，
+        // 只让后续排队任务等到活动数降到新上限以下。
+        .onChange(of: appState.maxConcurrentDownloads) { _, _ in
+            downloadManager.reconcileQueue()
+        }
         // 统一处理外部入口：
         // - nox://open?url=... 交给内置浏览器直接打开
         // - nox://import-plugin?data=... 导入分享的插件
