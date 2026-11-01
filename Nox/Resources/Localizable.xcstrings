@@ -721,6 +721,22 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "지우기" } }
       }
     },
+    "全部继续" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle fortsetzen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume All" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout reprendre" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모두 이어받기" } }
+      }
+    },
+    "全部暂停" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle pausieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause All" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout suspendre" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모두 일시 정지" } }
+      }
+    },
     "清空下载？" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Downloads leeren?" } },

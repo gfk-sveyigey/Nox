@@ -179,7 +179,7 @@ struct DownloadsView: View {
         ToolbarItemGroup(placement: .topBarLeading) {
             if !appState.downloads.isEmpty {
                 if editMode.isEditing {
-                    // 多选态：完成与多功能菜单在左，全选/取消全选换到右侧。
+                    // 主题色对号 = 完成，和系统「照片」的多选一致。
                     Button {
                         finishSelection()
                     } label: {
@@ -187,8 +187,6 @@ struct DownloadsView: View {
                             .fontWeight(.semibold)
                     }
                     .accessibilityLabel(L("完成"))
-
-                    multiFunctionMenu
                 } else {
                     Button(L("选择")) {
                         withAnimation { editMode = .active }
@@ -199,26 +197,16 @@ struct DownloadsView: View {
 
         ToolbarItemGroup(placement: .topBarTrailing) {
             if !appState.downloads.isEmpty {
-                if editMode.isEditing {
-                    Button(allSelected ? L("取消全选") : L("全选")) {
-                        withAnimation {
-                            if allSelected {
-                                selection.removeAll()
-                            } else {
-                                selection = Set(appState.downloads.map(\.id))
-                            }
-                        }
-                    }
-                } else {
-                    multiFunctionMenu
-                }
+                // 普通态与多选态都把多功能菜单放在右上角。
+                multiFunctionMenu
             }
         }
     }
 
-    /// 下载页右上角（多选时移到左上角）的多功能菜单。
+    /// 下载页右上角的多功能菜单。
     ///
-    /// 非多选态提供「全选」与「清空」；多选态整合批量操作。
+    /// 非多选态提供「全部继续 / 全部暂停 / 清空」这类全局操作；
+    /// 多选态整合针对选中项的批量操作。
     /// 菜单本身始终可用，即使没有选中项也会展开，只是不适用的操作置灰。
     @ViewBuilder
     var multiFunctionMenu: some View {
@@ -250,32 +238,44 @@ struct DownloadsView: View {
                 .disabled(shareableRecords.isEmpty)
             } else {
                 Button {
-                    selectAllAndBeginSelection()
+                    manager.retryAll(ids: Set(globalRetryableRecords.map(\.id)))
                 } label: {
-                    Label(L("全选"), systemImage: "checkmark.circle")
+                    Label(L("全部继续"), systemImage: "arrow.clockwise")
                 }
+                .disabled(globalRetryableRecords.isEmpty)
+
+                Button {
+                    manager.cancelAll(ids: Set(globalPausableRecords.map(\.id)))
+                } label: {
+                    Label(L("全部暂停"), systemImage: "pause.circle")
+                }
+                .disabled(globalPausableRecords.isEmpty)
             }
 
-            if hasClearableDownloads {
-                Divider()
+            Divider()
 
-                Button(role: .destructive) {
-                    showingClearConfirmation = true
-                } label: {
-                    Label(L("清空"), systemImage: "trash")
-                }
+            Button(role: .destructive) {
+                showingClearConfirmation = true
+            } label: {
+                Label(L("清空"), systemImage: "trash")
             }
+            .disabled(!hasClearableDownloads)
         } label: {
             Image(systemName: "ellipsis.circle")
         }
         .accessibilityLabel(L("更多操作"))
     }
 
-    func selectAllAndBeginSelection() {
-        withAnimation {
-            editMode = .active
-            selection = Set(appState.downloads.map(\.id))
-        }
+    // MARK: - 全局批量操作（非多选态）
+
+    /// 失败 / 已暂停的全部任务，可一键继续。
+    var globalRetryableRecords: [DownloadRecord] {
+        appState.downloads.filter { $0.status == .failed || $0.status == .cancelled }
+    }
+
+    /// 排队中 / 下载中的全部任务，可一键暂停。
+    var globalPausableRecords: [DownloadRecord] {
+        appState.downloads.filter { $0.status == .queued || $0.status == .downloading }
     }
 
     // MARK: - 多选批量操作
@@ -322,9 +322,27 @@ struct DownloadsView: View {
         }
     }
 
-    /// 多选态悬浮操作：左上角多功能菜单负责批量操作，右下角只保留删除。
+    /// 多选态悬浮操作：左下角全选 / 取消全选，右下角删除。
     var selectionFloatingActions: some View {
         HStack(alignment: .center) {
+            Button {
+                withAnimation {
+                    if allSelected {
+                        selection.removeAll()
+                    } else {
+                        selection = Set(appState.downloads.map(\.id))
+                    }
+                }
+            } label: {
+                circleLabel(
+                    allSelected ? "checkmark.circle.fill" : "checkmark.circle",
+                    color: .primary
+                )
+            }
+            .buttonStyle(.plain)
+            .modifier(GlassCircleBackground())
+            .accessibilityLabel(allSelected ? L("取消全选") : L("全选"))
+
             Spacer(minLength: 0)
 
             Button(role: .destructive) {
