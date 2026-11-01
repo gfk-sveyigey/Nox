@@ -3,10 +3,9 @@ import UniformTypeIdentifiers
 
 /// 从系统分享面板接收网页链接或插件文件。
 ///
-/// 插件文件会先写入 App Group 共享目录，再让用户选择「导入并打开」或
-/// 「仅导入」——即使系统拒绝 Share Extension 唤起宿主 App（Apple 文档：
-/// iOS 只有 Today / iMessage 扩展支持 `NSExtensionContext.open`），
-/// 数据也已经保存，打开 Nox 时仍会自动导入。
+/// 插件文件会先写入 App Group 共享目录，再直接唤起宿主 App 自动导入。
+/// 即使系统拒绝 Share Extension 跳转，数据也已经保存，下次打开 Nox
+/// 时仍会导入。
 final class ShareViewController: UIViewController {
     private enum SharedPayload {
         case web(URL)
@@ -22,77 +21,33 @@ final class ShareViewController: UIViewController {
 
     private let spinner = UIActivityIndicatorView(style: .medium)
     private let statusLabel = UILabel()
-    private let scrollView = UIScrollView()
-    private let contentStack = UIStackView()
 
     private var hasStarted = false
     private var hasFinished = false
-    private var sharedFileName: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
 
+        spinner.translatesAutoresizingMaskIntoConstraints = false
         spinner.startAnimating()
 
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.text = NSLocalizedString("正在打开 Nox…", comment: "Share extension opening status")
         statusLabel.font = .preferredFont(forTextStyle: .body)
         statusLabel.textColor = .label
         statusLabel.textAlignment = .center
         statusLabel.numberOfLines = 0
 
-        // 分享面板的高度由系统决定，可能是半屏也可能被用户拖得更矮。
-        // 用滚动视图 + 居中的内容栈，按钮多时仍能完整显示。
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.showsVerticalScrollIndicator = false
-        view.addSubview(scrollView)
-
-        let contentView = UIView()
-        contentView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(contentView)
-
-        contentStack.axis = .vertical
-        contentStack.alignment = .fill
-        contentStack.spacing = 12
-        contentStack.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(contentStack)
-
-        contentStack.addArrangedSubview(spinner)
-        contentStack.addArrangedSubview(statusLabel)
-
-        // 内容少时与分享面板等高；内容多时由下面的约束撑高并允许滚动。
-        let fitHeight = contentView.heightAnchor.constraint(
-            equalTo: scrollView.frameLayoutGuide.heightAnchor
-        )
-        fitHeight.priority = .defaultLow
+        view.addSubview(spinner)
+        view.addSubview(statusLabel)
 
         NSLayoutConstraint.activate([
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-
-            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
-            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
-            contentView.heightAnchor.constraint(
-                greaterThanOrEqualTo: scrollView.frameLayoutGuide.heightAnchor
-            ),
-            fitHeight,
-
-            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
-            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
-            contentStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            contentStack.topAnchor.constraint(
-                greaterThanOrEqualTo: contentView.topAnchor,
-                constant: 20
-            ),
-            contentStack.bottomAnchor.constraint(
-                lessThanOrEqualTo: contentView.bottomAnchor,
-                constant: -20
-            )
+            spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -16),
+            statusLabel.topAnchor.constraint(equalTo: spinner.bottomAnchor, constant: 12),
+            statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
         ])
     }
 
@@ -121,7 +76,7 @@ final class ShareViewController: UIViewController {
                 case .web(let url):
                     self.openHostApp(with: url)
                 case .plugin(let data):
-                    self.presentPluginOptions(for: data)
+                    self.importAndOpenHostApp(data)
                 case .invalidFile:
                     self.showFailure(
                         message: NSLocalizedString(
@@ -152,8 +107,6 @@ final class ShareViewController: UIViewController {
             providers.count,
             providers.map(\.registeredTypeIdentifiers).description
         )
-        sharedFileName = providers.compactMap(\.suggestedName).first
-
         loadPluginData(from: providers) { [weak self] data in
             DispatchQueue.main.async {
                 guard let self else { return }
@@ -582,82 +535,12 @@ final class ShareViewController: UIViewController {
         }
     }
 
-    // MARK: - 插件导入选项
+    // MARK: - 插件导入
 
-    private func presentPluginOptions(for data: Data) {
-        spinner.stopAnimating()
-        spinner.isHidden = true
-
-        statusLabel.font = .preferredFont(forTextStyle: .headline)
-        statusLabel.text = pluginSummary(for: data)
-
-        let openButton = makeActionButton(
-            title: NSLocalizedString("导入并打开", comment: "Share extension import and open"),
-            subtitle: NSLocalizedString("保存后立即打开 Nox", comment: "Share extension import and open subtitle"),
-            prominent: true
-        )
-        let saveButton = makeActionButton(
-            title: NSLocalizedString("仅导入", comment: "Share extension import only"),
-            subtitle: NSLocalizedString("打开 Nox 时自动导入", comment: "Share extension import only subtitle"),
-            prominent: false
-        )
-        let cancelButton = UIButton(type: .system)
-        cancelButton.setTitle(
-            NSLocalizedString("取消", comment: "Share extension cancel import"),
-            for: .normal
-        )
-        cancelButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
-
-        contentStack.addArrangedSubview(openButton)
-        contentStack.addArrangedSubview(saveButton)
-        contentStack.addArrangedSubview(cancelButton)
-
-        openButton.addAction(UIAction { [weak self] _ in
-            self?.importPlugin(data, openApp: true)
-        }, for: .touchUpInside)
-        saveButton.addAction(UIAction { [weak self] _ in
-            self?.importPlugin(data, openApp: false)
-        }, for: .touchUpInside)
-        cancelButton.addAction(UIAction { [weak self] _ in
-            self?.finish()
-        }, for: .touchUpInside)
-    }
-
-    private func makeActionButton(
-        title: String,
-        subtitle: String,
-        prominent: Bool
-    ) -> UIButton {
-        var configuration = prominent
-            ? UIButton.Configuration.filled()
-            : UIButton.Configuration.gray()
-        configuration.title = title
-        configuration.subtitle = subtitle
-        configuration.titleAlignment = .center
-        configuration.cornerStyle = .large
-        configuration.contentInsets = NSDirectionalEdgeInsets(
-            top: 14, leading: 20, bottom: 14, trailing: 20
-        )
-        if prominent {
-            configuration.baseBackgroundColor = .systemBlue
-            configuration.baseForegroundColor = .white
-        }
-
-        let button = UIButton(configuration: configuration)
-        button.titleLabel?.numberOfLines = 2
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.heightAnchor.constraint(equalToConstant: 64).isActive = true
-        return button
-    }
-
-    private func pluginSummary(for data: Data) -> String {
-        let name = sharedFileName ?? "plugin.noxplugin"
-        let size = ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)
-        return "\(name)\n\(size) · \(NSLocalizedString("Nox 插件", comment: "Share extension plugin kind"))"
-    }
-
-    private func importPlugin(_ data: Data, openApp: Bool) {
-        contentStack.isUserInteractionEnabled = false
+    /// 分享扩展先把插件写进 App Group 收件箱，再直接唤起宿主 App。
+    /// 这样即使系统拒绝跳转，插件也不会丢；下次打开 Nox 仍会自动导入。
+    private func importAndOpenHostApp(_ data: Data) {
+        statusLabel.text = NSLocalizedString("正在打开 Nox…", comment: "Share extension opening status")
 
         if let stored = SharedPluginInbox.store(data) {
             NSLog(
@@ -665,28 +548,13 @@ final class ShareViewController: UIViewController {
                 stored.lastPathComponent,
                 data.count
             )
-            if openApp {
-                openPluginImportURL { [weak self] in
-                    self?.showSavedMessage()
-                }
-            } else {
-                showSavedMessage()
+            openPluginImportURL { [weak self] in
+                self?.showSavedMessage()
             }
             return
         }
 
-        NSLog("NoxShare: shared inbox unavailable")
-        guard openApp else {
-            showFailure(
-                title: NSLocalizedString("无法仅导入", comment: "Share extension import only unavailable title"),
-                message: NSLocalizedString(
-                    "当前安装不支持共享存储，请使用「导入并打开」。",
-                    comment: "Share extension import only unavailable message"
-                )
-            )
-            return
-        }
-
+        NSLog("NoxShare: shared inbox unavailable, falling back to URL payload")
         openHostAppForPluginViaURL(data)
     }
 
@@ -764,8 +632,51 @@ final class ShareViewController: UIViewController {
     private func openNoxURL(_ url: URL, onFailure: @escaping () -> Void) {
         NSLog("NoxShare: opening host app via %@", url.host ?? "?")
 
+        // Share Extension 官方不支持 extensionContext.open。实际能稳定唤起
+        // 宿主 App 的方式是从 responder chain 里找到 UIApplication，再调用
+        // UIApplication.open(_:options:completionHandler:)。iOS 18 起旧的
+        // openURL: 已被系统拦截（会打印 BUG IN CLIENT OF UIKIT 并返回 NO）。
+        if openUsingResponderChain(url, onFailure: onFailure) {
+            return
+        }
+
+        openUsingExtensionContext(url, onFailure: onFailure)
+    }
+
+    /// 返回 true 表示已经在 responder chain 里找到 UIApplication 并发起了打开。
+    private func openUsingResponderChain(
+        _ url: URL,
+        onFailure: @escaping () -> Void
+    ) -> Bool {
+        var responder: UIResponder? = self
+
+        while let current = responder {
+            guard let application = current as? UIApplication else {
+                responder = current.next
+                continue
+            }
+
+            NSLog("NoxShare: found UIApplication in responder chain")
+
+            // 这里不能再用旧版 openURL:。iOS 18 起 UIKit 会拦截它并打印
+            // “BUG IN CLIENT OF UIKIT”，然后强制返回 NO，表现就是
+            // 分享面板一直停在转圈，宿主 App 永远不出现。
+            application.open(url, options: [:], completionHandler: nil)
+            NSLog("NoxShare: UIApplication.open invoked")
+            finishAfterHostLaunch()
+            return true
+        }
+
+        NSLog("NoxShare: no UIApplication in responder chain")
+        return false
+    }
+
+    private func openUsingExtensionContext(
+        _ url: URL,
+        onFailure: @escaping () -> Void
+    ) {
         guard let extensionContext else {
-            openUsingResponderChain(url, onFailure: onFailure)
+            onFailure()
             return
         }
 
@@ -776,14 +687,10 @@ final class ShareViewController: UIViewController {
 
             if opened {
                 NSLog("NoxShare: extensionContext.open succeeded")
-                // 不要立刻 completeRequest：个别系统版本会抢在宿主 App
-                // 真正收到 URL 之前收掉扩展进程。
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-                    self?.finish()
-                }
+                finishAfterHostLaunch()
             } else {
-                NSLog("NoxShare: extensionContext.open failed, trying responder chain")
-                openUsingResponderChain(url, onFailure: onFailure)
+                NSLog("NoxShare: extensionContext.open failed")
+                onFailure()
             }
         }
 
@@ -793,37 +700,21 @@ final class ShareViewController: UIViewController {
             }
         }
 
-        // 少数系统版本上 open 的 completion 可能永远不回调，超时后改走
-        // responder chain，避免扩展一直停在转圈界面。
+        // 少数系统版本上 open 的 completion 可能永远不回调。
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             guard !resolved else { return }
             resolved = true
-            NSLog("NoxShare: extensionContext.open timed out, trying responder chain")
-            self.openUsingResponderChain(url, onFailure: onFailure)
+            NSLog("NoxShare: extensionContext.open timed out")
+            onFailure()
         }
     }
 
-    private func openUsingResponderChain(_ url: URL, onFailure: @escaping () -> Void) {
-        let selector = NSSelectorFromString("openURL:")
-        var responder: UIResponder? = self
-
-        while let current = responder {
-            if current.responds(to: selector) {
-                NSLog(
-                    "NoxShare: %@ handled openURL",
-                    String(describing: type(of: current))
-                )
-                _ = current.perform(selector, with: url)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-                    self?.finish()
-                }
-                return
-            }
-            responder = current.next
+    /// 不要立刻 completeRequest：个别系统版本会抢在宿主 App 真正收到
+    /// URL 之前收掉扩展进程。
+    private func finishAfterHostLaunch() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.finish()
         }
-
-        NSLog("NoxShare: no responder handled openURL")
-        onFailure()
     }
 
     private func showFailure(

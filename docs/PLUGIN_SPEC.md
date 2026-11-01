@@ -413,7 +413,7 @@ App 会把它转换成解析失败提示，并记录到日志。不要返回 `nu
 1. 「文件」App / AirDrop 中用 Nox 打开 `.noxplugin`
 2. 其他 App 的「用 Nox 打开」/「拷贝到 Nox」
 3. 「设置 → 解析来源 → 右上角菜单 → 导入插件」
-4. 系统分享面板选择 Nox；Share Extension 识别 `.noxplugin` 文件后显示「导入并打开 / 仅导入 / 取消」，把插件写入 App Group 收件箱。选择「仅导入」时下次打开 Nox 自动导入；选择「导入并打开」时额外尽力唤起宿主 App。非插件文件会被明确拒绝
+4. 系统分享面板选择 Nox；Share Extension 识别 `.noxplugin` 文件后把插件写入 App Group 收件箱，并立即唤起 Nox 自动导入。非插件文件会被明确拒绝
 
 安装流程：
 
@@ -428,13 +428,11 @@ App 会把它转换成解析失败提示，并记录到日志。不要返回 `nu
 
 `UTI` / 文件类型在 `Info.plist` 中注册，因此 Nox 可以出现在系统「用其他 App 打开」列表中。
 
-分享扩展（NoxShare）先把插件写入 App Group 共享目录 `group.com.aholic.nox/NoxPendingPlugins`，再由用户选择后续行为：
+分享扩展（NoxShare）先把插件写入 App Group 共享目录 `group.com.aholic.nox/NoxPendingPlugins`，然后直接唤起 Nox 自动导入。
 
-- **导入并打开**：保存后尽力唤起 Nox；即使系统拒绝 `NSExtensionContext.open(_:)`（Apple 文档规定 iOS 上只有 Today / iMessage 扩展受支持），插件也已经保存在收件箱，下次打开 Nox 仍会自动导入。
-- **仅导入**：只写入收件箱，不唤起宿主 App；Nox 下次启动或回到前台时自动导入。
-- **取消**：不保存，直接关闭分享面板。
+跳转依赖 responder chain 中的 `UIApplication`，并调用 `UIApplication.open(_:options:completionHandler:)`。Apple 文档虽然规定 `NSExtensionContext.open(_:)` 在 iOS 上只有 Today / iMessage 扩展受支持，但 Share Extension 的 responder chain 仍能拿到 `UIApplication`；iOS 18 起旧的 `openURL:` 会被系统拦截并返回 NO，因此必须使用新的 `open(_:options:completionHandler:)`。
 
-App Group 不可用（签名未包含该能力）时，「仅导入」会提示不可用；「导入并打开」退回把压缩后的插件塞进 `nox://import-plugin?data=…`。
+即使系统拒绝跳转，插件也已经保存在收件箱，Nox 下次启动或回到前台时会自动导入。App Group 不可用（签名未包含该能力）时退回把压缩后的插件塞进 `nox://import-plugin?data=…`。
 
 ### 8.2 更新
 
