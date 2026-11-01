@@ -8,7 +8,6 @@
     "en": "Example Site"
   },
   "version": "1.0.0",
-  "minAppVersion": "1.5.0",
   "author": "Nox Examples",
   "description": "演示单文件解析插件的最小结构",
   "icon": "play.rectangle",

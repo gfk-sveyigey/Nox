@@ -94,6 +94,9 @@ public final class AppState: ObservableObject {
 
     /// 被用户关闭的站点标识（未列入即视为开启）
     @Published private var disabledSiteIDs: Set<String> = []
+    /// 站点开关的变更序号。`@Published` 在属性写入前广播，
+    /// 浏览器页不能用它的旧值立刻重算，改为在写入完成后递增这里。
+    @Published public private(set) var siteAvailabilityRevision = 0
 
     private let historyKey = "Nox.history"
     private let bookmarksKey = "Nox.bookmarks"
@@ -268,6 +271,7 @@ public final class AppState: ObservableObject {
         } else {
             disabledSiteIDs.insert(identifier)
         }
+        siteAvailabilityRevision &+= 1
         persist()
     }
 

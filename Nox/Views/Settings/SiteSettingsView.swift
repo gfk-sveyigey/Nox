@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 import WebKit
 import NoxCore
 import NoxKeepAlive
@@ -7,44 +8,267 @@ import NoxParsing
 import NoxDownload
 import NoxState
 
+
 struct SiteSettingsView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var pluginImport: PluginImportCoordinator
     @ObservedObject var localization = LocalizationManager.shared
+    @ObservedObject var registry = VideoSiteParserRegistry.shared
+
+    @State private var editMode: EditMode = .inactive
+    @State private var showImporter = false
+    @State private var actionError: String?
+    @State private var pendingDeleteID: String?
+    @State private var pendingDeleteName = ""
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         Form {
             Section {
-                ForEach(siteToggles) { site in
-                    Toggle(site.title, isOn: siteBinding(for: site.id))
+                ForEach(rows) { row in
+                    rowView(row)
+                        .contextMenu { contextMenu(for: row) }
+                        .moveDisabled(row.isFixed)
                 }
+                .onMove { source, destination in
+                    registry.move(fromOffsets: source, toOffset: destination)
+                }
+            } header: {
+                Text(L("匹配顺序"))
             } footer: {
-                Text(L("关闭后，对应网站的页面将无法解析，「解析视频」入口也会隐藏。"))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(
+                        editMode.isEditing
+                            ? L("拖动右侧手柄调整顺序；越靠前优先级越高，通用 Sniffer 固定最后。")
+                            : L("越靠前优先级越高，通用 Sniffer 固定最后。")
+                    )
+
+                    if !editMode.isEditing {
+                        Text(L("长按条目可导出或删除已导入插件；右上角可导入插件、调整顺序或恢复默认顺序。"))
+                    }
+                }
             }
         }
+        .environment(\.editMode, $editMode)
         .navigationTitle(L("解析来源"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                trailingToolbar
+            }
+        }
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: [.noxPlugin],
+            allowsMultipleSelection: true
+        ) { result in
+            switch result {
+            case .success(let urls):
+                pluginImport.importFiles(urls)
+            case .failure(let error):
+                pluginImport.report(error)
+            }
+        }
+        .alert(
+            L("操作失败"),
+            isPresented: Binding(
+                get: { actionError != nil },
+                set: { if !$0 { actionError = nil } }
+            )
+        ) {
+            Button(L("确定"), role: .cancel) {}
+        } message: {
+            Text(actionError ?? "")
+        }
+        .confirmationDialog(
+            String(format: L("删除 %@？"), pendingDeleteName),
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(L("删除插件"), role: .destructive) {
+                deletePendingPlugin()
+            }
+            Button(L("取消"), role: .cancel) {}
+        } message: {
+            Text(L("只删除用户导入的插件文件；如果包内有同 id 插件，会回落到包内版本。"))
+        }
     }
 
-    func siteBinding(for identifier: String) -> Binding<Bool> {
+    @ViewBuilder
+    private var trailingToolbar: some View {
+        if editMode.isEditing {
+            Button(L("完成")) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    editMode = .inactive
+                }
+            }
+        } else {
+            Menu {
+                Button {
+                    showImporter = true
+                } label: {
+                    Label(L("导入插件"), systemImage: "square.and.arrow.down")
+                }
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        editMode = .active
+                    }
+                } label: {
+                    Label(L("调整顺序"), systemImage: "arrow.up.arrow.down")
+                }
+
+                Divider()
+
+                Button {
+                    registry.restoreDefaultOrder()
+                } label: {
+                    Label(L("恢复默认顺序"), systemImage: "arrow.counterclockwise")
+                }
+                .disabled(registry.parsers.count < 2)
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .accessibilityLabel(L("解析来源操作"))
+        }
+    }
+
+    private func rowView(_ row: SiteRow) -> some View {
+        Toggle(isOn: siteBinding(for: row.id)) {
+            HStack(spacing: 10) {
+                Image(systemName: row.systemImage)
+                    .foregroundStyle(row.isFixed ? Color.secondary : Color.accentColor)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(row.title)
+                        .lineLimit(1)
+                    Text(row.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func contextMenu(for row: SiteRow) -> some View {
+        if row.isImported {
+            Button {
+                exportPlugin(row)
+            } label: {
+                Label(L("导出插件"), systemImage: "square.and.arrow.up")
+            }
+
+            Button(role: .destructive) {
+                pendingDeleteID = row.id
+                pendingDeleteName = row.title
+                showDeleteConfirmation = true
+            } label: {
+                Label(L("删除插件"), systemImage: "trash")
+            }
+
+            Divider()
+        }
+
+        Button {
+            UIPasteboard.general.string = row.id
+        } label: {
+            Label(L("复制插件 ID"), systemImage: "doc.on.doc")
+        }
+    }
+
+    private func siteBinding(for identifier: String) -> Binding<Bool> {
         Binding(
             get: { appState.isSiteEnabled(identifier) },
             set: { appState.setSite(identifier, enabled: $0) }
         )
     }
 
-    /// 把解析器列表转成可 `ForEach` 的简单结构，
-    /// 避免对 `any VideoSiteParser` 取 key path。
-    var siteToggles: [SiteToggle] {
-        VideoSiteParserRegistry.all.map {
-            SiteToggle(id: $0.identifier, title: $0.displayName)
+    private func exportPlugin(_ row: SiteRow) {
+        guard let url = PluginStore.shared.exportURL(for: row.id) else {
+            actionError = L("无法导出该插件文件。")
+            return
+        }
+
+        // 等长按菜单的收起动画开始后再弹分享面板，避免 UIKit 报
+        // "presenting while a presentation is in progress"。
+        DispatchQueue.main.async {
+            SharePresenter.present(items: [url])
         }
     }
 
-    struct SiteToggle: Identifiable {
+    private func deletePendingPlugin() {
+        guard let identifier = pendingDeleteID else { return }
+        pendingDeleteID = nil
+
+        do {
+            try PluginStore.shared.removeImported(identifier: identifier)
+            registry.reload()
+            // 删除后清掉禁用状态；如果包内存在同 id 插件，它会恢复为可用。
+            appState.setSite(identifier, enabled: true)
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    /// 把解析器列表转成可 `ForEach` 的简单结构。
+    private var rows: [SiteRow] {
+        registry.parsers.map { parser in
+            let fixed = parser.identifier == SnifferSite.identifier
+            let info = rowPresentation(for: parser, fixed: fixed)
+            return SiteRow(
+                id: parser.identifier,
+                title: parser.displayName,
+                subtitle: info.subtitle,
+                systemImage: info.systemImage,
+                isImported: parser.isImportedPlugin,
+                isFixed: fixed
+            )
+        }
+    }
+
+    private func rowPresentation(
+        for parser: VideoSiteParser,
+        fixed: Bool
+    ) -> (subtitle: String, systemImage: String) {
+        if fixed {
+            return (L("兜底嗅探器 · 固定最后"), "dot.radiowaves.left.and.right")
+        }
+
+        if parser.isImportedPlugin {
+            var parts = [L("已导入插件")]
+            if let version = parser.pluginVersion, !version.isEmpty {
+                parts.append("v\(version)")
+            }
+            if let author = parser.pluginAuthor, !author.isEmpty {
+                parts.append(author)
+            }
+            return (parts.joined(separator: " · "), "puzzlepiece.extension")
+        }
+
+        if parser.isBundledPlugin {
+            var parts = [L("内置插件")]
+            if let version = parser.pluginVersion, !version.isEmpty {
+                parts.append("v\(version)")
+            }
+            return (parts.joined(separator: " · "), "shippingbox")
+        }
+
+        return (L("内置解析器"), "bolt.horizontal.circle")
+    }
+
+    private struct SiteRow: Identifiable {
         let id: String
         let title: String
+        let subtitle: String
+        let systemImage: String
+        let isImported: Bool
+        let isFixed: Bool
     }
 }
+
 
 /// 「储存空间」里可单独统计与清理的类别。
 enum StorageCategory: String, CaseIterable, Identifiable {

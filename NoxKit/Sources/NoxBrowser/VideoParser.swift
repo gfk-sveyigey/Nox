@@ -162,6 +162,11 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         loadErrorMessage = nil
     }
 
+    /// 站点列表或开关发生变化后，重新计算当前页面是否可解析。
+    public func refreshSiteRules() {
+        pageMatchesRule = activeParser(for: webView.url) != nil
+    }
+
     public func parseCurrentPage() async throws -> ParsedVideo {
         guard canParseCurrentPage else {
             if !pageMatchesRule { throw ParserError.unsupportedURL }

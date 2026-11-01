@@ -33,7 +33,7 @@ enum BundledPluginLoader {
                 LogStore.shared.info(
                     "plugin loaded \(package.manifest.id)@\(package.manifest.version) from \(url.lastPathComponent)"
                 )
-                return ScriptSiteParser(package: package)
+                return ScriptSiteParser(package: package, origin: .bundled)
             } catch {
                 LogStore.shared.error(
                     "plugin load failed \(url.lastPathComponent): \(error.localizedDescription)"
