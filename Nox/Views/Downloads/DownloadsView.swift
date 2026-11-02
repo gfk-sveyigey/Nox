@@ -41,7 +41,7 @@ struct DownloadsView: View {
                             Image(systemName: "arrow.down.circle")
                         }
                     } description: {
-                        Text(L("在浏览页面解析视频后即可加入下载队列。"))
+                        EmptyView()
                     }
                 } else {
                     list
@@ -53,10 +53,10 @@ struct DownloadsView: View {
                 }
             }
             // 空列表时也把顶部安全区铺满分组背景，避免导航栏上方露出一条浅色空白。
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
+            .background(pageBackgroundColor.ignoresSafeArea())
             .navigationTitle(L("下载"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
+            .toolbarBackground(pageBackgroundColor, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .environment(\.editMode, $editMode)
             .toolbar { toolbarContent }
@@ -105,6 +105,13 @@ struct DownloadsView: View {
                 onPath: { selectRows(in: $0) }
             )
         }
+    }
+
+    /// 空页面使用普通窗口底色；有列表时使用与分组列表一致的背景。
+    var pageBackgroundColor: Color {
+        appState.downloads.isEmpty
+            ? Color(.systemBackground)
+            : Color(.systemGroupedBackground)
     }
 
     /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。

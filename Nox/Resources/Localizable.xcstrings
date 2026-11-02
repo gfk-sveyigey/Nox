@@ -81,12 +81,12 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "북마크 제거" } }
       }
     },
-    "还没有书签" : {
+    "无书签" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Noch keine Lesezeichen" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No bookmarks yet" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun signet pour l'instant" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "아직 북마크가 없습니다" } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Lesezeichen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No Bookmarks" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun signet" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "북마크 없음" } }
       }
     },
     "打开网页后，点地址栏右侧的书签按钮即可收藏。" : {
