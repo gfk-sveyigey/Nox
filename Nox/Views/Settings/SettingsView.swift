@@ -21,58 +21,10 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // 图标与名称是列表第一行，随内容一起滚动。
-                // 用 listRowInsets/Background/Separator 把它伪装成"表头"。
-                appHeader
-
                 settingsSections
             }
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    // MARK: - App 图标 + 名称（可滚动）
-
-    var appHeader: some View {
-        VStack(spacing: 10) {
-            appIconView
-
-            Text(Self.appName)
-                .font(.largeTitle.weight(.bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 12)
-        .padding(.bottom, 16)
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-    }
-
-    @ViewBuilder
-    var appIconView: some View {
-        if let icon = Self.appIcon {
-            Image(uiImage: icon)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 132, height: 132)
-                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
-                }
-        } else {
-            // 还没有配置 AppIcon 时的占位
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(Color.accentColor.opacity(0.15))
-                .frame(width: 132, height: 132)
-                .overlay {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 62))
-                        .foregroundStyle(Color.accentColor)
-                }
         }
     }
 
@@ -82,22 +34,16 @@ struct SettingsView: View {
     @ViewBuilder
     var settingsSections: some View {
         Section {
-            NavigationLink {
+            settingsLink(L("下载设置"), systemImage: "arrow.down.circle") {
                 DownloadSettingsView(manager: manager)
-            } label: {
-                Text(L("下载设置"))
             }
 
-            NavigationLink {
+            settingsLink(L("后台下载"), systemImage: "play.circle") {
                 KeepAliveSettingsView(manager: manager)
-            } label: {
-                Text(L("后台下载"))
             }
 
-            NavigationLink {
+            settingsLink(L("储存空间"), systemImage: "internaldrive") {
                 StorageSettingsView(manager: manager)
-            } label: {
-                Text(L("储存空间"))
             }
         }
 
@@ -105,45 +51,46 @@ struct SettingsView: View {
             NavigationLink {
                 SiteSettingsView()
             } label: {
-                LabeledContent(
-                    L("解析来源"),
-                    value: "\(enabledSiteCount)/\(registry.parsers.count)"
-                )
+                HStack(spacing: 8) {
+                    settingsLabel(L("解析来源"), systemImage: "puzzlepiece.extension")
+                    Spacer(minLength: 8)
+                    Text("\(enabledSiteCount)/\(registry.parsers.count)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
             }
 
-            NavigationLink {
+            settingsLink(L("Cookie 管理"), systemImage: "shield") {
                 CookiesView()
-            } label: {
-                Text(L("Cookie 管理"))
             }
 
-            NavigationLink {
+            settingsLink(L("历史记录"), systemImage: "clock.arrow.circlepath") {
                 HistorySettingsView()
-            } label: {
-                Text(L("历史记录"))
             }
 
-            NavigationLink {
+            settingsLink(L("日志"), systemImage: "doc.text") {
                 LogsView()
-            } label: {
-                Text(L("日志"))
             }
         }
 
         Section {
-            Picker(L("外观"), selection: $appState.appearanceMode) {
+            Picker(selection: $appState.appearanceMode) {
                 ForEach(AppearanceMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
+            } label: {
+                settingsLabel(L("外观"), systemImage: "circle.lefthalf.filled")
             }
             .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
             // 系统 Picker 菜单会缓存选项文案；切语言后重建这一行即可刷新。
             .id(localization.language)
 
-            Picker(L("语言"), selection: $localization.language) {
+            Picker(selection: $localization.language) {
                 ForEach(AppLanguage.allCases) { language in
                     Text(language.title).tag(language)
                 }
+            } label: {
+                settingsLabel(L("语言"), systemImage: "globe")
             }
             // Picker 的系统菜单会缓存选项文案。只重建这一行，既能刷新菜单，
             // 又不会像重建设置页那样把整个 Form 的滚动位置带回顶部。
@@ -151,14 +98,36 @@ struct SettingsView: View {
         }
 
         Section {
-            NavigationLink {
+            settingsLink(L("开源许可与致谢"), systemImage: "heart.text.square") {
                 LicensesView()
-            } label: {
-                Text(L("开源许可与致谢"))
             }
         } footer: {
             versionFooter
         }
+    }
+
+    /// 统一设置条目：图标 + 标题，并略微增加行高。
+    func settingsLink<Destination: View>(
+        _ title: String,
+        systemImage: String,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+        } label: {
+            settingsLabel(title, systemImage: systemImage)
+        }
+    }
+
+    func settingsLabel(_ title: String, systemImage: String) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(.tint)
+                .frame(width: 24, alignment: .center)
+        }
+        .frame(minHeight: 32)
     }
 
     /// 页脚：居中显示版本与作者，形如「Nox v1.0.16 · Aholic」。
@@ -190,21 +159,6 @@ struct SettingsView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
     }
 
-    static var appIcon: UIImage? {
-        if let image = UIImage(named: "AppIconPreview") {
-            return image
-        }
-
-        if let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
-           let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
-           let files = primary["CFBundleIconFiles"] as? [String],
-           let name = files.last,
-           let image = UIImage(named: name) {
-            return image
-        }
-
-        return UIImage(named: "AppIcon")
-    }
 }
 
 /// 「开源许可与致谢」二级页：列出参考 / 复用来源，并附免责声明。

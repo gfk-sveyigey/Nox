@@ -73,6 +73,9 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
         private var recognizer: UIPanGestureRecognizer?
         /// 本次手势是否已经从行上开始并进入选择。
         private var isSelecting = false
+        /// 当前这组触摸落下时，列表是否已经在拖动或惯性滚动。
+        /// 系统列表只在静止时接受双指进入多选；滚动中最多只用来看内容。
+        private var blockedByActiveScroll = false
         /// 上一次两指覆盖的纵向范围，用来补上快速滑动跳过的行。
         private var lastMinY: CGFloat?
         private var lastMaxY: CGFloat?
@@ -196,6 +199,26 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
             true
         }
 
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldReceive touch: UITouch
+        ) -> Bool {
+            guard let view = gestureRecognizer.view else { return false }
+            blockedByActiveScroll = Self.isActiveScroll(
+                at: touch.location(in: view),
+                in: view
+            )
+            return true
+        }
+
+        /// 只要这组触摸开始前列表正在滚动，就不让双指手势进入多选。
+        /// 判断后立即复位，保证下一次静止状态的双指手势不受影响。
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            let blocked = blockedByActiveScroll
+            blockedByActiveScroll = false
+            return !blocked
+        }
+
         /// 命中测试：任一手指起点落在列表行上才算数。
         private static func startedOnRow(_ gesture: UIPanGestureRecognizer) -> Bool {
             guard let view = gesture.view else { return false }
@@ -234,6 +257,21 @@ struct TwoFingerPanToSelect: UIViewRepresentable {
                     return tableView.indexPathForRow(at: localPoint) != nil
                 }
 
+                hit = current.superview
+            }
+
+            return false
+        }
+
+        /// 起点所在的滚动容器是否正在被拖动或惯性滚动。
+        private static func isActiveScroll(at point: CGPoint, in view: UIView) -> Bool {
+            var hit = view.hitTest(point, with: nil)
+
+            while let current = hit {
+                if let scrollView = current as? UIScrollView,
+                   scrollView.isDragging || scrollView.isDecelerating {
+                    return true
+                }
                 hit = current.superview
             }
 
