@@ -33,11 +33,16 @@ struct DownloadsView: View {
         NavigationStack {
             Group {
                 if appState.downloads.isEmpty {
-                    ContentUnavailableView(
-                        L("暂无下载"),
-                        systemImage: "arrow.down.circle",
-                        description: Text(L("在浏览页面解析视频后即可加入下载队列。"))
-                    )
+                    ContentUnavailableView {
+                        Label {
+                            Text(L("暂无下载"))
+                                .font(.title2.weight(.regular))
+                        } icon: {
+                            Image(systemName: "arrow.down.circle")
+                        }
+                    } description: {
+                        Text(L("在浏览页面解析视频后即可加入下载队列。"))
+                    }
                 } else {
                     list
                 }

@@ -164,7 +164,7 @@ struct SettingsView: View {
         Label {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(.body)
 
                 Text(subtitle)
                     .font(.caption)

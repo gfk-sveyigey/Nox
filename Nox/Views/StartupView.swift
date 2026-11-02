@@ -37,9 +37,10 @@ struct StartupView: View {
                     .shadow(color: Color.primary.opacity(0.14), radius: 34)
 
                 Text(verbatim: Self.appName)
-                    .font(.system(size: 27, weight: .semibold, design: .rounded))
+                    .font(.custom("SnellRoundhand-Black", size: 44))
                     .foregroundStyle(Color.primary.opacity(0.92))
-                    .tracking(0.5)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .scaleEffect(appeared ? 1 : 0.94)
             .opacity(appeared ? 1 : 0)
