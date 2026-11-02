@@ -264,7 +264,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 当前真正运行的保活方式。Live Activity 在持续处理模式下需要让位给
     /// 系统自带的活动，避免同时出现两个进度界面。
     public var activeKeepAliveMode: KeepAliveMode {
-        keepAlive.activeMode
+        keepAlive.currentMode
     }
 
     /// 用户配置的保活方式。用于避免持续处理尚未来得及启动时，
