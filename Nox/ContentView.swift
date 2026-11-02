@@ -7,7 +7,7 @@ import NoxState
 struct ContentView: View {
     @StateObject private var appState: AppState
     @StateObject private var downloadManager: DownloadManager
-    @StateObject private var pluginImport = PluginImportCoordinator()
+    @StateObject private var pluginImport = PluginImportCoordinator.shared
     @ObservedObject private var incomingURL = IncomingURLCenter.shared
     /// 观察语言变化，让底部 Tab 标题跟着刷新。
     /// 不要再给 `SettingsView` 套 `.id(language)`：那会重建整个 Form，
@@ -16,9 +16,6 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var browserURL: URL?
     @State private var didLogSession = false
-    /// 临时诊断：收到外部 URL 时在顶部显示一条提示，
-    /// 用来确认系统到底有没有把 URL 交给 App。定位完可以删除。
-    @State private var incomingBanner: String?
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -51,23 +48,16 @@ struct ContentView: View {
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay(alignment: .top) {
-            if let incomingBanner {
-                Text(incomingBanner)
-                    .font(.footnote.weight(.medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .allowsHitTesting(false)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: incomingBanner)
         // 浅色 / 深色 / 跟随系统
         .preferredColorScheme(appState.appearanceMode.colorScheme)
         .onAppear {
+            // 视图与 .alert 已经挂好，可以接收冷启动期间排队的文件打开了。
+            incomingURL.markUIReady()
+            // 冷启动时 scene 可能先于视图进入 active；再补一次，避免文件一直排队。
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                incomingURL.sceneDidBecomeActive()
+            }
+
             // 冷启动时 document open 可能早于视图安装，这里补一次消费。
             // 延后一个 runloop，确保 alert 等呈现上下文已经装好。
             if let url = incomingURL.pendingURL {
@@ -82,9 +72,11 @@ struct ContentView: View {
             )
 
             // 有些系统版本把「拷贝到 Nox」的文件放进 Documents/Inbox
-            // 却不回调 URL，这里延后扫一次兜底。
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                pluginImport.importPendingInboxPluginsIfNeeded()
+            // 却不回调 URL，这里多扫几次，覆盖系统延迟写入的情况。
+            for delay in [0.6, 1.5, 3.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    pluginImport.importPendingInboxPluginsIfNeeded()
+                }
             }
 
             // 冷启动时 `scenePhase` 的 onChange 不一定触发，这里补一次前台处理，
@@ -99,8 +91,11 @@ struct ContentView: View {
             downloadManager.handleScenePhase(isActive: phase == .active)
 
             if phase == .active {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                    pluginImport.importPendingInboxPluginsIfNeeded()
+                incomingURL.sceneDidBecomeActive()
+                for delay in [0.6, 1.5] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        pluginImport.importPendingInboxPluginsIfNeeded()
+                    }
                 }
             }
         }
@@ -127,13 +122,15 @@ struct ContentView: View {
                 return Alert(
                     title: Text(notice.title),
                     message: Text(notice.message),
-                    dismissButton: .default(Text(L("确定")))
+                    dismissButton: .default(Text(L("确定"))) {
+                        pluginImport.dismissNotice(notice)
+                    }
                 )
             case .confirmation(let confirmation):
                 return Alert(
                     title: Text(L("插件已存在")),
                     message: Text(confirmation.message),
-                    primaryButton: .default(Text(L("确认导入"))) {
+                    primaryButton: .default(Text(L("替换"))) {
                         pluginImport.confirmImport(confirmation)
                     },
                     secondaryButton: .cancel(Text(L("取消"))) {
@@ -146,8 +143,6 @@ struct ContentView: View {
 
     @MainActor
     private func handleIncomingURL(_ url: URL) {
-        showIncomingBanner(for: url)
-
         if IncomingLink.isPluginImport(url) {
             LogStore.shared.info("handle incoming: shared plugin")
             if let data = IncomingLink.pluginData(from: url) {
@@ -166,19 +161,6 @@ struct ContentView: View {
         } else {
             LogStore.shared.info("handle incoming: file")
             pluginImport.handleOpenURL(url)
-        }
-    }
-
-    private func showIncomingBanner(for url: URL) {
-        let text = url.isFileURL
-            ? String(format: L("已收到外部文件：%@"), url.lastPathComponent)
-            : String(
-                format: L("已收到外部链接：%@"),
-                (url.scheme ?? "?") + "://" + (url.host ?? "")
-            )
-        incomingBanner = text
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
-            if incomingBanner == text { incomingBanner = nil }
         }
     }
 

@@ -2644,6 +2644,38 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "En attente · En attente d’un créneau de téléchargement" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "대기 중 · 빈 다운로드 자리를 기다리는 중" } }
       }
+    },
+    "替换" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ersetzen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Replace" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Remplacer" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "교체" } }
+      }
+    },
+    "版本相同" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gleiche Version" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Same version" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Même version" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "같은 버전" } }
+      }
+    },
+    "%@ 已存在\n%@ → %@（%@）" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ ist bereits vorhanden\n%@ → %@ (%@)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ already exists\n%@ → %@ (%@)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ existe déjà\n%@ → %@ (%@)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@이(가) 이미 있습니다\n%@ → %@(%@)" } }
+      }
+    },
+    "另有 %d 个新插件将一并导入。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%d neue Plugins werden ebenfalls importiert." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%d new plugin(s) will also be imported." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%d nouveau(x) plugin(s) seront également importés." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "새 플러그인 %d개도 함께 가져옵니다." } }
+      }
     }
   },
   "version" : "1.0"

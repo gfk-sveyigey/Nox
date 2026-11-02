@@ -47,7 +47,7 @@ public final class PluginStore {
         public let id: String
         public let name: String
         public let version: String
-        /// 同 ID 已存在的版本号；导入版本优先，其次包内版本。
+        /// 同 ID 的已导入版本号；没有导入版本时为 nil（包内版本不算已存在）。
         public let existingVersion: String?
         public let existing: Existing?
 
@@ -92,11 +92,8 @@ public final class PluginStore {
     func loadParsers() -> [ScriptSiteParser] {
         var byID: [String: ScriptSiteParser] = [:]
 
-        if showsBundledPlugins {
-            let hidden = hiddenBundledIDs
-            for parser in BundledPluginLoader.load() where !hidden.contains(parser.identifier) {
-                byID[parser.identifier] = parser
-            }
+        for parser in activeBundledParsers() {
+            byID[parser.identifier] = parser
         }
 
         for parser in loadImportedParsers() {
@@ -158,9 +155,9 @@ public final class PluginStore {
         let destination = pluginFileURL(for: package.manifest.id)
         let existed = fileManager.fileExists(atPath: destination.path)
         let previousVersion = existed ? installedVersion(at: destination) : nil
-        let overridesBundled = showsBundledPlugins && BundledPluginLoader.load().contains {
-            $0.identifier == package.manifest.id
-        }
+        // 只有真正出现在「解析来源」里的包内插件才算被覆盖。默认隐藏的
+        // 内置插件不应让导入提示看起来像一次「内置升级」。
+        let overridesBundled = activeBundledParser(id: package.manifest.id) != nil
 
         let updateKind: UpdateKind
         if !existed {
@@ -223,25 +220,14 @@ public final class PluginStore {
 
         let importedURL = pluginFileURL(for: package.manifest.id)
         let importedExists = fileManager.fileExists(atPath: importedURL.path)
-        let bundledVersion = showsBundledPlugins
-            ? BundledPluginLoader.load()
-                .first { $0.identifier == package.manifest.id }?
-                .pluginVersion
+
+        // 只有用户真正导入过的版本才算「已存在」。包内插件即使通过隐藏入口
+        // 恢复显示，也不应让普通导入看起来像一次「内置升级」；导入文件会
+        // 直接覆盖同 ID 的包内版本。
+        let existingVersion = importedExists
+            ? (installedVersion(at: importedURL) ?? "?")
             : nil
-
-        let existingVersion: String?
-        let existing: Inspection.Existing?
-
-        if importedExists {
-            existingVersion = installedVersion(at: importedURL) ?? "?"
-            existing = .imported
-        } else if let bundledVersion {
-            existingVersion = bundledVersion
-            existing = .bundled
-        } else {
-            existingVersion = nil
-            existing = nil
-        }
+        let existing: Inspection.Existing? = importedExists ? .imported : nil
 
         return Inspection(
             id: package.manifest.id,
@@ -410,6 +396,20 @@ public final class PluginStore {
 
     private var hiddenBundledIDs: Set<String> {
         Set(UserDefaults.standard.stringArray(forKey: hiddenBundledKey) ?? [])
+    }
+
+    /// 当前实际参与解析的包内插件。
+    ///
+    /// 总开关关闭或该 ID 被单独隐藏时，包内版本在界面上并不存在，导入判断
+    /// 也不应该把它当成现有插件。
+    private func activeBundledParsers() -> [ScriptSiteParser] {
+        guard showsBundledPlugins else { return [] }
+        let hidden = hiddenBundledIDs
+        return BundledPluginLoader.load().filter { !hidden.contains($0.identifier) }
+    }
+
+    private func activeBundledParser(id: String) -> ScriptSiteParser? {
+        activeBundledParsers().first { $0.identifier == id }
     }
 
     private func pluginFileURL(for identifier: String) -> URL {

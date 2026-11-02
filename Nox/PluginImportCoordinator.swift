@@ -1,11 +1,14 @@
 import Combine
 import Foundation
+import UIKit
 import NoxCore
 import NoxParsing
 
 /// 统一处理来自「文件」App、其他 App 的「用 Nox 打开」以及设置页文件选择器的插件导入。
 @MainActor
 final class PluginImportCoordinator: ObservableObject {
+    static let shared = PluginImportCoordinator()
+
     struct Notice: Identifiable {
         let id = UUID()
         let title: String
@@ -42,6 +45,12 @@ final class PluginImportCoordinator: ObservableObject {
 
     /// 本次运行里已经交给导入流程的文件。`Documents/Inbox` 兜底扫描用它去重。
     private var handledPaths = Set<String>()
+    /// 系统可能在同一轮启动里把同一个文件重复交给 App，短时间去重避免弹两次确认。
+    private var recentlyOpenedPaths: [String: Date] = [:]
+    /// 提示框还没结束时到达的文件，等当前导入处理完再继续，避免静默丢弃。
+    private var queuedImportURLs: [URL] = []
+
+    private init() {}
 
     func handleOpenURL(_ url: URL) {
         guard url.isFileURL else {
@@ -50,6 +59,17 @@ final class PluginImportCoordinator: ObservableObject {
             )
             return
         }
+        let path = url.standardizedFileURL.path
+        let now = Date()
+        recentlyOpenedPaths = recentlyOpenedPaths.filter {
+            now.timeIntervalSince($0.value) < 5
+        }
+        if let last = recentlyOpenedPaths[path], now.timeIntervalSince(last) < 5 {
+            LogStore.shared.info("duplicate file open ignored: \(url.lastPathComponent)")
+            return
+        }
+        recentlyOpenedPaths[path] = now
+
         LogStore.shared.info("open file: \(url.lastPathComponent)")
         markHandled(url)
         importFiles([url])
@@ -93,7 +113,13 @@ final class PluginImportCoordinator: ObservableObject {
 
         // Documents/Inbox 与 App Group 收件箱一起扫描：后者来自分享扩展，
         // 即使系统没有帮我们唤起 App 也能在下次前台时导入。
-        let inboxPlugins = urls.filter { $0.pathExtension.lowercased() == "noxplugin" }
+        //
+        // 不按后缀过滤 Documents/Inbox：系统把文件拷进来时可能改名或去掉
+        // 后缀，真正的插件格式由 `PluginStore` 读内容校验。App Group 收件箱
+        // 是分享扩展自己写的，仍按 `.noxplugin` 过滤。
+        let inboxPlugins = urls.filter {
+            (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+        }
         let pending = (inboxPlugins + SharedPluginInbox.pendingPluginURLs())
             .filter { !handledPaths.contains($0.standardizedFileURL.path) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
@@ -139,10 +165,17 @@ final class PluginImportCoordinator: ObservableObject {
     }
 
     func importFiles(_ urls: [URL]) {
-        // 确认框还开着时不再叠加新的导入请求，避免两个批次混在一起。
-        if case .confirmation = prompt {
-            LogStore.shared.info("plugin import ignored: confirmation is pending")
-            for url in urls { Self.removeTemporaryImport(at: url) }
+        // 任何提示框还开着时都先排队，等用户处理完当前批次再继续。
+        // 不能直接丢弃：文件点按没有第二次提示，用户会以为完全没反应。
+        if prompt != nil {
+            LogStore.shared.info("plugin import queued: prompt is pending")
+            for url in urls {
+                let path = url.standardizedFileURL.path
+                guard !queuedImportURLs.contains(where: {
+                    $0.standardizedFileURL.path == path
+                }) else { continue }
+                queuedImportURLs.append(url)
+            }
             return
         }
 
@@ -188,11 +221,13 @@ final class PluginImportCoordinator: ObservableObject {
             LogStore.shared.info(
                 "plugin import needs confirmation: \(existing.map(\.inspection.id).joined(separator: ", "))"
             )
-            prompt = .confirmation(
-                ImportConfirmation(
-                    items: items,
-                    failures: failures,
-                    message: Self.confirmationMessage(items: items, failures: failures)
+            present(
+                .confirmation(
+                    ImportConfirmation(
+                        items: items,
+                        failures: failures,
+                        message: Self.confirmationMessage(items: items, failures: failures)
+                    )
                 )
             )
             return
@@ -211,6 +246,7 @@ final class PluginImportCoordinator: ObservableObject {
         // presentation 被系统丢掉。
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.performImport(confirmation.items, failures: confirmation.failures)
+            self?.drainQueuedImports()
         }
     }
 
@@ -220,6 +256,15 @@ final class PluginImportCoordinator: ObservableObject {
         for item in confirmation.items {
             Self.removeTemporaryImport(at: item.url)
         }
+        drainQueuedImports()
+    }
+
+    /// 结果提示被用户关闭后，继续处理排队中的文件。
+    func dismissNotice(_ notice: Notice) {
+        if case .notice(let current) = prompt, current.id == notice.id {
+            prompt = nil
+        }
+        drainQueuedImports()
     }
 
     func report(_ error: Error) {
@@ -244,14 +289,10 @@ final class PluginImportCoordinator: ObservableObject {
         }
 
         isImporting = true
-        var installed: [String] = []
-        var updated: [String] = []
-        var downgraded: [String] = []
-        var replaced: [String] = []
-        var overriddenBundled: [String] = []
+        var summaries: [String] = []
         var failures = initialFailures
         var successCount = 0
-        var didUpdateExisting = false
+        var installedCount = 0
 
         for item in items {
             let url = item.url
@@ -260,35 +301,15 @@ final class PluginImportCoordinator: ObservableObject {
             do {
                 let result = try PluginStore.shared.install(from: url)
                 successCount += 1
-                if result.updateKind != .installed || result.overridesBundled {
-                    didUpdateExisting = true
-                }
-                let summary = "\(result.name) v\(result.version) · \(result.id)"
-
-                switch result.updateKind {
-                case .installed:
-                    installed.append(summary)
-                case .updated:
-                    updated.append(summary)
-                case .replaced:
-                    replaced.append(summary)
-                case .downgraded:
-                    if let previous = result.previousVersion {
-                        downgraded.append(
-                            String(
-                                format: L("已回退：%@（%@ → %@）"),
-                                result.name,
-                                previous,
-                                result.version
-                            )
-                        )
-                    } else {
-                        downgraded.append(summary)
-                    }
+                if result.updateKind == .installed {
+                    installedCount += 1
                 }
 
-                if result.overridesBundled {
-                    overriddenBundled.append(result.name)
+                // 一行一个结果：新插件只显示名称和版本；替换时显示版本变化。
+                if let previous = result.previousVersion, previous != result.version {
+                    summaries.append("\(result.name) \(previous) → \(result.version)")
+                } else {
+                    summaries.append("\(result.name) \(result.version)")
                 }
             } catch {
                 LogStore.shared.error(
@@ -303,34 +324,11 @@ final class PluginImportCoordinator: ObservableObject {
         }
         isImporting = false
 
-        var lines: [String] = []
-        lines.append(contentsOf: installed.map { String(format: L("已导入：%@"), $0) })
-        lines.append(contentsOf: updated.map { String(format: L("已更新：%@"), $0) })
-        lines.append(contentsOf: replaced.map { String(format: L("已更新：%@"), $0) })
-        lines.append(contentsOf: downgraded)
-        lines.append(contentsOf: overriddenBundled.map {
-            String(
-                format: L("已覆盖同名内置插件：%@。删除后不会恢复内置版本。"),
-                $0
-            )
-        })
-        if !installed.isEmpty {
-            lines.append(L("新插件已加入「解析来源」；如有多个解析器匹配同一站点，可在该页面调整顺序。"))
-        }
-        if didUpdateExisting {
-            lines.append(L("同名插件按 ID 更新现有条目，不会在列表中新增重复行。"))
-        }
-        lines.append(contentsOf: failures)
-
-        if successCount > 0 {
-            lines.append(L("提示：当前未验证插件签名，请只导入可信来源。"))
-        }
-
         let title: String
         if failures.isEmpty {
-            if installed.count == successCount {
+            if installedCount == successCount {
                 title = L("插件已导入")
-            } else if updated.count + downgraded.count + replaced.count == successCount {
+            } else if installedCount == 0 {
                 title = L("插件已更新")
             } else {
                 title = L("插件导入完成")
@@ -341,43 +339,53 @@ final class PluginImportCoordinator: ObservableObject {
             title = L("部分插件未导入")
         }
 
-        setNotice(title: title, message: lines.joined(separator: "\n"))
+        setNotice(
+            title: title,
+            message: (summaries + failures).joined(separator: "\n")
+        )
     }
 
     // MARK: - 文案 / 清理
 
     private func setNotice(title: String, message: String) {
-        prompt = .notice(Notice(title: title, message: message))
+        present(.notice(Notice(title: title, message: message)))
+    }
+
+    private func present(_ prompt: Prompt) {
+        self.prompt = prompt
+    }
+
+    private func drainQueuedImports() {
+        guard prompt == nil, !isImporting, !queuedImportURLs.isEmpty else { return }
+        let urls = queuedImportURLs
+        queuedImportURLs.removeAll()
+        LogStore.shared.info("plugin import dequeued: \(urls.count) file(s)")
+        importFiles(urls)
     }
 
     private static func confirmationMessage(
         items: [ImportConfirmation.Item],
         failures: [String]
     ) -> String {
-        var lines = [
-            L("以下插件已经存在。确认后会替换当前版本，无论版本升高、降低还是相同：")
-        ]
+        var blocks: [String] = []
 
         for item in items {
             let info = item.inspection
-            guard let existingVersion = info.existingVersion else { continue }
+            guard info.exists, let existingVersion = info.existingVersion else { continue }
 
-            let origin = info.existing == .bundled ? L("内置") : L("已导入")
             let oldVersion = existingVersion == "?" ? L("未知版本") : existingVersion
             let change: String
             switch info.change {
             case .upgrade: change = L("升级")
             case .downgrade: change = L("回退")
-            case .same: change = L("同版本")
+            case .same: change = L("版本相同")
             case .new: change = ""
             }
 
-            lines.append(
+            blocks.append(
                 String(
-                    format: L("%@（%@）\n%@ %@ → %@（%@）"),
+                    format: L("%@ 已存在\n%@ → %@（%@）"),
                     info.name,
-                    info.id,
-                    origin,
                     oldVersion,
                     info.version,
                     change
@@ -387,11 +395,11 @@ final class PluginImportCoordinator: ObservableObject {
 
         let newCount = items.filter { !$0.inspection.exists }.count
         if newCount > 0 {
-            lines.append(String(format: L("其余 %d 个新插件会一并导入。"), newCount))
+            blocks.append(String(format: L("另有 %d 个新插件将一并导入。"), newCount))
         }
 
-        lines.append(contentsOf: failures)
-        return lines.joined(separator: "\n\n")
+        blocks.append(contentsOf: failures)
+        return blocks.joined(separator: "\n\n")
     }
 
     /// 清理选择器 / 分享扩展产生的临时副本。只删除本流程自己创建的
