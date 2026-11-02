@@ -178,6 +178,9 @@ struct ContentView: View {
                 // 新版分享扩展只回传短链接，插件本体在 App Group 收件箱里。
                 pluginImport.importPendingSharedPlugins()
             }
+        } else if IncomingLink.isDownloads(url) {
+            LogStore.shared.info("handle incoming: downloads")
+            selectedTab = 1
         } else if let webURL = IncomingLink.webURL(from: url) {
             LogStore.shared.info("handle incoming: web url")
             selectedTab = 0

@@ -20,6 +20,20 @@
                ReferencedContainer = "container:Nox.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "NO"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "F10000010000000000000013"
+               BuildableName = "NoxLiveActivity.appex"
+               BlueprintName = "NoxLiveActivity"
+               ReferencedContainer = "container:Nox.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction buildConfiguration = "Debug" shouldUseLaunchSchemeArgsEnv = "YES">

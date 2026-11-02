@@ -16,6 +16,12 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 最近一次失败原因，用于设置页提示。
     @Published private(set) var lastError: String?
 
+    /// 当前实际生效保活方式的变化。Live Activity 用它判断何时让位给
+    /// 系统为「持续处理」自动展示的活动。
+    public var modePublisher: AnyPublisher<KeepAliveMode, Never> {
+        $activeMode.eraseToAnyPublisher()
+    }
+
     /// 用户偏好的保活方式。
     public var preferredMode: KeepAliveMode = .off {
         didSet {

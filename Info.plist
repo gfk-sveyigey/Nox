@@ -40,6 +40,8 @@
         <string>fetch</string>
         <string>processing</string>
     </array>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>BGTaskSchedulerPermittedIdentifiers</key>
     <array>
         <string>com.aholic.nox.refresh</string>

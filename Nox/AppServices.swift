@@ -12,10 +12,16 @@ final class AppServices {
 
     let appState: AppState
     let downloadManager: DownloadManager
+    let liveActivity: DownloadLiveActivityManager
 
     private init() {
         let state = AppState()
+        let manager = DownloadManager(store: state)
         appState = state
-        downloadManager = DownloadManager(store: state)
+        downloadManager = manager
+        liveActivity = DownloadLiveActivityManager(
+            appState: state,
+            downloadManager: manager
+        )
     }
 }

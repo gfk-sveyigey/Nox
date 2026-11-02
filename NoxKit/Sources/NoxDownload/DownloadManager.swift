@@ -261,6 +261,23 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         }
     }
 
+    /// 当前真正运行的保活方式。Live Activity 在持续处理模式下需要让位给
+    /// 系统自带的活动，避免同时出现两个进度界面。
+    public var activeKeepAliveMode: KeepAliveMode {
+        keepAlive.activeMode
+    }
+
+    /// 用户配置的保活方式。用于避免持续处理尚未来得及启动时，
+    /// 自定义 Live Activity 先短暂出现再被系统活动替换。
+    public var preferredKeepAliveMode: KeepAliveMode {
+        keepAlive.preferredMode
+    }
+
+    /// 保活方式变化（例如切换到持续处理）的发布者。
+    public var activeKeepAliveModePublisher: AnyPublisher<KeepAliveMode, Never> {
+        keepAlive.modePublisher
+    }
+
     /// 设置页切换保活方式。
     public func setKeepAliveMode(_ mode: KeepAliveMode) {
         // iOS 26 以下不提供持续处理；即便外部传入也不接受。
