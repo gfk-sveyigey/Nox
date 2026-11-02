@@ -122,6 +122,7 @@ struct SettingsView: View {
     func settingsLabel(_ title: String, systemImage: String) -> some View {
         Label {
             Text(title)
+                .font(.body.weight(.semibold))
         } icon: {
             Image(systemName: systemImage)
                 .foregroundStyle(.tint)
