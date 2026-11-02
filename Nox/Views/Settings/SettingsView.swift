@@ -183,7 +183,7 @@ struct SettingsView: View {
         iconColor: Color
     ) -> some View {
         Label {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body)
 
@@ -198,8 +198,7 @@ struct SettingsView: View {
                 .foregroundStyle(iconColor)
                 .frame(width: 24, alignment: .center)
         }
-        .frame(minHeight: 48)
-        .padding(.vertical, 3)
+        .frame(minHeight: 40)
     }
 
     /// 页脚：居中显示版本与作者，形如「Nox v1.0.16 · Aholic」。
