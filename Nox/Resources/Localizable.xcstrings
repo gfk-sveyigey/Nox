@@ -1,6 +1,46 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "可清理" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bereinigbar" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clearable" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nettoyable" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정리 가능" } }
+      }
+    },
+    "不可清理" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Behalten" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Conserver" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "유지" } }
+      }
+    },
+    "下载临时文件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Temporäre Download-Dateien" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download temp files" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichiers temporaires de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 임시 파일" } }
+      }
+    },
+    "其他数据" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Andere Daten" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Other data" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Autres données" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기타 데이터" } }
+      }
+    },
+    "更多" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mehr" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plus" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "더 보기" } }
+      }
+    },
     "返回首页" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Zur Startseite" } },

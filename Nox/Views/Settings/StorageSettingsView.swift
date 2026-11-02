@@ -28,15 +28,23 @@ struct StorageSettingsView: View {
                     totalBytes: storageTotalSize,
                     slices: chartSlices
                 )
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
             }
 
             Section {
-                ForEach(StorageCategory.allCases) { category in
+                ForEach(StorageCategory.clearableCategories) { category in
                     row(for: category)
                 }
-            } footer: {
-                Text(L("双指下滑进入多选，勾选要清理的类别，再点右上角「清理」。统计不含只读的 App 本体。"))
+            } header: {
+                Text(L("可清理"))
+            }
+
+            Section {
+                ForEach(StorageCategory.protectedCategories) { category in
+                    row(for: category)
+                }
+            } header: {
+                Text(L("不可清理"))
             }
         }
         .environment(\.editMode, $editMode)
@@ -75,39 +83,23 @@ struct StorageSettingsView: View {
 
     @MainActor
     private var chartSlices: [StorageChartSlice] {
-        let downloadCategories: [StorageCategory] = [.videos, .documentsOther]
-        let cacheCategories: [StorageCategory] = [.parts, .staging, .networkCache, .temporary]
-        let appCategories: [StorageCategory] = [
-            .plugins, .logs, .preferences, .applicationOther,
-            .applicationSupportOther, .libraryOther, .sharedContainer
-        ]
-
-        let downloads = sum(downloadCategories)
-        let cache = sum(cacheCategories)
-        let web = bytes(.websiteData)
-        let app = sum(appCategories)
-
-        let downloadSlice = StorageChartSlice(
-            id: "downloads", title: L("下载"), bytes: downloads, color: .blue
-        )
-        let cacheSlice = StorageChartSlice(
-            id: "cache", title: L("缓存"), bytes: cache, color: .orange
-        )
-        let webSlice = StorageChartSlice(
-            id: "web", title: L("网站数据"), bytes: web, color: .green
-        )
-        let appSlice = StorageChartSlice(
-            id: "app", title: L("应用数据"), bytes: app, color: .purple
-        )
-        return [downloadSlice, cacheSlice, webSlice, appSlice]
+        StorageCategory.allCases.map { category in
+            StorageChartSlice(
+                id: category.rawValue,
+                title: category.title,
+                bytes: bytes(category),
+                color: category.color
+            )
+        }
     }
 
     private func bytes(_ category: StorageCategory) -> Int64 {
         sizes[category] ?? 0
     }
 
-    private func sum(_ categories: [StorageCategory]) -> Int64 {
-        categories.reduce(Int64(0)) { $0 + bytes($1) }
+    private func fraction(for category: StorageCategory) -> CGFloat {
+        guard storageTotalSize > 0 else { return 0 }
+        return CGFloat(max(bytes(category), 0)) / CGFloat(storageTotalSize)
     }
 
     @ViewBuilder
@@ -120,7 +112,11 @@ struct StorageSettingsView: View {
                 .selectionDisabled(!category.canClear)
         } else {
             NavigationLink {
-                StorageCategoryDetailView(manager: manager, category: category)
+                StorageCategoryDetailView(
+                    manager: manager,
+                    category: category,
+                    tint: category.color
+                )
             } label: {
                 categoryLabel(category)
             }
@@ -131,18 +127,33 @@ struct StorageSettingsView: View {
     func categoryLabel(_ category: StorageCategory) -> some View {
         HStack(spacing: 12) {
             Image(systemName: category.systemImage)
-                .foregroundStyle(.tint)
-                .frame(width: 26)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(category.color)
+                .frame(width: 32, height: 32)
+                .background(
+                    category.color.opacity(0.14),
+                    in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
 
-            Text(category.title)
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(category.title)
+                        .foregroundStyle(.primary)
 
-            Spacer(minLength: 8)
+                    Spacer(minLength: 8)
 
-            Text(TransferStats.formattedSize(sizes[category] ?? 0))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+                    Text(TransferStats.formattedSize(bytes(category)))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+
+                StorageShareBar(
+                    fraction: fraction(for: category),
+                    color: category.color
+                )
+            }
         }
+        .padding(.vertical, 2)
     }
 
     func rowFrame(_ category: StorageCategory) -> some View {
@@ -231,12 +242,16 @@ struct StorageSettingsView: View {
                 manager.deleteFiles(ids: finishedIDs)
             }
 
-            if categories.contains(.parts) { manager.clearParts() }
-            if categories.contains(.staging) { manager.clearStaging() }
+            if categories.contains(.downloadTemporary) {
+                manager.clearParts()
+                manager.clearStaging()
+            }
+            if categories.contains(.caches) {
+                manager.clearNetworkCache()
+                manager.clearTemporaryFiles()
+            }
             if categories.contains(.logs) { LogStore.shared.clear() }
-            if categories.contains(.networkCache) { manager.clearNetworkCache() }
             if categories.contains(.websiteData) { await manager.clearWebsiteData() }
-            if categories.contains(.temporary) { manager.clearTemporaryFiles() }
 
             LogStore.shared.info(
                 "storage cleared: " + categories.map(\.rawValue).sorted().joined(separator: ",")
@@ -248,93 +263,82 @@ struct StorageSettingsView: View {
     }
 }
 
-/// 环形图：只统计 App 沙盒内的可写数据。
+/// 横向分段占比条：替代占用空间较大的环形图。
 private struct StorageOverviewCard: View {
     let totalBytes: Int64
     let slices: [StorageChartSlice]
 
-    private var chartTotal: Int64 {
-        max(totalBytes, slices.reduce(0) { $0 + max($1.bytes, 0) })
-    }
-
     var body: some View {
-        VStack(spacing: 18) {
-            ZStack {
-                Circle()
-                    .stroke(Color.secondary.opacity(0.12), lineWidth: 24)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(L("总计"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
-                ForEach(fractions) { item in
-                    if item.end > item.start {
-                        Circle()
-                            .trim(from: item.start, to: item.end)
-                            .stroke(
-                                item.slice.color,
-                                style: StrokeStyle(lineWidth: 24, lineCap: .butt)
-                            )
-                            .rotationEffect(.degrees(-90))
-                    }
-                }
+                Spacer(minLength: 8)
 
-                VStack(spacing: 4) {
-                    Text(L("总计"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(TransferStats.formattedSize(totalBytes))
-                        .font(.title3.weight(.bold))
-                        .monospacedDigit()
-                }
+                Text(TransferStats.formattedSize(totalBytes))
+                    .font(.title2.weight(.bold))
+                    .monospacedDigit()
             }
-            .frame(width: 190, height: 190)
 
-            VStack(spacing: 10) {
-                ForEach(slices) { slice in
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(slice.color)
-                            .frame(width: 9, height: 9)
-
-                        Text(slice.title)
-                            .font(.subheadline)
-
-                        Spacer(minLength: 8)
-
-                        Text(TransferStats.formattedSize(slice.bytes))
-                            .font(.subheadline)
-                            .monospacedDigit()
-
-                        Text(percentText(slice.bytes))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .frame(width: 42, alignment: .trailing)
-                    }
-                }
-            }
+            StorageSegmentedBar(slices: slices)
+                .frame(height: 14)
         }
         .frame(maxWidth: .infinity)
     }
+}
 
-    private var fractions: [StorageChartFraction] {
-        guard chartTotal > 0 else { return [] }
-        var cursor: CGFloat = 0
-        return slices.map { slice in
-            let fraction = CGFloat(max(slice.bytes, 0)) / CGFloat(chartTotal)
-            let start = cursor
-            cursor += fraction
-            return StorageChartFraction(
-                slice: slice,
-                start: start,
-                end: min(cursor, 1)
-            )
+/// 一条完整的 App 数据占比条，各分类按字节数比例着色。
+private struct StorageSegmentedBar: View {
+    let slices: [StorageChartSlice]
+
+    private var totalBytes: Int64 {
+        let sum = slices.reduce(Int64(0)) { partial, slice in
+            partial + max(slice.bytes, 0)
         }
+        return max(sum, 1)
     }
 
-    private func percentText(_ bytes: Int64) -> String {
-        guard chartTotal > 0 else { return "—" }
-        return String(
-            format: "%.0f%%",
-            Double(max(bytes, 0)) / Double(chartTotal) * 100
-        )
+    private func segmentWidth(for slice: StorageChartSlice, available: CGFloat) -> CGFloat {
+        let bytes = CGFloat(max(slice.bytes, 0))
+        let total = CGFloat(totalBytes)
+        return available * bytes / total
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            HStack(spacing: 0) {
+                ForEach(slices) { slice in
+                    Rectangle()
+                        .fill(slice.color)
+                        .frame(width: segmentWidth(for: slice, available: proxy.size.width))
+                }
+            }
+        }
+        .background(Color.secondary.opacity(0.12))
+        .clipShape(Capsule())
+        .accessibilityHidden(true)
+    }
+}
+
+/// 单个分类在总占用中的细进度条。
+private struct StorageShareBar: View {
+    let fraction: CGFloat
+    let color: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(color.opacity(0.13))
+
+                Capsule()
+                    .fill(color)
+                    .frame(width: proxy.size.width * min(max(fraction, 0), 1))
+            }
+        }
+        .frame(height: 5)
     }
 }
 
@@ -343,6 +347,7 @@ struct StorageCategoryDetailView: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject var manager: DownloadManager
     let category: StorageCategory
+    var tint: Color = .accentColor
 
     @State var entries: [StorageEntry] = []
 
@@ -386,12 +391,12 @@ struct StorageCategoryDetailView: View {
     func entryRow(_ entry: StorageEntry) -> some View {
         if entry.isDirectory {
             NavigationLink {
-                StorageDirectoryDetailView(url: entry.url, title: entry.name)
+                StorageDirectoryDetailView(url: entry.url, title: entry.name, tint: tint)
             } label: {
-                StorageEntryLabel(entry: entry)
+                StorageEntryLabel(entry: entry, tint: tint)
             }
         } else {
-            StorageEntryLabel(entry: entry)
+            StorageEntryLabel(entry: entry, tint: tint)
         }
     }
 }
@@ -400,6 +405,7 @@ struct StorageCategoryDetailView: View {
 struct StorageDirectoryDetailView: View {
     let url: URL
     let title: String
+    var tint: Color = .accentColor
 
     @State var entries: [StorageEntry] = []
 
@@ -439,23 +445,24 @@ struct StorageDirectoryDetailView: View {
     func entryRow(_ entry: StorageEntry) -> some View {
         if entry.isDirectory {
             NavigationLink {
-                StorageDirectoryDetailView(url: entry.url, title: entry.name)
+                StorageDirectoryDetailView(url: entry.url, title: entry.name, tint: tint)
             } label: {
-                StorageEntryLabel(entry: entry)
+                StorageEntryLabel(entry: entry, tint: tint)
             }
         } else {
-            StorageEntryLabel(entry: entry)
+            StorageEntryLabel(entry: entry, tint: tint)
         }
     }
 }
 
 private struct StorageEntryLabel: View {
     let entry: StorageEntry
+    var tint: Color = .accentColor
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: entry.isDirectory ? "folder" : "doc")
-                .foregroundStyle(.tint)
+                .foregroundStyle(tint)
                 .frame(width: 24)
 
             Text(entry.name)
@@ -477,14 +484,6 @@ private struct StorageChartSlice: Identifiable {
     let title: String
     let bytes: Int64
     let color: Color
-}
-
-private struct StorageChartFraction: Identifiable {
-    let slice: StorageChartSlice
-    let start: CGFloat
-    let end: CGFloat
-
-    var id: String { slice.id }
 }
 
 /// 收集可见储存类别行的全局坐标，供双指路径选择使用。
