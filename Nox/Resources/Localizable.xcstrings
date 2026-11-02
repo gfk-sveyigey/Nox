@@ -2676,6 +2676,278 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "%d nouveau(x) plugin(s) seront également importés." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "새 플러그인 %d개도 함께 가져옵니다." } }
       }
+    },
+    "AVAsset 下载完成，但导出 MP4 失败。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der AVAsset-Download wurde abgeschlossen, aber der MP4-Export ist fehlgeschlagen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The AVAsset download finished, but exporting MP4 failed." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le téléchargement AVAsset est terminé, mais l’export MP4 a échoué." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "AVAsset 다운로드는 완료되었지만 MP4 내보내기에 실패했습니다." } }
+      }
+    },
+    "HLS 下载引擎" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "HLS-Download-Engine" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "HLS download engine" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Moteur de téléchargement HLS" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "HLS 다운로드 엔진" } }
+      }
+    },
+    "Nox" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nox" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nox" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nox" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Nox" } }
+      }
+    },
+    "Nox 合计" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nox gesamt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nox total" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Total Nox" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Nox 합계" } }
+      }
+    },
+    "Nox 用量明细" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nox-Speicherbelegung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nox usage breakdown" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Détail de l’utilisation de Nox" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Nox 사용량 세부 정보" } }
+      }
+    },
+    "iOS 26 起可用：用户在前台开始下载后，系统允许进程在后台继续处理，并显示进度与取消入口。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ab iOS 26: Nach dem Start im Vordergrund darf der Prozess im Hintergrund weiterarbeiten; Fortschritt und Abbrechen werden angezeigt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Available on iOS 26+: after the user starts a download in the foreground, the system lets the process continue in the background with progress and a cancel control." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Disponible dès iOS 26 : après un démarrage au premier plan, le système laisse le processus continuer en arrière-plan avec la progression et l’annulation." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "iOS 26부터 사용 가능: 사용자가 전경에서 다운로드를 시작하면 시스템이 백그라운드에서 프로세스를 계속 실행하고 진행률과 취소 버튼을 표시합니다." } }
+      }
+    },
+    "不限制" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Begrenzung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No limit" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sans limite" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "제한 없음" } }
+      }
+    },
+    "交给 AVAssetDownloadURLSession 下载，后台调度由系统接管；完成后自动导出 MP4。仅对 m3u8 生效。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird von AVAssetDownloadURLSession geladen; iOS übernimmt die Hintergrundplanung und exportiert anschließend MP4. Nur für m3u8." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Handed to AVAssetDownloadURLSession; iOS manages background scheduling, then exports MP4. Applies to m3u8 only." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Conféré à AVAssetDownloadURLSession ; iOS gère la planification en arrière-plan, puis exporte en MP4. Uniquement pour m3u8." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "AVAssetDownloadURLSession에 맡겨 iOS가 백그라운드 일정을 관리하고 완료 후 MP4로 내보냅니다. m3u8에만 적용됩니다." } }
+      }
+    },
+    "仅系统下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Systemdownload" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System download only" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement système uniquement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 다운로드만" } }
+      }
+    },
+    "储存空间不足" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht genügend Speicher" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not enough storage" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Espace insuffisant" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 공간 부족" } }
+      }
+    },
+    "储存空间不足，下载已暂停。释放空间后会继续排队任务。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der Speicher ist knapp; Downloads wurden pausiert. Wartende Aufgaben laufen nach dem Freigeben von Speicher weiter." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storage is low, so downloads are paused. Queued tasks will resume after space is freed." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Espace insuffisant : les téléchargements sont en pause. Les tâches en attente reprendront après libération d’espace." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 공간이 부족하여 다운로드를 일시 중지했습니다. 공간을 확보하면 대기 중인 작업이 계속됩니다." } }
+      }
+    },
+    "共 %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesamt %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Total %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "총 %@" } }
+      }
+    },
+    "其他应用与系统" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Andere Apps & System" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Other apps & system" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Autres apps et système" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기타 앱 및 시스템" } }
+      }
+    },
+    "兼容分片" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kompatible Segmente" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Compatible segments" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Segments compatibles" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "호환 분할" } }
+      }
+    },
+    "可用空间" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verfügbar" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Available" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Disponible" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용 가능" } }
+      }
+    },
+    "可用空间已低于设置的最低保留值，下载已暂停。释放空间后，排队任务会自动继续。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Der freie Speicher liegt unter dem Mindestreservewert; Downloads wurden pausiert. Wartende Aufgaben laufen nach dem Freigeben automatisch weiter." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Available space is below the minimum reserve, so downloads are paused. Queued tasks resume automatically after space is freed." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L’espace disponible est inférieur à la réserve minimale ; les téléchargements sont en pause. Les tâches en attente reprendront automatiquement après libération." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용 가능한 공간이 최소 예약 값보다 적어 다운로드를 일시 중지했습니다. 공간을 확보하면 대기 중인 작업이 자동으로 계속됩니다." } }
+      }
+    },
+    "后台下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hintergrunddownloads" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Background downloads" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargements en arrière-plan" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 다운로드" } }
+      }
+    },
+    "后台方式" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hintergrundmodus" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Background mode" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mode arrière-plan" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 방식" } }
+      }
+    },
+    "后台继续处理下载任务" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download im Hintergrund fortsetzen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue download in background" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Continuer le téléchargement en arrière-plan" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드에서 다운로드 계속" } }
+      }
+    },
+    "已用" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Belegt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Used" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilisé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용됨" } }
+      }
+    },
+    "已用 %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Belegt %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Used %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilisé %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용 %@" } }
+      }
+    },
+    "持续处理" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fortgesetzte Verarbeitung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continued processing" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Traitement continu" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "연속 처리" } }
+      }
+    },
+    "持续处理 (iOS 26)" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fortgesetzte Verarbeitung (iOS 26)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continued processing (iOS 26)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Traitement continu (iOS 26)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "연속 처리 (iOS 26)" } }
+      }
+    },
+    "持续处理提交失败：%@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fortgesetzte Verarbeitung konnte nicht übermittelt werden: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to submit continued processing: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de la soumission du traitement continu : %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "연속 처리 제출 실패: %@" } }
+      }
+    },
+    "整机储存" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gerätespeicher" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Device storage" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Stockage de l’appareil" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기기 저장 공간" } }
+      }
+    },
+    "整机可用空间低于此值时，正在下载的任务会暂停，排队任务会等待。释放空间或回到 App 后，排队任务会自动继续；已暂停的任务可在下载页点「继续」。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fällt der freie Gerätespeicher unter diesen Wert, werden aktive Downloads pausiert und wartende Aufgaben bleiben in der Warteschlange. Nach dem Freigeben von Speicher oder der Rückkehr zur App laufen wartende Aufgaben automatisch weiter; pausierte Aufgaben lassen sich unter Downloads fortsetzen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When free device space drops below this value, active downloads pause and queued tasks wait. After freeing space or returning to the app, queued tasks resume automatically; paused tasks can be resumed from Downloads." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lorsque l’espace libre descend sous cette valeur, les téléchargements actifs sont mis en pause et les tâches en attente patientent. Après libération ou retour dans l’app, elles reprennent automatiquement ; les tâches en pause peuvent être reprises depuis Téléchargements." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기기의 여유 공간이 이 값보다 적어지면 진행 중인 다운로드가 일시 중지되고 대기 작업은 기다립니다. 공간을 확보하거나 앱으로 돌아오면 대기 작업이 자동으로 재개되며, 일시 중지된 작업은 다운로드 화면에서 계속할 수 있습니다." } }
+      }
+    },
+    "普通文件交给系统后台 URLSession 继续；HLS 分片编排、合并等必须让 App 进程执行的任务，切后台后可能暂停。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Normale Dateien laufen über die systemeigene Hintergrund-URLSession weiter; HLS-Segmentierung und Zusammenführung benötigen den App-Prozess und können im Hintergrund pausieren." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Regular files continue via the system background URLSession; HLS segment orchestration and merging need the app process and may pause in the background." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les fichiers ordinaires continuent via URLSession en arrière-plan ; l’orchestration et la fusion des segments HLS nécessitent le processus de l’app et peuvent se mettre en pause." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일반 파일은 시스템 백그라운드 URLSession으로 계속되지만, HLS 분할 편성과 병합은 앱 프로세스가 필요해 백그라운드에서 일시 중지될 수 있습니다." } }
+      }
+    },
+    "最低剩余空间" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mindestens freier Speicher" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Minimum free space" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Espace libre minimum" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최소 여유 공간" } }
+      }
+    },
+    "正在下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird geladen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 중" } }
+      }
+    },
+    "正在准备后台下载…" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hintergrunddownloads werden vorbereitet…" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing background downloads…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Préparation des téléchargements en arrière-plan…" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 다운로드 준비 중…" } }
+      }
+    },
+    "系统 AVAsset" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "System-AVAsset" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System AVAsset" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "AVAsset système" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 AVAsset" } }
+      }
+    },
+    "系统无法创建 AVAsset 导出会话。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das System konnte keine AVAsset-Exportsitzung erstellen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The system could not create an AVAsset export session." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le système n’a pas pu créer une session d’export AVAsset." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템이 AVAsset 내보내기 세션을 만들 수 없습니다." } }
+      }
+    },
+    "逐片下载后合并。支持自定义请求头，输出标准 MP4；后台时间由保活方式决定。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lädt Segmente und führt sie zusammen. Unterstützt eigene Header und erzeugt Standard-MP4; die Hintergrundzeit hängt vom Keep-Alive-Modus ab." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloads segments then merges them. Supports custom headers and outputs standard MP4; background time depends on the keep-alive mode." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Télécharge les segments puis les fusionne. Prend en charge les en-têtes personnalisés et produit un MP4 standard ; le temps en arrière-plan dépend du mode de maintien." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분할 파일을 내려받아 병합합니다. 사용자 지정 헤더를 지원하고 표준 MP4로 출력하며, 백그라운드 시간은 백그라운드 유지 방식에 따릅니다." } }
+      }
+    },
+    "系统无法创建 AVAsset 下载任务。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das System konnte keine AVAsset-Downloadaufgabe erstellen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The system could not create an AVAsset download task." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le système n’a pas pu créer une tâche de téléchargement AVAsset." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템이 AVAsset 다운로드 작업을 만들 수 없습니다." } }
+      }
     }
   },
   "version" : "1.0"

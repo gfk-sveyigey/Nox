@@ -19,11 +19,11 @@ struct KeepAliveSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker(L("保活方式"), selection: Binding(
+                Picker(L("后台方式"), selection: Binding(
                     get: { appState.keepAliveMode },
                     set: { manager.setKeepAliveMode($0) }
                 )) {
-                    ForEach(KeepAliveMode.allCases) { mode in
+                    ForEach(KeepAliveMode.allCases.filter(\.isAvailable)) { mode in
                         Text(mode.title).tag(mode)
                     }
                 }
@@ -50,13 +50,18 @@ struct KeepAliveSettingsView: View {
                     }
                 }
             } footer: {
-                if appState.keepAliveMode == .pictureInPicture {
-                    Text(L("拖动到最左即最小：窗口高 0.1pt，视觉隐藏、不影响操作；越往右窗口越大。"))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(appState.keepAliveMode.detail)
+                    if appState.keepAliveMode == .pictureInPicture {
+                        Text(L("拖动到最左即最小：窗口高 0.1pt，视觉隐藏、不影响操作；越往右窗口越大。"))
+                    }
                 }
             }
 
-            // 保活方式为「关闭」时不需要选生命周期。
-            if appState.keepAliveMode != .off {
+            // 「仅系统下载」和持续处理都不需要选生命周期：
+            // 前者没有额外保活，后者由系统按当前下载任务授予执行时间。
+            if appState.keepAliveMode != .off,
+               appState.keepAliveMode != .continuedProcessing {
                 Section {
                     Picker(L("保活模式"), selection: Binding(
                         get: { appState.keepAliveLifetime },
@@ -101,7 +106,7 @@ struct KeepAliveSettingsView: View {
                 }
             }
         }
-        .navigationTitle(L("后台保活"))
+        .navigationTitle(L("后台下载"))
         .navigationBarTitleDisplayMode(.inline)
     }
 

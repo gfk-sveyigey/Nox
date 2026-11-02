@@ -45,6 +45,7 @@ extension DownloadManager {
     /// （暂停 / 删除 / 重试）。
     func invalidateRun(for id: UUID) {
         runTokens.removeValue(forKey: id)
+        avAssetDownloader.cancel(recordID: id)
         slotTasks[id]?.cancel()
         slotTasks.removeValue(forKey: id)
 
@@ -135,6 +136,12 @@ extension DownloadManager {
                 return lhs.id.uuidString < rhs.id.uuidString
             }
         pendingQueue.append(contentsOf: orphaned.map(\.id))
+
+        // 4.5 储存保护：空间不足时暂停活跃任务，并且不启动任何排队任务。
+        //    排队记录保持 .queued，空间恢复后回到前台或重新调度会自动补位。
+        if refreshStorageBlockState(reason: reason) {
+            return
+        }
 
         // 5. 按 FIFO 补满空闲槽位。调小上限时不打断正在跑的任务，
         //    只让 active 数自然降到新上限以下后再继续取队列。

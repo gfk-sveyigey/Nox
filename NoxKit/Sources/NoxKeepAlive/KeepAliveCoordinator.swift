@@ -87,7 +87,13 @@ public final class KeepAliveCoordinator: ObservableObject {
     }
 
     /// 是否需要保活：常驻模式恒为真；跟随模式看是否有「排队中 / 下载中」的任务。
-    private var keepAliveNeeded: Bool { hasActiveTasks || lifetime == .alwaysOn }
+    ///
+    /// 持续处理是系统按“用户发起的一项工作”授予的执行时间，没有下载任务时
+    /// 不应该常驻，否则会浪费系统预算，也更容易被系统终止。
+    private var keepAliveNeeded: Bool {
+        if preferredMode == .continuedProcessing { return hasActiveTasks }
+        return hasActiveTasks || lifetime == .alwaysOn
+    }
 
     public init() {
         pictureInPicture.coexistenceFallback = piPCoexistenceFallback
@@ -105,6 +111,22 @@ public final class KeepAliveCoordinator: ObservableObject {
         }
         pictureInPicture.onLog = { [weak self] message in
             Task { @MainActor in self?.onLog?(message) }
+        }
+        ContinuedProcessingBridge.onInterruption = { [weak self] in
+            Task { @MainActor in self?.handleInterruption() }
+        }
+    }
+
+    /// 启动屏 / 冷启动阶段的准备工作。
+    ///
+    /// 画中画需要在有窗口时提前建立宿主视图与 controller；这里不启动悬浮窗，
+    /// 只把基础设施准备好。系统后台任务的注册随后在 AppDelegate 里完成。
+    public func prepareForLaunch() {
+        ContinuedProcessingBridge.registerIfNeeded()
+
+        if preferredMode == .pictureInPicture {
+            onLog?("启动准备：预建画中画基础设施")
+            pictureInPicture.prepare()
         }
     }
 
@@ -148,9 +170,16 @@ public final class KeepAliveCoordinator: ObservableObject {
     private var activeStrategyIsRunning: Bool {
         switch activeMode {
         case .off: return false
+        case .continuedProcessing: return ContinuedProcessingBridge.isLive
         case .silentAudio: return silentAudio.isLive
         case .pictureInPicture: return pictureInPicture.isLive
         }
+    }
+
+    /// 把下载进度同步给持续处理任务，让系统知道任务仍在推进。
+    public func updateProgress(_ fraction: Double) {
+        guard activeMode == .continuedProcessing else { return }
+        ContinuedProcessingBridge.updateProgress(fraction)
     }
 
     // MARK: - 内部
@@ -201,7 +230,8 @@ public final class KeepAliveCoordinator: ObservableObject {
         // `.inactive`（`DownloadManager` 在 init 里同步设置保活模式就会走到这里），
         // 此时 `startPictureInPicture()` 会被系统以 `AVKitErrorDomain -1001` 拒绝 ——
         // 表现就是「拉起画中画失败」。这里直接推迟，等 `didEnterForeground()` 再拉起。
-        if mode == .pictureInPicture, UIApplication.shared.applicationState != .active {
+        if mode == .pictureInPicture || mode == .continuedProcessing,
+           UIApplication.shared.applicationState != .active {
             onLog?("保活启动推迟：App 尚未进入前台")
             verboseLog("启动推迟：app=\(Self.applicationStateDescription)，等待 didEnterForeground")
             return
@@ -212,6 +242,8 @@ public final class KeepAliveCoordinator: ObservableObject {
             switch mode {
             case .off:
                 break
+            case .continuedProcessing:
+                try ContinuedProcessingBridge.start()
             case .silentAudio:
                 try silentAudio.start()
             case .pictureInPicture:
@@ -243,6 +275,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     }
 
     private func stopAll() {
+        ContinuedProcessingBridge.stop()
         if silentAudio.isActive { silentAudio.stop() }
         if pictureInPicture.isActive { pictureInPicture.stop() }
     }
@@ -251,6 +284,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     private func isRunning(_ mode: KeepAliveMode) -> Bool {
         switch mode {
         case .off: return false
+        case .continuedProcessing: return ContinuedProcessingBridge.isLive
         case .silentAudio: return silentAudio.isLive
         case .pictureInPicture: return pictureInPicture.isLive
         }
@@ -258,6 +292,7 @@ public final class KeepAliveCoordinator: ObservableObject {
 
     /// 只停掉除 `mode` 以外的策略。
     private func stopOthers(than mode: KeepAliveMode) {
+        if mode != .continuedProcessing { ContinuedProcessingBridge.stop() }
         if mode != .silentAudio, silentAudio.isActive { silentAudio.stop() }
         if mode != .pictureInPicture, pictureInPicture.isActive { pictureInPicture.stop() }
     }

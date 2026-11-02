@@ -18,6 +18,8 @@ public protocol DownloadStateStore: AnyObject {
     var m3u8SegmentConcurrency: Int { get }
     var maxConcurrentDownloads: Int { get }
     var downloadNetworkMode: DownloadNetworkMode { get }
+    var minFreeDiskSpace: Int64 { get }
+    var hlsDownloadEngine: HLSDownloadEngine { get set }
 
     var keepAliveMode: KeepAliveMode { get set }
     var keepAliveLifetime: KeepAliveLifetime { get set }

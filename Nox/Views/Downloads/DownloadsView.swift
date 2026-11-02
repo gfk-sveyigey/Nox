@@ -133,6 +133,25 @@ struct DownloadsView: View {
 
     @ViewBuilder
     var rows: some View {
+        if manager.storageBlocked {
+            Section {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "externaldrive.fill.badge.exclamationmark")
+                        .foregroundStyle(.orange)
+                        .font(.title3)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L("储存空间不足"))
+                            .font(.subheadline.weight(.semibold))
+                        Text(L("可用空间已低于设置的最低保留值，下载已暂停。释放空间后，排队任务会自动继续。"))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+
         ForEach(appState.downloads) { record in
             DownloadRow(
                 record: record,

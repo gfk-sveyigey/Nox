@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 import NoxCore
+import NoxDownload
+import NoxKeepAlive
 
 /// App 入口。
 ///
@@ -20,7 +22,22 @@ final class NoxAppDelegate: UIResponder, UIApplicationDelegate {
         if let url = launchOptions?[.url] as? URL {
             IncomingURLCenter.shared.submit(url, source: "launch")
         }
+
+        // iOS 26 的持续处理任务必须在启动完成前注册，否则提交时会失败。
+        ContinuedProcessingBridge.registerIfNeeded()
         return true
+    }
+
+    /// 后台 URLSession 的事件已全部交给代理，通知系统可以结束本次后台唤醒。
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        BackgroundSessionEvents.shared.store(
+            identifier: identifier,
+            handler: completionHandler
+        )
     }
 
     func application(

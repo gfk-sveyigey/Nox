@@ -16,6 +16,8 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var browserURL: URL?
     @State private var didLogSession = false
+    @State private var startupFinished = false
+    @State private var didPrepareStartup = false
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -48,9 +50,18 @@ struct ContentView: View {
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay {
+            if !startupFinished {
+                StartupView()
+                    .transition(.opacity)
+                    .zIndex(100)
+            }
+        }
         // 浅色 / 深色 / 跟随系统
         .preferredColorScheme(appState.appearanceMode.colorScheme)
         .onAppear {
+            prepareStartupIfNeeded()
+
             // 视图与 .alert 已经挂好，可以接收冷启动期间排队的文件打开了。
             incomingURL.markUIReady()
             // 冷启动时 scene 可能先于视图进入 active；再补一次，避免文件一直排队。
@@ -137,6 +148,22 @@ struct ContentView: View {
                         pluginImport.cancelImport(confirmation)
                     }
                 )
+            }
+        }
+    }
+
+    @MainActor
+    private func prepareStartupIfNeeded() {
+        guard !didPrepareStartup else { return }
+        didPrepareStartup = true
+
+        // 预建画中画基础设施；失败也不会影响启动。
+        downloadManager.prepareForLaunch()
+
+        // 留一点品牌过渡时间，避免闪一下就消失。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+            withAnimation(.easeOut(duration: 0.25)) {
+                startupFinished = true
             }
         }
     }
