@@ -15,6 +15,9 @@ struct HistoryView: View {
     @State var rowFrames: [UUID: CGRect] = [:]
     @State var showingDeleteConfirmation = false
     @State var isVisible = false
+    /// 非多选态点按时的短暂高亮：让用户看到「点到了」，但不会像多选一样留下选中。
+    @State var tapFlashSelection = Set<UUID>()
+    @State var tapFlashToken = UUID()
 
     let openInBrowser: (URL) -> Void
 
@@ -54,10 +57,17 @@ struct HistoryView: View {
                 Text(String(format: L("将删除选中的 %d 条记录。"), selection.count))
             }
             .onChange(of: editMode) { _, newValue in
-                if !newValue.isEditing { selection.removeAll() }
+                if !newValue.isEditing {
+                    selection.removeAll()
+                } else {
+                    tapFlashSelection.removeAll()
+                }
             }
             .onAppear { isVisible = true }
-            .onDisappear { isVisible = false }
+            .onDisappear {
+                isVisible = false
+                tapFlashSelection.removeAll()
+            }
             // 双指滑动：进入多选，并按滑过的路径选中记录。
             .twoFingerPanToSelect(
                 isEnabled: isVisible,
@@ -94,14 +104,29 @@ struct HistoryView: View {
             .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
     }
 
-    /// 非多选态忽略系统点选写入，避免单击行留下高亮；
-    /// 同时始终复用同一个 List 身份，进入多选时不会重置滚动位置。
+    /// 非多选态把行选中转成一次短暂高亮，随后自动清空；
+    /// 同时在多选态才写真正的 `selection`。始终复用同一个 List 身份，
+    /// 进入多选时不会重置滚动位置。
     var listSelection: Binding<Set<UUID>> {
         Binding(
-            get: { selection },
+            get: { editMode.isEditing ? selection : tapFlashSelection },
             set: { newValue in
-                guard editMode.isEditing else { return }
-                selection = newValue
+                if editMode.isEditing {
+                    selection = newValue
+                    return
+                }
+
+                guard !newValue.isEmpty else { return }
+                tapFlashSelection = newValue
+
+                let token = UUID()
+                tapFlashToken = token
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                    guard tapFlashToken == token else { return }
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        tapFlashSelection.removeAll()
+                    }
+                }
             }
         )
     }

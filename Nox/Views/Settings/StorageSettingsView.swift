@@ -32,7 +32,7 @@ struct StorageSettingsView: View {
             }
 
             Section {
-                ForEach(StorageCategory.clearableCategories) { category in
+                ForEach(clearableCategories) { category in
                     row(for: category)
                 }
             } header: {
@@ -95,6 +95,13 @@ struct StorageSettingsView: View {
 
     private func bytes(_ category: StorageCategory) -> Int64 {
         sizes[category] ?? 0
+    }
+
+    /// 回收站只在文件 App 真的留下内容时显示，避免固定多出一行空分类。
+    private var clearableCategories: [StorageCategory] {
+        StorageCategory.clearableCategories.filter { category in
+            category != .trash || bytes(.trash) > 0
+        }
     }
 
     private func fraction(for category: StorageCategory) -> CGFloat {
@@ -242,6 +249,7 @@ struct StorageSettingsView: View {
                 manager.deleteFiles(ids: finishedIDs)
             }
 
+            if categories.contains(.trash) { manager.clearTrash() }
             if categories.contains(.downloadTemporary) {
                 manager.clearParts()
                 manager.clearStaging()

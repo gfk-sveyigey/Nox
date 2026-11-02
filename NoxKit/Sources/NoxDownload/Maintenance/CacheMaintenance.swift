@@ -47,9 +47,23 @@ extension DownloadManager {
         Self.directorySize(DownloadStorage.temporaryDirectory)
     }
 
+    /// 文件 App 的「最近删除」占用。目录不存在时为 0。
+    public func trashSize() -> Int64 {
+        DownloadStorage.trashDirectories.reduce(Int64(0)) { total, directory in
+            total + Self.directorySize(directory)
+        }
+    }
+
     /// 清理系统临时目录，不影响下载分片与用户文件。
     public func clearTemporaryFiles() {
         Self.removeContents(of: DownloadStorage.temporaryDirectory)
+    }
+
+    /// 清空文件 App 在 Documents 内留下的「最近删除」目录。
+    public func clearTrash() {
+        for directory in DownloadStorage.trashDirectories {
+            Self.removeContents(of: directory)
+        }
     }
 
     /// 已下载视频占用的空间。

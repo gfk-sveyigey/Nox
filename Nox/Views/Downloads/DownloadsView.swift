@@ -20,6 +20,9 @@ struct DownloadsView: View {
     @State var rowFrames: [UUID: CGRect] = [:]
     @State var showingDeleteConfirmation = false
     @State var isVisible = false
+    /// 非多选态点按行时只闪一下，不留下持久选中。
+    @State var tapFlashSelection = Set<UUID>()
+    @State var tapFlashToken = UUID()
 
     init(appState: AppState, manager: DownloadManager) {
         self.appState = appState
@@ -44,9 +47,12 @@ struct DownloadsView: View {
                     selectionFloatingActions
                 }
             }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea(edges: .bottom))
+            // 空列表时也把顶部安全区铺满分组背景，避免导航栏上方露出一条浅色空白。
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .navigationTitle(L("下载"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .environment(\.editMode, $editMode)
             .toolbar { toolbarContent }
             // 多选时隐藏底部标签栏，避免与悬浮操作按钮抢位置。
@@ -76,10 +82,17 @@ struct DownloadsView: View {
                 Text(shareFailureMessage ?? L("无法分享此文件"))
             }
             .onChange(of: editMode) { _, newValue in
-                if !newValue.isEditing { selection.removeAll() }
+                if !newValue.isEditing {
+                    selection.removeAll()
+                } else {
+                    tapFlashSelection.removeAll()
+                }
             }
             .onAppear { isVisible = true }
-            .onDisappear { isVisible = false }
+            .onDisappear {
+                isVisible = false
+                tapFlashSelection.removeAll()
+            }
             // 双指滑动：进入多选，并按滑过的路径选中任务。
             .twoFingerPanToSelect(
                 isEnabled: isVisible,
@@ -119,14 +132,29 @@ struct DownloadsView: View {
             .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
     }
 
-    /// 非多选态忽略系统点选写入，避免单击行留下高亮；
-    /// 同时始终复用同一个 List 身份，进入多选时不会重置滚动位置。
+    /// 非多选态把行选中转成一次短暂高亮，随后自动清空；
+    /// 同时在多选态才写真正的 `selection`。始终复用同一个 List 身份，
+    /// 进入多选时不会重置滚动位置。
     var listSelection: Binding<Set<UUID>> {
         Binding(
-            get: { selection },
+            get: { editMode.isEditing ? selection : tapFlashSelection },
             set: { newValue in
-                guard editMode.isEditing else { return }
-                selection = newValue
+                if editMode.isEditing {
+                    selection = newValue
+                    return
+                }
+
+                guard !newValue.isEmpty else { return }
+                tapFlashSelection = newValue
+
+                let token = UUID()
+                tapFlashToken = token
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                    guard tapFlashToken == token else { return }
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        tapFlashSelection.removeAll()
+                    }
+                }
             }
         )
     }

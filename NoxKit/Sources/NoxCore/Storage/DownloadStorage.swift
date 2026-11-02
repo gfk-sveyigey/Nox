@@ -37,6 +37,25 @@ public enum DownloadStorage {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
+    /// 文件 App 在 App 的 Documents 里创建的「最近删除」目录。
+    ///
+    /// 不同 iOS 版本 / 文件系统里大小写并不固定（见过 `.trash` 与 `.Trash`），
+    /// 因此按不区分大小写的方式查找。该目录不参与下载记录，内容可安全清理。
+    public static var trashDirectories: [URL] {
+        let fileManager = FileManager.default
+        let entries = (try? fileManager.contentsOfDirectory(
+            at: documentsDirectory,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        )) ?? []
+
+        return entries.filter { url in
+            guard url.lastPathComponent.caseInsensitiveCompare(".trash") == .orderedSame else {
+                return false
+            }
+            return (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+        }
+    }
+
     public static var libraryDirectory: URL {
         FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
     }

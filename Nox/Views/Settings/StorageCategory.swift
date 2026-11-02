@@ -9,6 +9,7 @@ import NoxDownload
 /// 网络缓存与系统临时文件分别合并，避免统计页出现一长串语义相近的行。
 enum StorageCategory: String, CaseIterable, Identifiable {
     case videos
+    case trash
     case downloadTemporary
     case caches
     case logs
@@ -21,7 +22,7 @@ enum StorageCategory: String, CaseIterable, Identifiable {
 
     /// 「可清理」分组，顺序即界面展示顺序。
     static let clearableCategories: [StorageCategory] = [
-        .videos, .downloadTemporary, .caches, .logs, .websiteData
+        .videos, .trash, .downloadTemporary, .caches, .logs, .websiteData
     ]
 
     /// 「不可清理」分组。插件、偏好设置与用户文件不参与批量删除。
@@ -32,6 +33,7 @@ enum StorageCategory: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .videos: return L("已下载视频")
+        case .trash: return L("回收站")
         case .downloadTemporary: return L("下载临时文件")
         case .caches: return L("缓存")
         case .logs: return L("日志")
@@ -45,6 +47,7 @@ enum StorageCategory: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .videos: return "film"
+        case .trash: return "trash"
         case .downloadTemporary: return "arrow.down.doc"
         case .caches: return "internaldrive"
         case .logs: return "doc.text"
@@ -60,6 +63,8 @@ enum StorageCategory: String, CaseIterable, Identifiable {
         switch self {
         case .videos:
             return Color(red: 0.24, green: 0.51, blue: 0.96)
+        case .trash:
+            return Color(red: 0.84, green: 0.28, blue: 0.34)
         case .downloadTemporary:
             return Color(red: 0.96, green: 0.52, blue: 0.18)
         case .caches:
@@ -80,7 +85,7 @@ enum StorageCategory: String, CaseIterable, Identifiable {
     /// 只有用户预期可以清理的数据才参与多选，避免误删插件、偏好设置或用户文件。
     var canClear: Bool {
         switch self {
-        case .videos, .downloadTemporary, .caches, .logs, .websiteData:
+        case .videos, .trash, .downloadTemporary, .caches, .logs, .websiteData:
             return true
         case .plugins, .preferences, .otherData:
             return false
@@ -109,6 +114,7 @@ struct StorageEntry: Identifiable {
 enum StorageUsage {
     static func snapshot(manager: DownloadManager) -> [StorageCategory: Int64] {
         let videos = manager.videosSize()
+        let trash = manager.trashSize()
         let parts = manager.partsSize()
         let staging = manager.stagingSize()
         let plugins = DeviceStorage.directorySize(at: DownloadStorage.pluginsDirectory)
@@ -134,7 +140,7 @@ enum StorageUsage {
             library - applicationSupport - caches - websiteData - preferences,
             0
         )
-        let documentsOther = max(documents - videos, 0)
+        let documentsOther = max(documents - videos - trash, 0)
         let otherData = documentsOther
             + applicationOther
             + applicationSupportOther
@@ -143,6 +149,7 @@ enum StorageUsage {
 
         return [
             .videos: videos,
+            .trash: trash,
             .downloadTemporary: parts + staging,
             .caches: caches + temporary,
             .logs: logs,
@@ -177,6 +184,9 @@ enum StorageUsage {
                     )
                 }
                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+
+        case .trash:
+            return combined(DownloadStorage.trashDirectories.map { entries(in: $0) })
 
         case .downloadTemporary:
             return combined([
@@ -216,8 +226,12 @@ enum StorageUsage {
                     .filter { $0.status == .finished }
                     .compactMap { manager.shareableFileURL(for: $0)?.lastPathComponent }
             )
+            let trashNames = Set(DownloadStorage.trashDirectories.map(\.lastPathComponent))
             var groups: [[StorageEntry]] = [
-                entries(in: DownloadStorage.documentsDirectory, excluding: videoNames),
+                entries(
+                    in: DownloadStorage.documentsDirectory,
+                    excluding: videoNames.union(trashNames)
+                ),
                 entries(
                     in: DownloadStorage.rootDirectory,
                     excluding: ["Parts", "Staging", "Plugins", "Nox.log"]

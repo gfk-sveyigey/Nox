@@ -1,6 +1,14 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "回收站" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Papierkorb" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Trash" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Corbeille" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "휴지통" } }
+      }
+    },
     "可清理" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Bereinigbar" } },
