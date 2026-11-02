@@ -5,7 +5,7 @@ import UIKit
 ///
 /// iOS 的静态 LaunchScreen 不能执行代码，所以这里用首帧覆盖层完成
 /// 画中画基础设施预热。覆盖层不露出主界面，只保留与应用图标一致的
-/// 深色背景、居中图标和应用名称。
+/// 背景、居中图标和应用名称；背景与文字随系统深浅色自动切换。
 struct StartupView: View {
     @State private var appeared = false
 
@@ -15,8 +15,8 @@ struct StartupView: View {
 
             RadialGradient(
                 colors: [
-                    Color.white.opacity(0.11),
-                    Color.white.opacity(0.025),
+                    Color.primary.opacity(0.10),
+                    Color.primary.opacity(0.02),
                     .clear
                 ],
                 center: .center,
@@ -32,13 +32,13 @@ struct StartupView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 31, style: .continuous))
                     .overlay {
                         RoundedRectangle(cornerRadius: 31, style: .continuous)
-                            .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
+                            .stroke(Color.primary.opacity(0.10), lineWidth: 0.5)
                     }
-                    .shadow(color: Color.white.opacity(0.14), radius: 34)
+                    .shadow(color: Color.primary.opacity(0.14), radius: 34)
 
                 Text(verbatim: Self.appName)
                     .font(.system(size: 27, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.92))
+                    .foregroundStyle(Color.primary.opacity(0.92))
                     .tracking(0.5)
             }
             .scaleEffect(appeared ? 1 : 0.94)
