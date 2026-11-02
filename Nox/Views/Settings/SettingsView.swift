@@ -34,15 +34,27 @@ struct SettingsView: View {
     @ViewBuilder
     var settingsSections: some View {
         Section {
-            settingsLink(L("下载设置"), systemImage: "arrow.down.circle") {
+            settingsLink(
+                L("下载设置"),
+                subtitle: L("调整同时任务数、下载网络和线程等选项。"),
+                systemImage: "arrow.down.circle"
+            ) {
                 DownloadSettingsView(manager: manager)
             }
 
-            settingsLink(L("后台下载"), systemImage: "play.circle") {
+            settingsLink(
+                L("后台下载"),
+                subtitle: L("配置后台运行方式、保活策略与下载引擎。"),
+                systemImage: "play.circle"
+            ) {
                 KeepAliveSettingsView(manager: manager)
             }
 
-            settingsLink(L("储存空间"), systemImage: "internaldrive") {
+            settingsLink(
+                L("储存空间"),
+                subtitle: L("查看储存占用，并清理缓存和临时文件。"),
+                systemImage: "internaldrive"
+            ) {
                 StorageSettingsView(manager: manager)
             }
         }
@@ -52,7 +64,11 @@ struct SettingsView: View {
                 SiteSettingsView()
             } label: {
                 HStack(spacing: 8) {
-                    settingsLabel(L("解析来源"), systemImage: "puzzlepiece.extension")
+                    settingsLabel(
+                        L("解析来源"),
+                        subtitle: L("管理站点解析插件和匹配顺序。"),
+                        systemImage: "puzzlepiece.extension"
+                    )
                     Spacer(minLength: 8)
                     Text("\(enabledSiteCount)/\(registry.parsers.count)")
                         .foregroundStyle(.secondary)
@@ -60,15 +76,27 @@ struct SettingsView: View {
                 }
             }
 
-            settingsLink(L("Cookie 管理"), systemImage: "shield") {
+            settingsLink(
+                L("Cookie 管理"),
+                subtitle: L("查看并清理各网站保存的 Cookie。"),
+                systemImage: "shield"
+            ) {
                 CookiesView()
             }
 
-            settingsLink(L("历史记录"), systemImage: "clock.arrow.circlepath") {
+            settingsLink(
+                L("历史记录"),
+                subtitle: L("设置历史保留方式，并清理访问记录。"),
+                systemImage: "clock.arrow.circlepath"
+            ) {
                 HistorySettingsView()
             }
 
-            settingsLink(L("日志"), systemImage: "doc.text") {
+            settingsLink(
+                L("日志"),
+                subtitle: L("查看运行日志，帮助定位问题。"),
+                systemImage: "doc.text"
+            ) {
                 LogsView()
             }
         }
@@ -79,7 +107,11 @@ struct SettingsView: View {
                     Text(mode.title).tag(mode)
                 }
             } label: {
-                settingsLabel(L("外观"), systemImage: "circle.lefthalf.filled")
+                settingsLabel(
+                    L("外观"),
+                    subtitle: L("选择跟随系统、浅色或深色外观。"),
+                    systemImage: "circle.lefthalf.filled"
+                )
             }
             .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
             // 系统 Picker 菜单会缓存选项文案；切语言后重建这一行即可刷新。
@@ -90,7 +122,11 @@ struct SettingsView: View {
                     Text(language.title).tag(language)
                 }
             } label: {
-                settingsLabel(L("语言"), systemImage: "globe")
+                settingsLabel(
+                    L("语言"),
+                    subtitle: L("更改应用界面语言。"),
+                    systemImage: "globe"
+                )
             }
             // Picker 的系统菜单会缓存选项文案。只重建这一行，既能刷新菜单，
             // 又不会像重建设置页那样把整个 Form 的滚动位置带回顶部。
@@ -98,7 +134,11 @@ struct SettingsView: View {
         }
 
         Section {
-            settingsLink(L("开源许可与致谢"), systemImage: "heart.text.square") {
+            settingsLink(
+                L("开源许可与致谢"),
+                subtitle: L("查看第三方项目、许可信息与致谢。"),
+                systemImage: "heart.text.square"
+            ) {
                 LicensesView()
             }
         } footer: {
@@ -106,29 +146,39 @@ struct SettingsView: View {
         }
     }
 
-    /// 统一设置条目：图标 + 标题，并略微增加行高。
+    /// 统一设置条目：图标 + 标题 + 一行说明，并适当增加行高。
     func settingsLink<Destination: View>(
         _ title: String,
+        subtitle: String,
         systemImage: String,
         @ViewBuilder destination: () -> Destination
     ) -> some View {
         NavigationLink {
             destination()
         } label: {
-            settingsLabel(title, systemImage: systemImage)
+            settingsLabel(title, subtitle: subtitle, systemImage: systemImage)
         }
     }
 
-    func settingsLabel(_ title: String, systemImage: String) -> some View {
+    func settingsLabel(_ title: String, subtitle: String, systemImage: String) -> some View {
         Label {
-            Text(title)
-                .font(.body.weight(.semibold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         } icon: {
             Image(systemName: systemImage)
                 .foregroundStyle(.tint)
                 .frame(width: 24, alignment: .center)
         }
-        .frame(minHeight: 32)
+        .frame(minHeight: 48)
+        .padding(.vertical, 3)
     }
 
     /// 页脚：居中显示版本与作者，形如「Nox v1.0.16 · Aholic」。

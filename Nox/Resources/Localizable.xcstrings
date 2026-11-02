@@ -3188,6 +3188,86 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le parallélisme des segments m3u8 ne s’applique qu’au moteur « Segments compatibles » ; AVAsset système gère lui-même la planification." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "m3u8 조각 동시성은 '호환 조각' 엔진에만 적용되며, 시스템 AVAsset은 자체적으로 예약합니다." } }
       }
+    },
+    "调整同时任务数、下载网络和线程等选项。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Passe gleichzeitige Downloads, Netzwerk und Threads an." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Adjust concurrent downloads, network, and thread options." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglez les téléchargements simultanés, le réseau et les threads." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동시 다운로드, 네트워크, 스레드 옵션을 조정합니다." } }
+      }
+    },
+    "配置后台运行方式、保活策略与下载引擎。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Konfiguriere Hintergrundbetrieb, Keep-Alive und Download-Engines." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Configure background operation, keep-alive, and download engines." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Configurez le fonctionnement en arrière-plan, le maintien en activité et les moteurs de téléchargement." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 실행, 유지 전략 및 다운로드 엔진을 설정합니다." } }
+      }
+    },
+    "查看储存占用，并清理缓存和临时文件。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zeige den Speicherverbrauch und lösche Caches sowie temporäre Dateien." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View storage usage and clear caches and temporary files." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Consultez l’utilisation du stockage et effacez caches et fichiers temporaires." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 공간 사용량을 확인하고 캐시 및 임시 파일을 정리합니다." } }
+      }
+    },
+    "管理站点解析插件和匹配顺序。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verwalte Website-Parser-Plugins und die Reihenfolge." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Manage site parser plugins and match order." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gérez les plugins d’analyse de sites et leur ordre." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사이트 분석 플러그인과 일치 순서를 관리합니다." } }
+      }
+    },
+    "查看并清理各网站保存的 Cookie。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zeige und lösche von Websites gespeicherte Cookies." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View and clear cookies saved by websites." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Consultez et effacez les cookies enregistrés par les sites." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "웹사이트에 저장된 쿠키를 확인하고 삭제합니다." } }
+      }
+    },
+    "设置历史保留方式，并清理访问记录。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lege die Aufbewahrung fest und lösche den Verlauf." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Set history retention and clear browsing records." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Définissez la conservation et effacez l’historique." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록 보존 방식을 설정하고 방문 기록을 정리합니다." } }
+      }
+    },
+    "查看运行日志，帮助定位问题。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zeige Laufzeitprotokolle zur Fehleranalyse." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View runtime logs to help diagnose issues." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Consultez les journaux d’exécution pour diagnostiquer les problèmes." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "문제를 진단할 수 있도록 실행 로그를 확인합니다." } }
+      }
+    },
+    "选择跟随系统、浅色或深色外观。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wähle System-, helles oder dunkles Erscheinungsbild." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose system, light, or dark appearance." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisissez l’apparence système, claire ou sombre." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템, 라이트 또는 다크 모양을 선택합니다." } }
+      }
+    },
+    "更改应用界面语言。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ändere die Sprache der App-Oberfläche." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Change the app interface language." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Changez la langue de l’interface de l’app." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱 인터페이스 언어를 변경합니다." } }
+      }
+    },
+    "查看第三方项目、许可信息与致谢。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zeige Drittanbieterprojekte, Lizenzen und Danksagungen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View third-party projects, licenses, and credits." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Consultez les projets tiers, licences et remerciements." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "타사 프로젝트, 라이선스 및 감사 정보를 확인합니다." } }
+      }
     }
   },
   "version" : "1.0"
