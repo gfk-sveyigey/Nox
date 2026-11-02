@@ -33,11 +33,11 @@ struct VideoBrowserView: View {
     @State var filenameInput = ""
     /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
     @State var isScrolledDown = false
-    /// 地址栏加载进度条的进度（0…1）与可见 / 呼吸状态（见 `loadProgressBar`）
+    /// 地址栏加载底色的进度（0…1）与可见 / 呼吸状态（见 `addressLoadingTint`）。
     @State var progressFraction: Double = 0
     @State var isProgressVisible = false
     @State var isProgressPulsing = false
-    /// 进度条是否是「不确定进度」（同文档换页拿不到进度，用固定一段 + 呼吸表达「在动」）
+    /// 是否是「不确定进度」（同文档换页拿不到进度，用固定底色 + 呼吸表达「在动」）。
     @State var isProgressIndeterminate = false
     /// 是否显示原生「首页」（尚未打开任何页面，或用户点了主页按钮）
     @State var showingHome = true
@@ -110,6 +110,7 @@ struct VideoBrowserView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(browserChromeBackground.ignoresSafeArea())
             .animation(.easeInOut(duration: 0.2), value: isParseBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: showingHome)
@@ -151,7 +152,7 @@ struct VideoBrowserView: View {
                 }
             }
             // 「同文档换页的提示还没结束，又发起了真实导航」时，把形态切回确定进度，
-            // 否则进度条会一直停在那个固定宽度上（合计状态没变，上面那个 onChange 不会触发）。
+            // 否则地址栏底色会一直停在不确定进度的深浅上（合计状态没变，上面那个 onChange 不会触发）。
             .onChange(of: parser.isLoading) { _, loading in
                 guard loading, showsLoadingIndicator else { return }
                 isProgressIndeterminate = false

@@ -14,6 +14,10 @@ struct LogsView: View {
     @State var showingClearConfirmation = false
     @State var shareFailureMessage: String?
     @State var showShareFailureAlert = false
+    /// 首屏只渲染最近的若干条；滚到底部时再逐步展开/读取更早的日志。
+    @State private var visibleCount = 100
+
+    private static let pageSize = 100
 
     var body: some View {
         List {
@@ -25,16 +29,6 @@ struct LogsView: View {
                 }
             } footer: {
                 Text(L("超过保留天数的日志会被自动清理。"))
-            }
-
-            // 日志按块加载：进入时只有最近一块，更早的按需加载
-            if store.canLoadMore {
-                Section {
-                    Button(L("加载更多")) {
-                        store.loadMore()
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                }
             }
 
             Section {
@@ -49,8 +43,22 @@ struct LogsView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 24)
                 } else {
-                    ForEach(store.entries.reversed()) { entry in
+                    ForEach(visibleEntries) { entry in
                         logRow(entry)
+                    }
+
+                    if hasMoreEntries {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                                .controlSize(.small)
+                            Spacer()
+                        }
+                        .padding(.vertical, 6)
+                        .listRowSeparator(.hidden)
+                        .task(id: loadMoreTrigger) {
+                            await loadNextPage()
+                        }
                     }
                 }
             }
@@ -105,6 +113,33 @@ struct LogsView: View {
                 .textSelection(.enabled)
         }
         .padding(.vertical, 2)
+    }
+
+    private var visibleEntries: [LogEntry] {
+        Array(store.entries.reversed().prefix(visibleCount))
+    }
+
+    private var hasMoreEntries: Bool {
+        visibleCount < store.entries.count || store.canLoadMore
+    }
+
+    /// 让底部加载行在展开一页或文件追加新块后重新触发。
+    private var loadMoreTrigger: String {
+        "\(visibleCount)-\(store.entries.count)-\(store.canLoadMore)"
+    }
+
+    @MainActor
+    private func loadNextPage() async {
+        // 略作停留，避免滚动惯性还没结束就连续展开多页。
+        try? await Task.sleep(for: .milliseconds(200))
+        guard !Task.isCancelled else { return }
+
+        if visibleCount < store.entries.count {
+            visibleCount = min(visibleCount + Self.pageSize, store.entries.count)
+        } else if store.canLoadMore {
+            store.loadMore()
+            visibleCount = min(visibleCount + Self.pageSize, store.entries.count)
+        }
     }
 
     func retentionTitle(_ value: Int) -> String {

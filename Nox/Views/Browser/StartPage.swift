@@ -18,7 +18,7 @@ extension VideoBrowserView {
     /// 不会出现「整个浏览区域还是白底」的问题。
     var homeScreen: some View {
         ZStack {
-            Color(.systemBackground)
+            homeBackgroundColor
 
             if appState.bookmarks.isEmpty {
                 ContentUnavailableView(
@@ -52,6 +52,19 @@ extension VideoBrowserView {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// 首页有书签时使用 List 的分组背景色；空首页保持普通页面底色。
+    var homeBackgroundColor: Color {
+        appState.bookmarks.isEmpty
+            ? Color(.systemBackground)
+            : Color(.systemGroupedBackground)
+    }
+
+    /// 地址栏上方也是页面的一部分。首页显示书签列表时让顶部安全区沿用
+    /// 分组背景色，避免列表上方出现一条更浅的空白。
+    var browserChromeBackground: Color {
+        showingHome ? homeBackgroundColor : Color(.systemBackground)
     }
 
     func bookmarkRow(_ bookmark: Bookmark) -> some View {

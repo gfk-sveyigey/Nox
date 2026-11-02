@@ -17,6 +17,9 @@ struct CookiesView: View {
     @State var selection = Set<String>()
     @State var rowFrames: [String: CGRect] = [:]
     @State var isVisible = false
+    /// NavigationStack push 到站点详情时父页不会触发 onDisappear；
+    /// 用这个状态确保详情页的双指滑动不会把父页带入多选。
+    @State var isShowingDomain = false
 
     var body: some View {
         List(selection: listSelection) {
@@ -63,7 +66,7 @@ struct CookiesView: View {
         .onDisappear { isVisible = false }
         .task { await reload() }
         .twoFingerPanToSelect(
-            isEnabled: isVisible,
+            isEnabled: isVisible && !isShowingDomain,
             onBegin: { beginTwoFingerSelection() },
             onPath: { selectRows(in: $0) }
         )
@@ -97,6 +100,8 @@ struct CookiesView: View {
             } else {
                 NavigationLink {
                     CookieDomainView(domain: group.domain)
+                        .onAppear { isShowingDomain = true }
+                        .onDisappear { isShowingDomain = false }
                 } label: {
                     groupLabel(group)
                 }
@@ -150,14 +155,10 @@ struct CookiesView: View {
                 Button(L("完成")) {
                     withAnimation { editMode = .inactive }
                 }
-            } else if !groups.isEmpty {
-                Button(L("选择")) {
-                    withAnimation { editMode = .active }
-                }
             }
         }
 
-        ToolbarItemGroup(placement: .topBarTrailing) {
+        ToolbarItem(placement: .topBarTrailing) {
             if editMode.isEditing {
                 Button(role: .destructive) {
                     showingDeleteConfirmation = true
@@ -167,20 +168,25 @@ struct CookiesView: View {
                 }
                 .disabled(selection.isEmpty)
             } else {
-                Button {
-                    Task { await reload() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .accessibilityLabel(L("刷新"))
+                Menu {
+                    Button {
+                        Task { await reload() }
+                    } label: {
+                        Label(L("刷新"), systemImage: "arrow.clockwise")
+                    }
 
-                Button(role: .destructive) {
-                    showingClearConfirmation = true
+                    Divider()
+
+                    Button(role: .destructive) {
+                        showingClearConfirmation = true
+                    } label: {
+                        Label(L("清空 Cookie"), systemImage: "trash")
+                    }
+                    .disabled(groups.isEmpty)
                 } label: {
-                    Image(systemName: "trash")
+                    Image(systemName: "ellipsis.circle")
                 }
-                .disabled(groups.isEmpty)
-                .accessibilityLabel(L("清空 Cookie"))
+                .accessibilityLabel(L("更多"))
             }
         }
     }
@@ -263,22 +269,25 @@ struct CookieDomainView: View {
         .task { await reload() }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Task { await reload() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .accessibilityLabel(L("刷新"))
-            }
+                Menu {
+                    Button {
+                        Task { await reload() }
+                    } label: {
+                        Label(L("刷新"), systemImage: "arrow.clockwise")
+                    }
 
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(role: .destructive) {
-                    showingClearConfirmation = true
+                    Divider()
+
+                    Button(role: .destructive) {
+                        showingClearConfirmation = true
+                    } label: {
+                        Label(L("删除该站点的 Cookie"), systemImage: "trash")
+                    }
+                    .disabled(cookies.isEmpty)
                 } label: {
-                    Image(systemName: "trash")
+                    Image(systemName: "ellipsis.circle")
                 }
-                .disabled(cookies.isEmpty)
-                .accessibilityLabel(L("删除该站点的 Cookie"))
+                .accessibilityLabel(L("更多"))
             }
         }
         .alert(L("删除该站点的 Cookie？"), isPresented: $showingClearConfirmation) {

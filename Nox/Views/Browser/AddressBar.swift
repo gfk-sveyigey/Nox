@@ -13,13 +13,11 @@ extension VideoBrowserView {
     // MARK: - 顶部地址栏
 
     /// 地址栏：中间是胶囊形输入框，主页与书签按钮各自独立浮在两侧。
-    /// 页面向下滚动时高度收缩，回到顶部再展开；下沿叠一条加载进度条。
+    /// 页面向下滚动时高度收缩，回到顶部再展开；加载进度直接用输入框底色表达。
     var addressToolbar: some View {
         addressBar
             .padding(.horizontal, 10)
             .padding(.vertical, isScrolledDown ? 3 : 8)
-            // 用 overlay 而不是 VStack：进度条不参与布局，出现 / 消失都不会让地址栏跳动。
-            .overlay(alignment: .bottom) { loadProgressBar }
             .animation(.easeInOut(duration: 0.2), value: isScrolledDown)
     }
 
@@ -33,35 +31,39 @@ extension VideoBrowserView {
                 action: goHome
             )
 
-            HStack(spacing: 6) {
-                TextField(L("输入网页地址"), text: $address)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .submitLabel(.go)
-                    .focused($addressFocused)
-                    .onSubmit {
-                        openAddress()
-                    }
+            ZStack {
+                addressLoadingTint
 
-                // 加载中且不在编辑地址时，把右侧的「清空」换成转圈 ——
-                // 地址栏本身就是「正在加载」的提示（与 Safari 一致）。
-                if showsLoadingIndicator, !addressFocused {
-                    ProgressView()
-                        .controlSize(.small)
-                        .accessibilityLabel(L("正在加载…"))
-                } else if !address.isEmpty {
-                    Button {
-                        address = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    TextField(L("输入网页地址"), text: $address)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                        .submitLabel(.go)
+                        .focused($addressFocused)
+                        .onSubmit {
+                            openAddress()
+                        }
+
+                    // 加载中且不在编辑地址时，把右侧的「清空」换成转圈 ——
+                    // 地址栏本身就是「正在加载」的提示（与 Safari 一致）。
+                    if showsLoadingIndicator, !addressFocused {
+                        ProgressView()
+                            .controlSize(.small)
+                            .accessibilityLabel(L("正在加载…"))
+                    } else if !address.isEmpty {
+                        Button {
+                            address = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(L("清空地址栏"))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L("清空地址栏"))
                 }
+                .padding(.horizontal, 12)
             }
-            .padding(.horizontal, 12)
             .frame(height: barControlHeight)
             .browserGlassBar(cornerRadius: nil)
 
@@ -84,37 +86,41 @@ extension VideoBrowserView {
         (parser.isLoading || parser.isSameDocumentLoading) && !showingHome
     }
 
-    /// 地址栏下沿的加载条。
+    /// 用地址栏底色表达加载进度。
     ///
     /// 为什么要有它：在页面里点链接时，`isUserInitiatedLoad` 为 false（旧页面会一直留到
     /// 新页面提交），页面区域看不出任何变化；SPA 只改 path 时连 `isLoading` 都不会变。
-    /// 这条进度条就是那种时刻主要的「在加载」反馈。
+    /// 地址栏底色就是那种时刻主要的「在加载」反馈。
     ///
-    /// 两种形态：真实导航有 `estimatedProgress`，条子跟着进度长；同文档换页拿不到任何进度，
-    /// 就固定显示一段（约 1/3 宽），靠呼吸动画表达「还在动」。
-    var loadProgressBar: some View {
-        GeometryReader { proxy in
-            // 呼吸用 `TimelineView` 按时钟算亮度，而不是 `repeatForever` 的状态动画：
-            // 状态动画会被同一批事务里的淡入 / 淡出（`withAnimation`）顶掉，
-            // 表现就是「只看得到进度条在长，看不到呼吸」。这里亮度只由时间决定，
-            // 不会被别的动画覆盖；不呼吸时 `paused` 掉，不额外耗电。
-            TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: !isProgressPulsing || !isProgressVisible)) { context in
+    /// 两种形态：真实导航有 `estimatedProgress`，整条地址栏的底色随进度逐渐加深；
+    /// 同文档换页拿不到任何进度，就用固定深浅的呼吸底色表达「还在动」。
+    @ViewBuilder
+    var addressLoadingTint: some View {
+        if isProgressVisible && !showingHome {
+            TimelineView(
+                .animation(
+                    minimumInterval: 1.0 / 20.0,
+                    paused: !isProgressPulsing || !isProgressVisible
+                )
+            ) { context in
                 Capsule()
-                    .fill(Color.accentColor)
-                    .frame(width: proxy.size.width * progressBarWidthFactor)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .opacity(pulseOpacity(at: context.date))
+                    .fill(
+                        Color.accentColor.opacity(
+                            addressLoadingOpacity(at: context.date)
+                        )
+                    )
             }
+            .transition(.opacity)
+            .allowsHitTesting(false)
         }
-        .frame(height: 2.5)
-        .opacity(isProgressVisible && !showingHome ? 1 : 0)
-        .padding(.horizontal, 12)
-        .allowsHitTesting(false)
     }
 
-    /// 进度条当前占多宽。同文档换页拿不到任何进度，固定显示约 1/3 宽。
-    var progressBarWidthFactor: Double {
-        isProgressIndeterminate ? 0.33 : progressFraction
+    /// 整条地址栏底色的深浅：进度越高颜色越明显；SPA 没有进度，固定用 35% 的计算量。
+    func addressLoadingOpacity(at date: Date) -> Double {
+        let progress = isProgressIndeterminate
+            ? 0.35
+            : min(max(progressFraction, 0), 1)
+        return (0.10 + 0.10 * progress) * pulseOpacity(at: date)
     }
 
     /// 呼吸灯的亮度：不呼吸时恒定 1；呼吸时在一个周期内于 0.35…1 之间来回。
@@ -126,15 +132,15 @@ extension VideoBrowserView {
         return 0.35 + 0.65 * breathe
     }
 
-    /// 切换地址栏加载提示的显示状态。
+    /// 切换地址栏加载底色的显示状态。
     ///
-    /// 开始加载：先把进度复位到可见下限（此刻条子是隐藏的，看不到回跳），再淡入并起呼吸。
-    /// `estimatedProgress` 起步是 0，不复位的话进度条会「先看不见、再突然窜出来」。
-    /// 加载结束：补满一格、稍作停顿再淡出，让「加载完成」这个动作本身能被看到。
+    /// 开始加载：先把进度复位到可见下限（此刻底色是隐藏的，看不到回跳），再淡入并起呼吸。
+    /// `estimatedProgress` 起步是 0，不复位的话底色会「先看不见、再突然窜出来」。
+    /// 加载结束：补满整条、稍作停顿再淡出，让「加载完成」这个动作本身能被看到。
     func updateProgressAppearance(isLoading: Bool) {
         if isLoading {
-            // 同文档换页（SPA）拿不到任何进度，用「固定一段 + 呼吸」表达在动；
-            // 真实导航有 `estimatedProgress`，条子跟着它长。
+            // 同文档换页（SPA）拿不到任何进度，用「固定深浅 + 呼吸」表达在动；
+            // 真实导航有 `estimatedProgress`，底色跟着它加深。
             isProgressIndeterminate = !parser.isLoading
             progressFraction = 0.08
             isProgressPulsing = true

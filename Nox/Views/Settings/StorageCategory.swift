@@ -1,71 +1,93 @@
 import Foundation
+import SwiftUI
 import NoxCore
 import NoxDownload
 
 /// 「储存空间」里可单独统计与清理的类别。
+///
+/// 这里只保留用户能理解、且确实可能长期占用的项目。下载分片与暂存、
+/// 网络缓存与系统临时文件分别合并，避免统计页出现一长串语义相近的行。
 enum StorageCategory: String, CaseIterable, Identifiable {
     case videos
-    case documentsOther
-    case parts
-    case staging
-    case plugins
+    case trash
+    case downloadTemporary
+    case caches
     case logs
-    case applicationOther
-    case applicationSupportOther
-    case networkCache
     case websiteData
+    case plugins
     case preferences
-    case libraryOther
-    case temporary
-    case sharedContainer
+    case otherData
 
     var id: String { rawValue }
+
+    /// 「可清理」分组，顺序即界面展示顺序。
+    static let clearableCategories: [StorageCategory] = [
+        .videos, .trash, .downloadTemporary, .caches, .logs, .websiteData
+    ]
+
+    /// 「不可清理」分组。插件、偏好设置与用户文件不参与批量删除。
+    static let protectedCategories: [StorageCategory] = [
+        .plugins, .preferences, .otherData
+    ]
 
     var title: String {
         switch self {
         case .videos: return L("已下载视频")
-        case .documentsOther: return L("其他文件")
-        case .parts: return L("下载分片")
-        case .staging: return L("临时文件")
-        case .plugins: return L("插件")
+        case .trash: return L("回收站")
+        case .downloadTemporary: return L("下载临时文件")
+        case .caches: return L("缓存")
         case .logs: return L("日志")
-        case .applicationOther: return L("其他应用数据")
-        case .applicationSupportOther: return L("其他支持文件")
-        case .networkCache: return L("网络缓存")
         case .websiteData: return L("网站数据")
+        case .plugins: return L("插件")
         case .preferences: return L("偏好设置")
-        case .libraryOther: return L("其他资料库数据")
-        case .temporary: return L("系统临时文件")
-        case .sharedContainer: return L("共享数据")
+        case .otherData: return L("其他数据")
         }
     }
 
     var systemImage: String {
         switch self {
         case .videos: return "film"
-        case .documentsOther: return "doc"
-        case .parts: return "square.split.2x2"
-        case .staging: return "folder"
-        case .plugins: return "puzzlepiece.extension"
+        case .trash: return "trash"
+        case .downloadTemporary: return "arrow.down.doc"
+        case .caches: return "internaldrive"
         case .logs: return "doc.text"
-        case .applicationOther: return "archivebox"
-        case .applicationSupportOther: return "externaldrive"
-        case .networkCache: return "network"
         case .websiteData: return "globe"
+        case .plugins: return "puzzlepiece.extension"
         case .preferences: return "gearshape"
-        case .libraryOther: return "books.vertical"
-        case .temporary: return "clock.arrow.circlepath"
-        case .sharedContainer: return "square.stack.3d.up"
+        case .otherData: return "archivebox"
         }
     }
 
-    /// 只有用户预期可以清理的数据才参与多选，避免误删插件、偏好设置或待导入文件。
+    /// 每一类使用独立颜色，行图标与占比条共用，方便一眼区分。
+    var color: Color {
+        switch self {
+        case .videos:
+            return Color(red: 0.24, green: 0.51, blue: 0.96)
+        case .trash:
+            return Color(red: 0.84, green: 0.28, blue: 0.34)
+        case .downloadTemporary:
+            return Color(red: 0.96, green: 0.52, blue: 0.18)
+        case .caches:
+            return Color(red: 0.84, green: 0.62, blue: 0.08)
+        case .logs:
+            return Color(red: 0.47, green: 0.51, blue: 0.57)
+        case .websiteData:
+            return Color(red: 0.18, green: 0.67, blue: 0.42)
+        case .plugins:
+            return Color(red: 0.59, green: 0.36, blue: 0.91)
+        case .preferences:
+            return Color(red: 0.31, green: 0.42, blue: 0.82)
+        case .otherData:
+            return Color(red: 0.66, green: 0.46, blue: 0.29)
+        }
+    }
+
+    /// 只有用户预期可以清理的数据才参与多选，避免误删插件、偏好设置或用户文件。
     var canClear: Bool {
         switch self {
-        case .videos, .parts, .staging, .logs, .networkCache, .websiteData, .temporary:
+        case .videos, .trash, .downloadTemporary, .caches, .logs, .websiteData:
             return true
-        case .documentsOther, .plugins, .applicationOther, .applicationSupportOther,
-             .preferences, .libraryOther, .sharedContainer:
+        case .plugins, .preferences, .otherData:
             return false
         }
     }
@@ -92,6 +114,7 @@ struct StorageEntry: Identifiable {
 enum StorageUsage {
     static func snapshot(manager: DownloadManager) -> [StorageCategory: Int64] {
         let videos = manager.videosSize()
+        let trash = manager.trashSize()
         let parts = manager.partsSize()
         let staging = manager.stagingSize()
         let plugins = DeviceStorage.directorySize(at: DownloadStorage.pluginsDirectory)
@@ -117,22 +140,23 @@ enum StorageUsage {
             library - applicationSupport - caches - websiteData - preferences,
             0
         )
+        let documentsOther = max(documents - videos - trash, 0)
+        let otherData = documentsOther
+            + applicationOther
+            + applicationSupportOther
+            + libraryOther
+            + sharedContainer
 
         return [
             .videos: videos,
-            .documentsOther: max(documents - videos, 0),
-            .parts: parts,
-            .staging: staging,
-            .plugins: plugins,
+            .trash: trash,
+            .downloadTemporary: parts + staging,
+            .caches: caches + temporary,
             .logs: logs,
-            .applicationOther: applicationOther,
-            .applicationSupportOther: applicationSupportOther,
-            .networkCache: caches,
             .websiteData: websiteData,
+            .plugins: plugins,
             .preferences: preferences,
-            .libraryOther: libraryOther,
-            .temporary: temporary,
-            .sharedContainer: sharedContainer
+            .otherData: otherData
         ]
     }
 
@@ -161,22 +185,20 @@ enum StorageUsage {
                 }
                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
 
-        case .documentsOther:
-            let videoNames = Set(
-                records
-                    .filter { $0.status == .finished }
-                    .compactMap { manager.shareableFileURL(for: $0)?.lastPathComponent }
-            )
-            return entries(in: DownloadStorage.documentsDirectory, excluding: videoNames)
+        case .trash:
+            return combined(DownloadStorage.trashDirectories.map { entries(in: $0) })
 
-        case .parts:
-            return entries(in: DownloadStorage.partsRoot)
+        case .downloadTemporary:
+            return combined([
+                entries(in: DownloadStorage.partsRoot),
+                entries(in: DownloadStorage.stagingRoot)
+            ])
 
-        case .staging:
-            return entries(in: DownloadStorage.stagingRoot)
-
-        case .plugins:
-            return entries(in: DownloadStorage.pluginsDirectory)
+        case .caches:
+            return combined([
+                entries(in: DownloadStorage.cachesDirectory),
+                entries(in: DownloadStorage.temporaryDirectory)
+            ])
 
         case .logs:
             let url = DownloadStorage.logFileURL
@@ -189,39 +211,44 @@ enum StorageUsage {
                 )
             ]
 
-        case .applicationOther:
-            return entries(
-                in: DownloadStorage.rootDirectory,
-                excluding: ["Parts", "Staging", "Plugins", "Nox.log"]
-            )
-
-        case .applicationSupportOther:
-            return entries(
-                in: DownloadStorage.applicationSupportDirectory,
-                excluding: ["Nox"]
-            )
-
-        case .networkCache:
-            return entries(in: DownloadStorage.cachesDirectory)
-
         case .websiteData:
             return entries(in: DownloadStorage.webKitDirectory)
+
+        case .plugins:
+            return entries(in: DownloadStorage.pluginsDirectory)
 
         case .preferences:
             return entries(in: DownloadStorage.preferencesDirectory)
 
-        case .libraryOther:
-            return entries(
-                in: DownloadStorage.libraryDirectory,
-                excluding: ["Application Support", "Caches", "WebKit", "Preferences"]
+        case .otherData:
+            let videoNames = Set(
+                records
+                    .filter { $0.status == .finished }
+                    .compactMap { manager.shareableFileURL(for: $0)?.lastPathComponent }
             )
-
-        case .temporary:
-            return entries(in: DownloadStorage.temporaryDirectory)
-
-        case .sharedContainer:
-            guard let directory = DownloadStorage.sharedContainerDirectory else { return [] }
-            return entries(in: directory)
+            let trashNames = Set(DownloadStorage.trashDirectories.map(\.lastPathComponent))
+            var groups: [[StorageEntry]] = [
+                entries(
+                    in: DownloadStorage.documentsDirectory,
+                    excluding: videoNames.union(trashNames)
+                ),
+                entries(
+                    in: DownloadStorage.rootDirectory,
+                    excluding: ["Parts", "Staging", "Plugins", "Nox.log"]
+                ),
+                entries(
+                    in: DownloadStorage.applicationSupportDirectory,
+                    excluding: ["Nox"]
+                ),
+                entries(
+                    in: DownloadStorage.libraryDirectory,
+                    excluding: ["Application Support", "Caches", "WebKit", "Preferences"]
+                )
+            ]
+            if let directory = DownloadStorage.sharedContainerDirectory {
+                groups.append(entries(in: directory))
+            }
+            return combined(groups)
         }
     }
 
@@ -244,9 +271,15 @@ enum StorageUsage {
                     : Int64(values?.fileSize ?? 0)
                 return StorageEntry(url: url, isDirectory: isDirectory, bytes: bytes)
             }
-            .sorted { lhs, rhs in
-                if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory }
-                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
-            }
+            .sorted(by: entrySort)
+    }
+
+    private static func combined(_ groups: [[StorageEntry]]) -> [StorageEntry] {
+        groups.flatMap { $0 }.sorted(by: entrySort)
+    }
+
+    private static func entrySort(_ lhs: StorageEntry, _ rhs: StorageEntry) -> Bool {
+        if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory }
+        return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
     }
 }
