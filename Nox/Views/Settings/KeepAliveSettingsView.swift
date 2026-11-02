@@ -70,29 +70,8 @@ struct KeepAliveSettingsView: View {
                         Text(engine.title).tag(engine)
                     }
                 }
-
-                // 系统 AVAsset 会自行调度分片，这个并发数只对兼容分片引擎有意义。
-                if appState.hlsDownloadEngine == .segmented {
-                    Picker(L("m3u8 分片并发"), selection: $appState.m3u8SegmentConcurrency) {
-                        Text(L("跟随多线程设置")).tag(0)
-
-                        ForEach(Array(AppState.m3u8ConcurrencyRange), id: \.self) { count in
-                            if count > 0 {
-                                Text(String(count)).tag(count)
-                            }
-                        }
-                    }
-                    .onChange(of: appState.m3u8SegmentConcurrency) { _, _ in
-                        appState.persist()
-                    }
-                }
             } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(appState.hlsDownloadEngine.detail)
-                    if appState.hlsDownloadEngine == .segmented {
-                        Text(L("m3u8 分片并发只影响「兼容分片」引擎；系统 AVAsset 会自行调度。"))
-                    }
-                }
+                Text(appState.hlsDownloadEngine.detail)
             }
 
             // 「仅系统下载」和持续处理都不需要选生命周期：

@@ -84,6 +84,19 @@ struct DownloadSettingsView: View {
                         appState.persist()
                     }
                 }
+
+                Picker(L("m3u8 分片并发"), selection: $appState.m3u8SegmentConcurrency) {
+                    Text(L("跟随多线程设置")).tag(0)
+
+                    ForEach(Array(AppState.m3u8ConcurrencyRange), id: \.self) { count in
+                        if count > 0 {
+                            Text(String(count)).tag(count)
+                        }
+                    }
+                }
+                .onChange(of: appState.m3u8SegmentConcurrency) { _, _ in
+                    appState.persist()
+                }
             } footer: {
                 Text(L("把文件分成多个分片并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。"))
             }
