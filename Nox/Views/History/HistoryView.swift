@@ -33,14 +33,17 @@ struct HistoryView: View {
                             Image(systemName: "clock")
                         }
                     } description: {
-                        Text(L("下载过的视频页面会显示在这里。"))
+                        EmptyView()
                     }
                 } else {
                     list
                 }
             }
+            .background(pageBackgroundColor.ignoresSafeArea())
             .navigationTitle(L("历史"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(pageBackgroundColor, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .environment(\.editMode, $editMode)
             .toolbar { toolbarContent }
             .alert(L("清空历史记录？"), isPresented: $showingClearConfirmation) {
@@ -80,6 +83,13 @@ struct HistoryView: View {
                 onPath: { selectRows(in: $0) }
             )
         }
+    }
+
+    /// 空页面使用普通窗口底色；有列表时使用分组列表背景。
+    var pageBackgroundColor: Color {
+        appState.history.isEmpty
+            ? Color(.systemBackground)
+            : Color(.systemGroupedBackground)
     }
 
     /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。

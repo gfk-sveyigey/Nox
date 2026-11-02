@@ -21,11 +21,16 @@ extension VideoBrowserView {
             homeBackgroundColor
 
             if appState.bookmarks.isEmpty {
-                ContentUnavailableView(
-                    L("还没有书签"),
-                    systemImage: "book",
-                    description: Text(L("打开网页后，点地址栏右侧的书签按钮即可收藏。"))
-                )
+                ContentUnavailableView {
+                    Label {
+                        Text(L("无书签"))
+                            .font(.title2.weight(.regular))
+                    } icon: {
+                        Image(systemName: "book")
+                    }
+                } description: {
+                    EmptyView()
+                }
             } else {
                 List {
                     Section {
