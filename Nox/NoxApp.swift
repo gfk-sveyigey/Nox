@@ -50,6 +50,10 @@ final class NoxAppDelegate: UIResponder, UIApplicationDelegate {
         IncomingURLCenter.shared.submit(url, source: "delegate")
         return true
     }
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        IncomingURLCenter.shared.sceneDidBecomeActive()
+    }
 }
 
 @MainActor
@@ -80,6 +84,10 @@ final class NoxSceneDelegate: UIResponder, UIWindowSceneDelegate {
         for context in URLContexts {
             IncomingURLCenter.shared.submit(context.url, source: "scene-open")
         }
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        IncomingURLCenter.shared.sceneDidBecomeActive()
     }
 }
 
