@@ -5,8 +5,8 @@ import NoxDownload
 import NoxState
 
 struct ContentView: View {
-    @StateObject private var appState: AppState
-    @StateObject private var downloadManager: DownloadManager
+    @ObservedObject private var appState: AppState
+    @ObservedObject private var downloadManager: DownloadManager
     @StateObject private var pluginImport = PluginImportCoordinator.shared
     @ObservedObject private var incomingURL = IncomingURLCenter.shared
     /// 观察语言变化，让底部 Tab 标题跟着刷新。
@@ -21,9 +21,9 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        let state = AppState()
-        _appState = StateObject(wrappedValue: state)
-        _downloadManager = StateObject(wrappedValue: DownloadManager(store: state))
+        let services = AppServices.shared
+        _appState = ObservedObject(wrappedValue: services.appState)
+        _downloadManager = ObservedObject(wrappedValue: services.downloadManager)
     }
 
     var body: some View {
@@ -178,6 +178,9 @@ struct ContentView: View {
                 // 新版分享扩展只回传短链接，插件本体在 App Group 收件箱里。
                 pluginImport.importPendingSharedPlugins()
             }
+        } else if IncomingLink.isDownloads(url) {
+            LogStore.shared.info("handle incoming: downloads")
+            selectedTab = 1
         } else if let webURL = IncomingLink.webURL(from: url) {
             LogStore.shared.info("handle incoming: web url")
             selectedTab = 0

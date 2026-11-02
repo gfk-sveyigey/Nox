@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.iOS(.v17)],
     products: [
         .library(name: "NoxCore",      targets: ["NoxCore"]),
+        .library(name: "NoxActivity",  targets: ["NoxActivity"]),
         .library(name: "NoxKeepAlive", targets: ["NoxKeepAlive"]),
         .library(name: "NoxParsing",   targets: ["NoxParsing"]),
         .library(name: "NoxDownload",  targets: ["NoxDownload"]),
@@ -14,6 +15,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "NoxCore"),
+        .target(name: "NoxActivity"),
         .target(name: "NoxKeepAlive", dependencies: ["NoxCore"]),
         .target(name: "NoxParsing",   dependencies: ["NoxCore"]),
         .target(name: "NoxDownload",  dependencies: ["NoxCore", "NoxKeepAlive"]),

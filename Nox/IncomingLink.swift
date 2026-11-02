@@ -63,6 +63,16 @@ enum IncomingLink {
         return try? (data as NSData).decompressed(using: .zlib) as Data
     }
 
+    /// 点击 Live Activity 时回到下载页的深链：`nox://downloads`。
+    static func isDownloads(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == scheme,
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else {
+            return false
+        }
+        return components.host?.lowercased() == "downloads"
+    }
+
     static func webURL(from url: URL) -> URL? {
         guard let scheme = url.scheme?.lowercased() else { return nil }
 

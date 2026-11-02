@@ -14,6 +14,9 @@
 		A20000010000000000000005 /* NoxState in Frameworks */ = {isa = PBXBuildFile; productRef = P20000010000000000000005 /* NoxState */; };
 		A20000010000000000000006 /* NoxBrowser in Frameworks */ = {isa = PBXBuildFile; productRef = P20000010000000000000006 /* NoxBrowser */; };
 		A20000010000000000000007 /* NoxShare.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = C10000010000000000000002 /* NoxShare.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A20000010000000000000008 /* NoxLiveActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = C10000010000000000000003 /* NoxLiveActivity.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A20000010000000000000009 /* NoxActivity in Frameworks */ = {isa = PBXBuildFile; productRef = P20000010000000000000007 /* NoxActivity */; };
+		A2000001000000000000000A /* NoxActivity in Frameworks */ = {isa = PBXBuildFile; productRef = P20000010000000000000008 /* NoxActivity */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -24,6 +27,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				A20000010000000000000007 /* NoxShare.appex in Embed App Extensions */,
+				A20000010000000000000008 /* NoxLiveActivity.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -33,6 +37,7 @@
 /* Begin PBXFileReference section */
 		C10000010000000000000001 /* Nox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C10000010000000000000002 /* NoxShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NoxShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C10000010000000000000003 /* NoxLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NoxLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +49,11 @@
 		E10000010000000000000004 /* NoxShare */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = NoxShare;
+			sourceTree = "<group>";
+		};
+		E10000010000000000000005 /* NoxLiveActivity */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NoxLiveActivity;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -59,6 +69,7 @@
 				A20000010000000000000004,
 				A20000010000000000000005,
 				A20000010000000000000006,
+				A20000010000000000000009,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,6 +77,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000010000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2000001000000000000000A,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +96,7 @@
 			children = (
 				E10000010000000000000002 /* Nox */,
 				E10000010000000000000004 /* NoxShare */,
+				E10000010000000000000005 /* NoxLiveActivity */,
 				E10000010000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -86,6 +106,7 @@
 			children = (
 				C10000010000000000000001 /* Nox.app */,
 				C10000010000000000000002 /* NoxShare.appex */,
+				C10000010000000000000003 /* NoxLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -106,6 +127,7 @@
 			);
 			dependencies = (
 				F10000010000000000000012 /* PBXTargetDependency */,
+				F10000010000000000000017 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				E10000010000000000000002 /* Nox */,
@@ -118,10 +140,34 @@
 				P20000010000000000000004 /* NoxDownload */,
 				P20000010000000000000005 /* NoxState */,
 				P20000010000000000000006 /* NoxBrowser */,
+				P20000010000000000000007 /* NoxActivity */,
 			);
 			productName = Nox;
 			productReference = C10000010000000000000001 /* Nox.app */;
 			productType = "com.apple.product-type.application";
+		};
+		F10000010000000000000013 /* NoxLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000010000000000000014 /* Build configuration list for PBXNativeTarget "NoxLiveActivity" */;
+			buildPhases = (
+				F10000010000000000000015 /* Sources */,
+				D10000010000000000000004 /* Frameworks */,
+				F10000010000000000000016 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E10000010000000000000005 /* NoxLiveActivity */,
+			);
+			name = NoxLiveActivity;
+			packageProductDependencies = (
+				P20000010000000000000008 /* NoxActivity */,
+			);
+			productName = NoxLiveActivity;
+			productReference = C10000010000000000000003 /* NoxLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		F10000010000000000000007 /* NoxShare */ = {
 			isa = PBXNativeTarget;
@@ -159,6 +205,9 @@
 					F10000010000000000000007 = {
 						CreatedOnToolsVersion = 26.0;
 					};
+					F10000010000000000000013 = {
+						CreatedOnToolsVersion = 26.0;
+					};
 				};
 			};
 			buildConfigurationList = F10000010000000000000006 /* Build configuration list for PBXProject "Nox" */;
@@ -183,6 +232,7 @@
 			targets = (
 				F10000010000000000000001 /* Nox */,
 				F10000010000000000000007 /* NoxShare */,
+				F10000010000000000000013 /* NoxLiveActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -196,6 +246,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F10000010000000000000009 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000010000000000000016 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -219,6 +276,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F10000010000000000000015 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -226,6 +290,11 @@
 			isa = PBXTargetDependency;
 			target = F10000010000000000000007 /* NoxShare */;
 			targetProxy = F10000010000000000000011 /* PBXContainerItemProxy */;
+		};
+		F10000010000000000000017 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F10000010000000000000013 /* NoxLiveActivity */;
+			targetProxy = F10000010000000000000018 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -236,6 +305,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = F10000010000000000000007;
 			remoteInfo = NoxShare;
+		};
+		F10000010000000000000018 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F10000010000000000000002 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F10000010000000000000013;
+			remoteInfo = NoxLiveActivity;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -342,12 +418,67 @@
 			SWIFT_VERSION = 5.0;
 			TARGETED_DEVICE_FAMILY = 1;
 		}; name = Release; };
+		G10000010000000000000007 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+			ALWAYS_SEARCH_USER_PATHS = NO;
+			APPLICATION_EXTENSION_API_ONLY = YES;
+			CLANG_ENABLE_MODULES = YES;
+			CODE_SIGN_STYLE = Automatic;
+			CURRENT_PROJECT_VERSION = 1;
+			DEVELOPMENT_TEAM = "";
+			GENERATE_INFOPLIST_FILE = NO;
+			INFOPLIST_FILE = "NoxLiveActivity-Info.plist";
+			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+			LD_RUNPATH_SEARCH_PATHS = (
+				"$(inherited)",
+				"@executable_path/Frameworks",
+				"@executable_path/../../Frameworks",
+			);
+			LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+			MARKETING_VERSION = 1.0.0;
+			PRODUCT_BUNDLE_IDENTIFIER = com.aholic.nox.liveactivity;
+			PRODUCT_NAME = "$(TARGET_NAME)";
+			SDKROOT = iphoneos;
+			SKIP_INSTALL = YES;
+			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+			SUPPORTS_MACCATALYST = NO;
+			SWIFT_EMIT_LOC_STRINGS = YES;
+			SWIFT_VERSION = 5.0;
+			TARGETED_DEVICE_FAMILY = 1;
+		}; name = Debug; };
+		G10000010000000000000008 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+			ALWAYS_SEARCH_USER_PATHS = NO;
+			APPLICATION_EXTENSION_API_ONLY = YES;
+			CLANG_ENABLE_MODULES = YES;
+			CODE_SIGN_STYLE = Automatic;
+			CURRENT_PROJECT_VERSION = 1;
+			DEVELOPMENT_TEAM = "";
+			GENERATE_INFOPLIST_FILE = NO;
+			INFOPLIST_FILE = "NoxLiveActivity-Info.plist";
+			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+			LD_RUNPATH_SEARCH_PATHS = (
+				"$(inherited)",
+				"@executable_path/Frameworks",
+				"@executable_path/../../Frameworks",
+			);
+			LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+			MARKETING_VERSION = 1.0.0;
+			PRODUCT_BUNDLE_IDENTIFIER = com.aholic.nox.liveactivity;
+			PRODUCT_NAME = "$(TARGET_NAME)";
+			SDKROOT = iphoneos;
+			SKIP_INSTALL = YES;
+			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+			SUPPORTS_MACCATALYST = NO;
+			SWIFT_EMIT_LOC_STRINGS = YES;
+			SWIFT_VERSION = 5.0;
+			TARGETED_DEVICE_FAMILY = 1;
+		}; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
 		F10000010000000000000003 /* Build configuration list for PBXNativeTarget "Nox" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000001, G10000010000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		F10000010000000000000006 /* Build configuration list for PBXProject "Nox" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000003, G10000010000000000000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		F10000010000000000000010 /* Build configuration list for PBXNativeTarget "NoxShare" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000005, G10000010000000000000006); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		F10000010000000000000014 /* Build configuration list for PBXNativeTarget "NoxLiveActivity" */ = {isa = XCConfigurationList; buildConfigurations = (G10000010000000000000007, G10000010000000000000008); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -387,6 +518,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = Q10000010000000000000002 /* XCLocalSwiftPackageReference "NoxKit" */;
 			productName = NoxBrowser;
+		};
+		P20000010000000000000007 /* NoxActivity */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = Q10000010000000000000002 /* XCLocalSwiftPackageReference "NoxKit" */;
+			productName = NoxActivity;
+		};
+		P20000010000000000000008 /* NoxActivity */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = Q10000010000000000000002 /* XCLocalSwiftPackageReference "NoxKit" */;
+			productName = NoxActivity;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

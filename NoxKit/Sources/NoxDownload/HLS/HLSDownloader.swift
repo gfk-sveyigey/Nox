@@ -1,6 +1,7 @@
 import Foundation
 import CommonCrypto
 import NoxCore
+import NoxKeepAlive
 
 final class HLSDownloader {
     struct Progress {
@@ -220,6 +221,14 @@ final class HLSDownloader {
 
         let merged = stagingDirectory.appendingPathComponent("merged.mp4")
 
+        let grace = await BackgroundExecutionGrace.shared.begin(reason: "HLS 合并")
+        defer {
+            if let grace {
+                Task { @MainActor in
+                    BackgroundExecutionGrace.shared.end(grace, reason: "HLS 合并")
+                }
+            }
+        }
         try await Task.detached(priority: .utility) {
             try DownloadStorage.concatenate(orderedParts, into: merged)
         }.value

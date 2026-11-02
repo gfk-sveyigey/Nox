@@ -25,6 +25,8 @@ final class NoxAppDelegate: UIResponder, UIApplicationDelegate {
 
         // iOS 26 的持续处理任务必须在启动完成前注册，否则提交时会失败。
         ContinuedProcessingBridge.registerIfNeeded()
+        // 所有 BGTaskScheduler identifier 也必须在启动完成前注册。
+        BackgroundRecovery.shared.register()
         return true
     }
 
@@ -105,6 +107,11 @@ final class NoxSceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         IncomingURLCenter.shared.sceneDidBecomeActive()
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        let manager = AppServices.shared.downloadManager
+        BackgroundRecovery.shared.schedule(hasActiveDownloads: manager.hasActiveDownloads)
     }
 }
 

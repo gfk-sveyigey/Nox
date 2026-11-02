@@ -95,7 +95,22 @@ extension DownloadManager {
 
     /// 场景切换：回前台重算速度采样，并让保活自愈（例如 PiP 被系统结束后重建）。
     public func handleScenePhase(isActive: Bool) {
-        guard isActive else { return }
+        guard isActive else {
+            if backgroundTransitionGrace == nil, hasActiveDownloads {
+                backgroundTransitionGrace = BackgroundExecutionGrace.shared.begin(
+                    reason: "进入后台"
+                )
+            }
+            return
+        }
+
+        if let backgroundTransitionGrace {
+            BackgroundExecutionGrace.shared.end(
+                backgroundTransitionGrace,
+                reason: "回到前台"
+            )
+            self.backgroundTransitionGrace = nil
+        }
         resetSpeedSamples()
         keepAlive.didEnterForeground()
         // 后台期间可能错过了某个下载结束回调；回前台时重新对齐队列，
