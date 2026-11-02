@@ -25,11 +25,16 @@ struct HistoryView: View {
         NavigationStack {
             Group {
                 if appState.history.isEmpty {
-                    ContentUnavailableView(
-                        L("暂无历史"),
-                        systemImage: "clock",
-                        description: Text(L("下载过的视频页面会显示在这里。"))
-                    )
+                    ContentUnavailableView {
+                        Label {
+                            Text(L("暂无历史"))
+                                .font(.title2.weight(.regular))
+                        } icon: {
+                            Image(systemName: "clock")
+                        }
+                    } description: {
+                        Text(L("下载过的视频页面会显示在这里。"))
+                    }
                 } else {
                     list
                 }
