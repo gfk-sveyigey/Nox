@@ -54,23 +54,9 @@ struct DownloadSettingsView: View {
             }
 
             Section {
-                Picker(L("HLS 下载引擎"), selection: $appState.hlsDownloadEngine) {
-                    ForEach(HLSDownloadEngine.allCases) { engine in
-                        Text(engine.title).tag(engine)
-                    }
-                }
-                .onChange(of: appState.hlsDownloadEngine) { _, engine in
-                    manager.setHLSDownloadEngine(engine)
-                    manager.reconcileQueue()
-                }
-            } footer: {
-                Text(appState.hlsDownloadEngine.detail)
-            }
-
-            Section {
                 Picker(L("最低剩余空间"), selection: $appState.minFreeDiskSpace) {
                     ForEach(NoxDefaults.minFreeDiskSpaceOptions, id: \.self) { value in
-                        Text(value == 0 ? L("不限制") : TransferStats.formattedSize(value))
+                        Text(Self.minFreeSpaceTitle(value))
                             .tag(value)
                     }
                 }
@@ -121,6 +107,19 @@ struct DownloadSettingsView: View {
 
     static func concurrentTitle(_ count: Int) -> String {
         count == AppState.unlimitedConcurrentDownloads ? L("无限制") : String(count)
+    }
+
+    /// 储存保护选项用整数显示，避免 1 GiB 被格式化成「1.1 GB」。
+    static func minFreeSpaceTitle(_ bytes: Int64) -> String {
+        guard bytes > 0 else { return L("不限制") }
+
+        if bytes % NoxDefaults.gigabyte == 0 {
+            return "\(bytes / NoxDefaults.gigabyte) \(L("GB"))"
+        }
+        if bytes % NoxDefaults.megabyte == 0 {
+            return "\(bytes / NoxDefaults.megabyte) \(L("MB"))"
+        }
+        return TransferStats.formattedSize(bytes)
     }
 }
 

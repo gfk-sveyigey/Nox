@@ -89,15 +89,15 @@ struct SettingsView: View {
             }
 
             NavigationLink {
-                StorageSettingsView(manager: manager)
-            } label: {
-                Text(L("储存空间"))
-            }
-
-            NavigationLink {
                 KeepAliveSettingsView(manager: manager)
             } label: {
                 Text(L("后台下载"))
+            }
+
+            NavigationLink {
+                StorageSettingsView(manager: manager)
+            } label: {
+                Text(L("储存空间"))
             }
         }
 
@@ -137,6 +137,8 @@ struct SettingsView: View {
                 }
             }
             .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
+            // 系统 Picker 菜单会缓存选项文案；切语言后重建这一行即可刷新。
+            .id(localization.language)
 
             Picker(L("语言"), selection: $localization.language) {
                 ForEach(AppLanguage.allCases) { language in

@@ -83,7 +83,7 @@ public final class PluginStore {
     }
 
     private var pluginsDirectory: URL {
-        DownloadStorage.rootDirectory.appendingPathComponent("Plugins", isDirectory: true)
+        DownloadStorage.pluginsDirectory
     }
 
     // MARK: - 加载

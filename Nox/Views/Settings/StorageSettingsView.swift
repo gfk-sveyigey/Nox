@@ -1,9 +1,6 @@
 import SwiftUI
 import UIKit
-import WebKit
 import NoxCore
-import NoxKeepAlive
-import NoxParsing
 import NoxDownload
 import NoxState
 
@@ -18,9 +15,6 @@ struct StorageSettingsView: View {
     @State var rowFrames: [StorageCategory: CGRect] = [:]
     @State var showingClearConfirmation = false
     @State var isVisible = false
-    @State var deviceTotalBytes: Int64 = 0
-    @State var deviceFreeBytes: Int64 = 0
-    @State var bundleBytes: Int64 = 0
     @Environment(\.scenePhase) private var scenePhase
 
     init(manager: DownloadManager) {
@@ -31,37 +25,18 @@ struct StorageSettingsView: View {
         List(selection: listSelection) {
             Section {
                 StorageOverviewCard(
-                    totalBytes: deviceTotalBytes,
-                    freeBytes: deviceFreeBytes,
-                    noxBytes: noxTotalSize,
-                    otherBytes: otherAppsBytes
+                    totalBytes: storageTotalSize,
+                    slices: chartSlices
                 )
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .padding(.vertical, 4)
             }
 
             Section {
                 ForEach(StorageCategory.allCases) { category in
                     row(for: category)
-                        .background {
-                            GeometryReader { proxy in
-                                Color.clear.preference(
-                                    key: StorageRowFrameKey.self,
-                                    value: [category: proxy.frame(in: .global)]
-                                )
-                            }
-                        }
-                        .tag(category)
                 }
-            } header: {
-                Text(L("Nox 用量明细"))
             } footer: {
-                Text(L("双指下滑进入多选，勾选要清理的类别，再点右上角「清理」。清理网站数据会退出已登录的网站。"))
-            }
-
-            Section {
-                LabeledContent(L("Nox 合计"), value: TransferStats.formattedSize(noxTotalSize))
+                Text(L("双指下滑进入多选，勾选要清理的类别，再点右上角「清理」。统计不含只读的 App 本体。"))
             }
         }
         .environment(\.editMode, $editMode)
@@ -75,12 +50,11 @@ struct StorageSettingsView: View {
         .onChange(of: editMode) { _, newValue in
             if !newValue.isEditing { selection.removeAll() }
         }
-        .task { refresh() }
+        .task { await MainActor.run { refresh() } }
         .onChange(of: appState.downloads.count) { _, _ in refresh() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refresh() }
         }
-        // 与下载 / 历史页一致：双指滑动进入多选，并按路径选中类别。
         .twoFingerPanToSelect(
             isEnabled: isVisible,
             onBegin: { beginTwoFingerSelection() },
@@ -94,29 +68,111 @@ struct StorageSettingsView: View {
         }
     }
 
-    /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。
+    @MainActor
+    private var storageTotalSize: Int64 {
+        StorageUsage.total(sizes)
+    }
+
+    @MainActor
+    private var chartSlices: [StorageChartSlice] {
+        let downloadCategories: [StorageCategory] = [.videos, .documentsOther]
+        let cacheCategories: [StorageCategory] = [.parts, .staging, .networkCache, .temporary]
+        let appCategories: [StorageCategory] = [
+            .plugins, .logs, .preferences, .applicationOther,
+            .applicationSupportOther, .libraryOther, .sharedContainer
+        ]
+
+        let downloads = sum(downloadCategories)
+        let cache = sum(cacheCategories)
+        let web = bytes(.websiteData)
+        let app = sum(appCategories)
+
+        let downloadSlice = StorageChartSlice(
+            id: "downloads", title: L("下载"), bytes: downloads, color: .blue
+        )
+        let cacheSlice = StorageChartSlice(
+            id: "cache", title: L("缓存"), bytes: cache, color: .orange
+        )
+        let webSlice = StorageChartSlice(
+            id: "web", title: L("网站数据"), bytes: web, color: .green
+        )
+        let appSlice = StorageChartSlice(
+            id: "app", title: L("应用数据"), bytes: app, color: .purple
+        )
+        return [downloadSlice, cacheSlice, webSlice, appSlice]
+    }
+
+    private func bytes(_ category: StorageCategory) -> Int64 {
+        sizes[category] ?? 0
+    }
+
+    private func sum(_ categories: [StorageCategory]) -> Int64 {
+        categories.reduce(Int64(0)) { $0 + bytes($1) }
+    }
+
+    @ViewBuilder
+    func row(for category: StorageCategory) -> some View {
+        if editMode.isEditing {
+            categoryLabel(category)
+                .tag(category)
+                .contentShape(Rectangle())
+                .background(rowFrame(category))
+                .selectionDisabled(!category.canClear)
+        } else {
+            NavigationLink {
+                StorageCategoryDetailView(manager: manager, category: category)
+            } label: {
+                categoryLabel(category)
+            }
+            .background(rowFrame(category))
+        }
+    }
+
+    func categoryLabel(_ category: StorageCategory) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: category.systemImage)
+                .foregroundStyle(.tint)
+                .frame(width: 26)
+
+            Text(category.title)
+                .foregroundStyle(.primary)
+
+            Spacer(minLength: 8)
+
+            Text(TransferStats.formattedSize(sizes[category] ?? 0))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+    }
+
+    func rowFrame(_ category: StorageCategory) -> some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: StorageRowFrameKey.self,
+                value: [category: proxy.frame(in: .global)]
+            )
+        }
+    }
+
     func beginTwoFingerSelection() {
         guard !editMode.isEditing else { return }
         withAnimation { editMode = .active }
     }
 
-    /// 把双指滑过的路径映射到可见类别；只增选，不反转已选项。
     func selectRows(in path: CGRect) {
         let categories = rowFrames.compactMap { category, frame in
-            frame.intersects(path) ? category : nil
+            frame.intersects(path) && category.canClear ? category : nil
         }
         guard !categories.isEmpty else { return }
         selection.formUnion(categories)
     }
 
-    /// 清理完成后退出多选，避免停留在不可继续操作的选择状态。
     func finishSelection() {
         selection.removeAll()
         guard editMode.isEditing else { return }
         withAnimation { editMode = .inactive }
     }
 
-    /// 多选态才把选择绑给列表（与下载 / 历史页相同的处理）。
     var listSelection: Binding<Set<StorageCategory>> {
         Binding(
             get: { editMode.isEditing ? selection : [] },
@@ -129,7 +185,6 @@ struct StorageSettingsView: View {
 
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
-        // 多选只通过双指滑动进入；进入后在返回键的位置显示「完成」。
         ToolbarItem(placement: .topBarLeading) {
             if editMode.isEditing {
                 Button(L("完成")) {
@@ -158,55 +213,9 @@ struct StorageSettingsView: View {
         }
     }
 
-    func row(for category: StorageCategory) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: category.systemImage)
-                .foregroundStyle(.tint)
-                .frame(width: 26)
-
-            Text(category.title)
-                .foregroundStyle(.primary)
-
-            Spacer(minLength: 8)
-
-            Text(TransferStats.formattedSize(sizes[category] ?? 0))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-        }
-        .contentShape(Rectangle())
-    }
-
-    var totalSize: Int64 {
-        sizes.values.reduce(0, +)
-    }
-
-    /// Nox 占用的总空间：App 本体 + 下载文件 + 缓存与网站数据。
-    var noxTotalSize: Int64 {
-        totalSize + bundleBytes
-    }
-
-    /// 其他 App 与系统占用的空间。租用 / 系统预留空间也会落在这里。
-    var otherAppsBytes: Int64 {
-        max(deviceTotalBytes - deviceFreeBytes - noxTotalSize, 0)
-    }
-
+    @MainActor
     func refresh() {
-        let usage = DeviceStorage.usage()
-        deviceTotalBytes = usage.totalBytes
-        deviceFreeBytes = usage.freeBytes
-
-        // App 本体不会在运行中变化，只算一次，避免每次刷新都遍历整个 bundle。
-        if bundleBytes == 0 {
-            bundleBytes = DeviceStorage.directorySize(at: Bundle.main.bundleURL)
-        }
-
-        sizes = [
-            .videos: manager.videosSize(),
-            .parts: manager.partsSize(),
-            .staging: manager.stagingSize(),
-            .networkCache: manager.networkCacheSize(),
-            .websiteData: manager.websiteDataSize()
-        ]
+        sizes = StorageUsage.snapshot(manager: manager)
     }
 
     func clearSelected() {
@@ -215,7 +224,7 @@ struct StorageSettingsView: View {
 
         Task {
             if categories.contains(.videos) {
-                // 只删已完成的成品；正在下载的任务交给分片清理，避免打断下载
+                // 只删已完成的成品；正在下载的任务交给分片清理，避免打断下载。
                 let finishedIDs = Set(
                     appState.downloads.filter { $0.status == .finished }.map(\.id)
                 )
@@ -224,62 +233,35 @@ struct StorageSettingsView: View {
 
             if categories.contains(.parts) { manager.clearParts() }
             if categories.contains(.staging) { manager.clearStaging() }
+            if categories.contains(.logs) { LogStore.shared.clear() }
             if categories.contains(.networkCache) { manager.clearNetworkCache() }
             if categories.contains(.websiteData) { await manager.clearWebsiteData() }
+            if categories.contains(.temporary) { manager.clearTemporaryFiles() }
 
-            LogStore.shared.info("storage cleared: " + categories.map(\.rawValue).sorted().joined(separator: ","))
+            LogStore.shared.info(
+                "storage cleared: " + categories.map(\.rawValue).sorted().joined(separator: ",")
+            )
 
             refresh()
-            // 释放空间后如果低于阈值的保护已经解除，立刻恢复排队任务。
             manager.reconcileQueue()
         }
     }
 }
 
-/// 整机储存空间概览：环形图 + 三项图例。
+/// 环形图：只统计 App 沙盒内的可写数据。
 private struct StorageOverviewCard: View {
     let totalBytes: Int64
-    let freeBytes: Int64
-    let noxBytes: Int64
-    let otherBytes: Int64
-
-    private var usedBytes: Int64 {
-        max(totalBytes - freeBytes, 0)
-    }
+    let slices: [StorageChartSlice]
 
     private var chartTotal: Int64 {
-        max(totalBytes, noxBytes + otherBytes + freeBytes)
-    }
-
-    private var slices: [StorageSlice] {
-        [
-            StorageSlice(id: "nox", title: L("Nox"), bytes: noxBytes, color: .blue),
-            StorageSlice(id: "other", title: L("其他应用与系统"), bytes: otherBytes, color: .orange),
-            StorageSlice(id: "free", title: L("可用空间"), bytes: freeBytes, color: .green)
-        ]
+        max(totalBytes, slices.reduce(0) { $0 + max($1.bytes, 0) })
     }
 
     var body: some View {
         VStack(spacing: 18) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L("整机储存"))
-                        .font(.headline)
-                    Text(String(format: L("共 %@"), TransferStats.formattedSize(totalBytes)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Text(String(format: L("已用 %@"), TransferStats.formattedSize(usedBytes)))
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-
             ZStack {
                 Circle()
-                    .stroke(Color.secondary.opacity(0.12), lineWidth: 26)
+                    .stroke(Color.secondary.opacity(0.12), lineWidth: 24)
 
                 ForEach(fractions) { item in
                     if item.end > item.start {
@@ -287,27 +269,22 @@ private struct StorageOverviewCard: View {
                             .trim(from: item.start, to: item.end)
                             .stroke(
                                 item.slice.color,
-                                style: StrokeStyle(lineWidth: 26, lineCap: .butt)
+                                style: StrokeStyle(lineWidth: 24, lineCap: .butt)
                             )
                             .rotationEffect(.degrees(-90))
-                            .shadow(color: item.slice.color.opacity(0.15), radius: 3)
                     }
                 }
 
                 VStack(spacing: 4) {
-                    Text(L("已用"))
+                    Text(L("总计"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(TransferStats.formattedSize(usedBytes))
+                    Text(TransferStats.formattedSize(totalBytes))
                         .font(.title3.weight(.bold))
                         .monospacedDigit()
-                    Text(percentText(usedBytes))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 210, height: 210)
-            .padding(.vertical, 4)
+            .frame(width: 190, height: 190)
 
             VStack(spacing: 10) {
                 ForEach(slices) { slice in
@@ -334,28 +311,17 @@ private struct StorageOverviewCard: View {
                 }
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 18)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.05), lineWidth: 0.5)
-                }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
     }
 
-    private var fractions: [StorageSliceFraction] {
+    private var fractions: [StorageChartFraction] {
         guard chartTotal > 0 else { return [] }
         var cursor: CGFloat = 0
         return slices.map { slice in
             let fraction = CGFloat(max(slice.bytes, 0)) / CGFloat(chartTotal)
             let start = cursor
             cursor += fraction
-            return StorageSliceFraction(
+            return StorageChartFraction(
                 slice: slice,
                 start: start,
                 end: min(cursor, 1)
@@ -372,15 +338,149 @@ private struct StorageOverviewCard: View {
     }
 }
 
-private struct StorageSlice: Identifiable {
+/// 「储存空间」详情：显示该类别的直接子文件和子文件夹，文件夹可以继续进入。
+struct StorageCategoryDetailView: View {
+    @EnvironmentObject var appState: AppState
+    @ObservedObject var manager: DownloadManager
+    let category: StorageCategory
+
+    @State var entries: [StorageEntry] = []
+
+    var body: some View {
+        List {
+            if entries.isEmpty {
+                ContentUnavailableView(
+                    L("暂无文件"),
+                    systemImage: "folder",
+                    description: Text(L("这个类别当前没有占用。"))
+                )
+            } else {
+                Section {
+                    ForEach(entries) { entry in
+                        entryRow(entry)
+                    }
+                } footer: {
+                    Text(String(format: L("共 %@"), TransferStats.formattedSize(entryTotal)))
+                }
+            }
+        }
+        .navigationTitle(category.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await MainActor.run { load() } }
+    }
+
+    var entryTotal: Int64 {
+        entries.reduce(0) { $0 + $1.bytes }
+    }
+
+    @MainActor
+    func load() {
+        entries = StorageUsage.children(
+            for: category,
+            manager: manager,
+            records: appState.downloads
+        )
+    }
+
+    @ViewBuilder
+    func entryRow(_ entry: StorageEntry) -> some View {
+        if entry.isDirectory {
+            NavigationLink {
+                StorageDirectoryDetailView(url: entry.url, title: entry.name)
+            } label: {
+                StorageEntryLabel(entry: entry)
+            }
+        } else {
+            StorageEntryLabel(entry: entry)
+        }
+    }
+}
+
+/// 通用目录浏览：列出直接子项，文件夹可继续下钻。
+struct StorageDirectoryDetailView: View {
+    let url: URL
+    let title: String
+
+    @State var entries: [StorageEntry] = []
+
+    var body: some View {
+        List {
+            if entries.isEmpty {
+                ContentUnavailableView(
+                    L("暂无文件"),
+                    systemImage: "folder",
+                    description: Text(L("这个文件夹是空的。"))
+                )
+            } else {
+                Section {
+                    ForEach(entries) { entry in
+                        entryRow(entry)
+                    }
+                } footer: {
+                    Text(String(format: L("共 %@"), TransferStats.formattedSize(entryTotal)))
+                }
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await MainActor.run { load() } }
+    }
+
+    var entryTotal: Int64 {
+        entries.reduce(0) { $0 + $1.bytes }
+    }
+
+    @MainActor
+    func load() {
+        entries = StorageUsage.entries(in: url)
+    }
+
+    @ViewBuilder
+    func entryRow(_ entry: StorageEntry) -> some View {
+        if entry.isDirectory {
+            NavigationLink {
+                StorageDirectoryDetailView(url: entry.url, title: entry.name)
+            } label: {
+                StorageEntryLabel(entry: entry)
+            }
+        } else {
+            StorageEntryLabel(entry: entry)
+        }
+    }
+}
+
+private struct StorageEntryLabel: View {
+    let entry: StorageEntry
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: entry.isDirectory ? "folder" : "doc")
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+
+            Text(entry.name)
+                .lineLimit(1)
+                .truncationMode(.middle)
+
+            Spacer(minLength: 8)
+
+            Text(TransferStats.formattedSize(entry.bytes))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+private struct StorageChartSlice: Identifiable {
     let id: String
     let title: String
     let bytes: Int64
     let color: Color
 }
 
-private struct StorageSliceFraction: Identifiable {
-    let slice: StorageSlice
+private struct StorageChartFraction: Identifiable {
+    let slice: StorageChartSlice
     let start: CGFloat
     let end: CGFloat
 
@@ -398,5 +498,3 @@ private struct StorageRowFrameKey: PreferenceKey {
         value.merge(nextValue(), uniquingKeysWith: { $1 })
     }
 }
-
-/// 「历史记录」二级页：保留方式（按条数 / 按时间）与具体数值。

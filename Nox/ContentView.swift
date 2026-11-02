@@ -53,7 +53,6 @@ struct ContentView: View {
         .overlay {
             if !startupFinished {
                 StartupView()
-                    .transition(.opacity)
                     .zIndex(100)
             }
         }
@@ -160,11 +159,9 @@ struct ContentView: View {
         // 预建画中画基础设施；失败也不会影响启动。
         downloadManager.prepareForLaunch()
 
-        // 留一点品牌过渡时间，避免闪一下就消失。
+        // 留一小段准备时间，避免覆盖层闪一下就消失。
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
-            withAnimation(.easeOut(duration: 0.25)) {
-                startupFinished = true
-            }
+            startupFinished = true
         }
     }
 

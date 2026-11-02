@@ -58,6 +58,22 @@ struct KeepAliveSettingsView: View {
                 }
             }
 
+            Section {
+                Picker(L("HLS 下载引擎"), selection: Binding(
+                    get: { appState.hlsDownloadEngine },
+                    set: {
+                        manager.setHLSDownloadEngine($0)
+                        manager.reconcileQueue()
+                    }
+                )) {
+                    ForEach(HLSDownloadEngine.allCases) { engine in
+                        Text(engine.title).tag(engine)
+                    }
+                }
+            } footer: {
+                Text(appState.hlsDownloadEngine.detail)
+            }
+
             // 「仅系统下载」和持续处理都不需要选生命周期：
             // 前者没有额外保活，后者由系统按当前下载任务授予执行时间。
             if appState.keepAliveMode != .off,

@@ -1,4 +1,5 @@
 import Foundation
+import NoxCore
 
 /// 与分享扩展共享的 App Group 收件箱。
 ///
@@ -6,7 +7,7 @@ import Foundation
 /// `NSExtensionContext.open`（Apple 文档：iOS 只有 Today / iMessage 扩展支持），
 /// 用户下次打开 Nox 时仍会自动导入。
 enum SharedPluginInbox {
-    static let appGroupIdentifier = "group.com.aholic.nox"
+    static let appGroupIdentifier = DownloadStorage.appGroupIdentifier
     static let directoryName = "NoxPendingPlugins"
 
     /// 签名未包含 App Group 时返回 nil。
