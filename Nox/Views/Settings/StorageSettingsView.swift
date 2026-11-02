@@ -50,7 +50,7 @@ struct StorageSettingsView: View {
         .onChange(of: editMode) { _, newValue in
             if !newValue.isEditing { selection.removeAll() }
         }
-        .task { await refresh() }
+        .task { await MainActor.run { refresh() } }
         .onChange(of: appState.downloads.count) { _, _ in refresh() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refresh() }
@@ -75,26 +75,39 @@ struct StorageSettingsView: View {
 
     @MainActor
     private var chartSlices: [StorageChartSlice] {
-        let downloads = (sizes[.videos] ?? 0) + (sizes[.documentsOther] ?? 0)
-        let cache = (sizes[.parts] ?? 0)
-            + (sizes[.staging] ?? 0)
-            + (sizes[.networkCache] ?? 0)
-            + (sizes[.temporary] ?? 0)
-        let web = sizes[.websiteData] ?? 0
-        let app = (sizes[.plugins] ?? 0)
-            + (sizes[.logs] ?? 0)
-            + (sizes[.preferences] ?? 0)
-            + (sizes[.applicationOther] ?? 0)
-            + (sizes[.applicationSupportOther] ?? 0)
-            + (sizes[.libraryOther] ?? 0)
-            + (sizes[.sharedContainer] ?? 0)
-
-        return [
-            StorageChartSlice(id: "downloads", title: L("下载"), bytes: downloads, color: .blue),
-            StorageChartSlice(id: "cache", title: L("缓存"), bytes: cache, color: .orange),
-            StorageChartSlice(id: "web", title: L("网站数据"), bytes: web, color: .green),
-            StorageChartSlice(id: "app", title: L("应用数据"), bytes: app, color: .purple)
+        let downloadCategories: [StorageCategory] = [.videos, .documentsOther]
+        let cacheCategories: [StorageCategory] = [.parts, .staging, .networkCache, .temporary]
+        let appCategories: [StorageCategory] = [
+            .plugins, .logs, .preferences, .applicationOther,
+            .applicationSupportOther, .libraryOther, .sharedContainer
         ]
+
+        let downloads = sum(downloadCategories)
+        let cache = sum(cacheCategories)
+        let web = bytes(.websiteData)
+        let app = sum(appCategories)
+
+        let downloadSlice = StorageChartSlice(
+            id: "downloads", title: L("下载"), bytes: downloads, color: .blue
+        )
+        let cacheSlice = StorageChartSlice(
+            id: "cache", title: L("缓存"), bytes: cache, color: .orange
+        )
+        let webSlice = StorageChartSlice(
+            id: "web", title: L("网站数据"), bytes: web, color: .green
+        )
+        let appSlice = StorageChartSlice(
+            id: "app", title: L("应用数据"), bytes: app, color: .purple
+        )
+        return [downloadSlice, cacheSlice, webSlice, appSlice]
+    }
+
+    private func bytes(_ category: StorageCategory) -> Int64 {
+        sizes[category] ?? 0
+    }
+
+    private func sum(_ categories: [StorageCategory]) -> Int64 {
+        categories.reduce(Int64(0)) { $0 + bytes($1) }
     }
 
     @ViewBuilder
@@ -353,7 +366,7 @@ struct StorageCategoryDetailView: View {
         }
         .navigationTitle(category.title)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
+        .task { await MainActor.run { load() } }
     }
 
     var entryTotal: Int64 {
@@ -410,7 +423,7 @@ struct StorageDirectoryDetailView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
+        .task { await MainActor.run { load() } }
     }
 
     var entryTotal: Int64 {
