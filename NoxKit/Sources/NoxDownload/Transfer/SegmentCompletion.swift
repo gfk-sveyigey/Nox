@@ -167,5 +167,8 @@ extension DownloadManager {
 
     public nonisolated func urlSessionDidFinishEvents(
         forBackgroundURLSession session: URLSession
-    ) {}
+    ) {
+        let identifier = session.configuration.identifier ?? "com.aholic.nox.downloads"
+        BackgroundSessionEvents.shared.complete(identifier: identifier)
+    }
 }

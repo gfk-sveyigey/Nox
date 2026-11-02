@@ -4,7 +4,10 @@ import Foundation
 ///
 /// 与下载解耦：是否启动由「保活模式」（`KeepAliveLifetime`）决定 —— 跟随下载任务，或进入前台即常驻。
 public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
+    /// 只依赖系统后台下载（Background URLSession），不额外保活。
     case off
+    /// iOS 26 的 BGContinuedProcessingTask：用户前台发起后，系统继续给进程执行时间。
+    case continuedProcessing
     case silentAudio
     case pictureInPicture
 
@@ -12,7 +15,8 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
 
     public var title: String {
         switch self {
-        case .off: return L("关闭")
+        case .off: return L("仅系统下载")
+        case .continuedProcessing: return L("持续处理 (iOS 26)")
         case .silentAudio: return L("静音音频")
         case .pictureInPicture: return L("画中画 (PiP)")
         }
@@ -21,11 +25,24 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
     public var detail: String {
         switch self {
         case .off:
-            return L("不保活，切后台可能被系统挂起，下载会暂停。")
+            return L("普通文件交给系统后台 URLSession 继续；HLS 分片编排、合并等必须让 App 进程执行的任务，切后台后可能暂停。")
+        case .continuedProcessing:
+            return L("iOS 26 起可用：用户在前台开始下载后，系统允许进程在后台继续处理，并显示进度与取消入口。")
         case .silentAudio:
             return L("循环播放极短静音。可能打断其他 App 正在播放的音频。")
         case .pictureInPicture:
             return L("用系统画中画保活：不占用音频会话，不打断其他 App 的音频，也尽量减少与其他画中画的互相挤占。")
+        }
+    }
+
+    /// 当前系统是否支持这一档。
+    public var isAvailable: Bool {
+        switch self {
+        case .continuedProcessing:
+            if #available(iOS 26.0, *) { return true }
+            return false
+        default:
+            return true
         }
     }
 }

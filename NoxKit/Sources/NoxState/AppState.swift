@@ -60,6 +60,12 @@ public final class AppState: ObservableObject {
     /// 后者会把所有下载请求的 `allowsCellularAccess` 置为 false。
     @Published public var downloadNetworkMode: DownloadNetworkMode = NoxDefaults.defaultDownloadNetworkMode
 
+    /// 整机剩余空间低于此值时暂停下载（0 = 不限制）。
+    @Published public var minFreeDiskSpace: Int64 = NoxDefaults.defaultMinFreeDiskSpace
+
+    /// HLS 下载引擎：兼容分片 / 系统 AVAsset。
+    @Published public var hlsDownloadEngine: HLSDownloadEngine = NoxDefaults.defaultHLSDownloadEngine
+
     /// 后台保活方式：关闭 / 静音音频 / 画中画。
     /// 默认走画中画：它不占用音频会话，不会打断其他 App 正在播放的音频。
     @Published public var keepAliveMode: KeepAliveMode = .pictureInPicture
@@ -107,6 +113,8 @@ public final class AppState: ObservableObject {
     private let m3u8ConcurrencyKey = "Nox.m3u8SegmentConcurrency"
     private let maxConcurrentDownloadsKey = "Nox.maxConcurrentDownloads"
     private let downloadNetworkModeKey = "Nox.downloadNetworkMode"
+    private let minFreeDiskSpaceKey = "Nox.minFreeDiskSpace"
+    private let hlsDownloadEngineKey = "Nox.hlsDownloadEngine"
     private let keepAliveModeKey = "Nox.keepAliveMode"
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
@@ -298,6 +306,8 @@ public final class AppState: ObservableObject {
         defaults.set(m3u8SegmentConcurrency, forKey: m3u8ConcurrencyKey)
         defaults.set(maxConcurrentDownloads, forKey: maxConcurrentDownloadsKey)
         defaults.set(downloadNetworkMode.rawValue, forKey: downloadNetworkModeKey)
+        defaults.set(minFreeDiskSpace, forKey: minFreeDiskSpaceKey)
+        defaults.set(hlsDownloadEngine.rawValue, forKey: hlsDownloadEngineKey)
         defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
@@ -364,6 +374,17 @@ public final class AppState: ObservableObject {
             rawValue: defaults.string(forKey: downloadNetworkModeKey) ?? ""
         ) ?? NoxDefaults.defaultDownloadNetworkMode
 
+        if let stored = (defaults.object(forKey: minFreeDiskSpaceKey) as? NSNumber)?.int64Value,
+           NoxDefaults.minFreeDiskSpaceOptions.contains(stored) {
+            minFreeDiskSpace = stored
+        } else {
+            minFreeDiskSpace = NoxDefaults.defaultMinFreeDiskSpace
+        }
+
+        hlsDownloadEngine = HLSDownloadEngine(
+            rawValue: defaults.string(forKey: hlsDownloadEngineKey) ?? ""
+        ) ?? NoxDefaults.defaultHLSDownloadEngine
+
         historyRetentionMode = HistoryRetentionMode(
             rawValue: defaults.string(forKey: historyRetentionModeKey) ?? ""
         ) ?? .count
@@ -382,9 +403,13 @@ public final class AppState: ObservableObject {
             rawValue: defaults.string(forKey: appearanceModeKey) ?? ""
         ) ?? .system
 
-        keepAliveMode = KeepAliveMode(
+        if let storedMode = KeepAliveMode(
             rawValue: defaults.string(forKey: keepAliveModeKey) ?? ""
-        ) ?? .pictureInPicture
+        ), storedMode.isAvailable {
+            keepAliveMode = storedMode
+        } else {
+            keepAliveMode = .pictureInPicture
+        }
 
         pipCoexistenceFallback = PiPCoexistenceFallback(
             rawValue: defaults.string(forKey: pipCoexistenceFallbackKey) ?? ""

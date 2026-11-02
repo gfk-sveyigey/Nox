@@ -25,7 +25,7 @@ struct SettingsView: View {
                 // 用 listRowInsets/Background/Separator 把它伪装成"表头"。
                 appHeader
 
-                settingsSection
+                settingsSections
             }
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
@@ -78,12 +78,12 @@ struct SettingsView: View {
 
     // MARK: - 设置项
 
-    /// 所有设置项收在尽可能少的组里：下载与内容、外观与语言同属一组。
-    /// 版本与作者信息不占行，放在这一组的页脚居中显示。
-    var settingsSection: some View {
+    /// 设置项按用途分成四组，但不显示分组标题，只用间距做视觉分割。
+    @ViewBuilder
+    var settingsSections: some View {
         Section {
             NavigationLink {
-                DownloadSettingsView()
+                DownloadSettingsView(manager: manager)
             } label: {
                 Text(L("下载设置"))
             }
@@ -94,6 +94,14 @@ struct SettingsView: View {
                 Text(L("储存空间"))
             }
 
+            NavigationLink {
+                KeepAliveSettingsView(manager: manager)
+            } label: {
+                Text(L("后台下载"))
+            }
+        }
+
+        Section {
             NavigationLink {
                 SiteSettingsView()
             } label: {
@@ -120,19 +128,9 @@ struct SettingsView: View {
             } label: {
                 Text(L("日志"))
             }
+        }
 
-            NavigationLink {
-                KeepAliveSettingsView(manager: manager)
-            } label: {
-                Text(L("后台保活"))
-            }
-
-            NavigationLink {
-                LicensesView()
-            } label: {
-                Text(L("开源许可与致谢"))
-            }
-
+        Section {
             Picker(L("外观"), selection: $appState.appearanceMode) {
                 ForEach(AppearanceMode.allCases) { mode in
                     Text(mode.title).tag(mode)
@@ -148,6 +146,14 @@ struct SettingsView: View {
             // Picker 的系统菜单会缓存选项文案。只重建这一行，既能刷新菜单，
             // 又不会像重建设置页那样把整个 Form 的滚动位置带回顶部。
             .id(localization.language)
+        }
+
+        Section {
+            NavigationLink {
+                LicensesView()
+            } label: {
+                Text(L("开源许可与致谢"))
+            }
         } footer: {
             versionFooter
         }

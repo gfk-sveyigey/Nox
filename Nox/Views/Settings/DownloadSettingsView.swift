@@ -10,6 +10,11 @@ import NoxState
 struct DownloadSettingsView: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject var localization = LocalizationManager.shared
+    @ObservedObject var manager: DownloadManager
+
+    init(manager: DownloadManager) {
+        _manager = ObservedObject(wrappedValue: manager)
+    }
 
     var body: some View {
         Form {
@@ -46,6 +51,35 @@ struct DownloadSettingsView: View {
                 }
             } footer: {
                 Text(L("「仅无线局域网」不会使用蜂窝流量；更改对之后发起的请求生效。离开无线局域网后下载会中断，重新连接后点「继续下载」可从断点续传。"))
+            }
+
+            Section {
+                Picker(L("HLS 下载引擎"), selection: $appState.hlsDownloadEngine) {
+                    ForEach(HLSDownloadEngine.allCases) { engine in
+                        Text(engine.title).tag(engine)
+                    }
+                }
+                .onChange(of: appState.hlsDownloadEngine) { _, engine in
+                    manager.setHLSDownloadEngine(engine)
+                    manager.reconcileQueue()
+                }
+            } footer: {
+                Text(appState.hlsDownloadEngine.detail)
+            }
+
+            Section {
+                Picker(L("最低剩余空间"), selection: $appState.minFreeDiskSpace) {
+                    ForEach(NoxDefaults.minFreeDiskSpaceOptions, id: \.self) { value in
+                        Text(value == 0 ? L("不限制") : TransferStats.formattedSize(value))
+                            .tag(value)
+                    }
+                }
+                .onChange(of: appState.minFreeDiskSpace) { _, _ in
+                    appState.persist()
+                    manager.reconcileQueue()
+                }
+            } footer: {
+                Text(L("整机可用空间低于此值时，正在下载的任务会暂停，排队任务会等待。释放空间或回到 App 后，排队任务会自动继续；已暂停的任务可在下载页点「继续」。"))
             }
 
             Section {

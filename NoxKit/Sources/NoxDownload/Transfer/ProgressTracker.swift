@@ -30,6 +30,27 @@ extension DownloadManager {
     }
 
     func tickProgress() {
+        // 储存保护：每 3 秒检查一次整机剩余空间。低于阈值时立即暂停
+        // 正在下载的任务，避免继续把设备写满。
+        if Date().timeIntervalSince(lastStorageCheck) >= 3 {
+            lastStorageCheck = .now
+            if isBelowStorageThreshold {
+                if !storageBlocked {
+                    storageBlocked = true
+                    LogStore.shared.warning("storage guard reached during download")
+                }
+                if !activeIDs.isEmpty {
+                    pauseActiveForLowStorage()
+                    reconcileTaskQueue(reason: "storage")
+                    return
+                }
+            } else if storageBlocked {
+                storageBlocked = false
+                LogStore.shared.info("storage guard cleared during download")
+                reconcileTaskQueue(reason: "storage")
+            }
+        }
+
         // 以「记录状态」而不是 contexts 判断是否还有任务。
         // begin() 里要等 probe 返回才会创建 task，若用 contexts 判断，
         // 探测超过 1 秒时第一次 tick 就会把计时器停掉，此后进度与速度再也不更新。
@@ -109,6 +130,15 @@ extension DownloadManager {
 
             // 高频刷新只改内存，不写 UserDefaults
             store.updateDownload(updated, persist: false)
+        }
+
+        // 持续处理任务在系统界面里显示整体进度；把它同步给后台任务。
+        if !activeIDs.isEmpty {
+            let records = store.downloads.filter { activeIDs.contains($0.id) }
+            if !records.isEmpty {
+                let fraction = records.reduce(0.0) { $0 + $1.progress } / Double(records.count)
+                keepAlive.updateProgress(fraction)
+            }
         }
     }
 

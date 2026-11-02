@@ -199,6 +199,26 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         attemptStartIfPossible(pipController)
     }
 
+    /// 启动屏期间预建基础设施，避免用户第一次真正需要保活时才现场创建。
+    ///
+    /// 只创建 controller / 宿主视图 / 共存保护，不调用 `startPictureInPicture()`，
+    /// 所以不会出现悬浮窗，也不会打断其他 App。失败时保持静默，等真正启动时重试。
+    func prepare() {
+        guard AVPictureInPictureController.isPictureInPictureSupported() else { return }
+        guard !canReuseInfrastructure else {
+            verboseLog("启动屏准备：现有基础设施可复用 · \(stateSummary)")
+            return
+        }
+
+        do {
+            _ = try ensureInfrastructure()
+            verboseLog("启动屏准备完成 · \(stateSummary)")
+        } catch {
+            onLog?("画中画启动屏准备失败：\(error.localizedDescription)")
+            verboseLog("启动屏准备失败 · \(error) \(Self.sceneSummary())")
+        }
+    }
+
     /// 就近复用 / 新建画中画基础设施。
     ///
     /// 复用时会重新装一次共存保护：上一次停止时已经把内容类型退回 4，

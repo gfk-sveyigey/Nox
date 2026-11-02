@@ -14,6 +14,10 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 列表据此提示「文件缺失」，并隐藏分享入口。
     @Published public private(set) var missingFileIDs: Set<UUID> = []
 
+    /// 整机剩余空间低于用户在设置里选择的阈值时为 true。
+    /// 此时不再启动新任务，并暂停正在下载的任务。
+    @Published public internal(set) var storageBlocked = false
+
     /// 每个分片的目标大小。
     ///
     /// 必须是**固定值**：分片边界只由 (总大小, 本值) 决定，与线程数无关。
@@ -34,9 +38,13 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 每个任务一个速度估算器；取代原先的「逐帧瞬时值 + 指数平滑」。
     var speedMeters: [UUID: SpeedMeter] = [:]
     var progressTimer: Timer?
+    /// 限频检查整机剩余空间，避免每秒都读文件系统。
+    var lastStorageCheck = Date.distantPast
 
     /// 后台保活：有活跃下载时启动，全部结束 / 取消时停止。
     let keepAlive: KeepAliveCoordinator
+    /// HLS 的系统 AVAsset 引擎。只有用户选择该引擎时才会创建后台会话。
+    lazy var avAssetDownloader = AVAssetHLSDownloader()
     var keepAliveObservation: AnyCancellable?
     /// 下载记录状态变化的兜底观察：任何状态迁移都会触发一次队列对齐。
     var recordObservation: AnyCancellable?
@@ -158,6 +166,16 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         )
         _ = session
 
+        // 如果本次启动是 AVAsset 后台下载事件唤醒的，先建立它的后台会话，
+        // 否则系统找不到代理，完成回调会一直悬着。
+        if BackgroundSessionEvents.shared.hasPending(
+            identifier: AVAssetHLSDownloader.sessionIdentifier
+        ) {
+            avAssetDownloader.prepareForBackgroundEvents(
+                allowsCellularAccess: allowsCellularDownloads
+            )
+        }
+
         // 启动时扫一遍：上次运行留下的「已完成」记录，文件可能已被系统清理或用户删除。
         refreshMissingFiles()
 
@@ -267,6 +285,12 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         keepAlive.pipWindowHeight = height
     }
 
+    /// 设置页切换 HLS 下载引擎。只影响之后开始 / 重试的 m3u8 任务。
+    public func setHLSDownloadEngine(_ engine: HLSDownloadEngine) {
+        store.hlsDownloadEngine = engine
+        store.persist()
+    }
+
     /// 设置页切换「画中画详细日志」。
     public func setPiPVerboseLogging(_ enabled: Bool) {
         store.pipVerboseLogging = enabled
@@ -282,6 +306,12 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 立刻被排队任务补上。
     public func reconcileQueue() {
         reconcileTaskQueue(reason: "manual")
+    }
+
+    /// 启动屏期间做一次轻量准备：注册系统后台任务，并在用户选择画中画时
+    /// 预先建立 PiP 基础设施。失败不会阻塞启动。
+    public func prepareForLaunch() {
+        keepAlive.prepareForLaunch()
     }
 
     public func enqueue(
@@ -381,7 +411,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
     /// 只修改单个任务的状态并释放槽位；多个任务批量暂停时由调用方统一
     /// `reconcileTaskQueue`，避免每暂停一个就把后面的排队任务拉起来一次。
-    private func performCancel(_ record: DownloadRecord) {
+    func performCancel(_ record: DownloadRecord, errorMessage: String? = nil) {
         // 先让当前 run 失效：之后的探测结果、分片回调、合并结果都不会再写状态。
         invalidateRun(for: record.id)
 
@@ -392,7 +422,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
         var updated = record
         updated.status = .cancelled
-        updated.errorMessage = nil
+        updated.errorMessage = errorMessage
 
         if let stats, stats.bytesReceived > 0 {
             updated.receivedBytes = stats.bytesReceived
