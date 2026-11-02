@@ -42,6 +42,16 @@ extension DownloadManager {
         Self.directorySize(DownloadStorage.webKitDirectory)
     }
 
+    /// 系统临时目录占用（导出日志、分享中转等）。
+    public func temporarySize() -> Int64 {
+        Self.directorySize(DownloadStorage.temporaryDirectory)
+    }
+
+    /// 清理系统临时目录，不影响下载分片与用户文件。
+    public func clearTemporaryFiles() {
+        Self.removeContents(of: DownloadStorage.temporaryDirectory)
+    }
+
     /// 已下载视频占用的空间。
     ///
     /// 只统计「记录仍在且文件确实存在」的成品，而不是整个 `Documents` 目录 ——

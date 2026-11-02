@@ -29,16 +29,36 @@ enum CookieManager {
             .sorted { $0.domain < $1.domain }
     }
 
+    /// 某个站点下的全部 Cookie。
+    static func cookies(for domain: String) async -> [HTTPCookie] {
+        await allCookies()
+            .filter { displayDomain($0.domain) == domain }
+            .sorted { lhs, rhs in
+                if lhs.name == rhs.name { return lhs.path < rhs.path }
+                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+            }
+    }
+
     /// 只删除某个站点的 Cookie。
     static func delete(domain: String) async {
-        let store = WKWebsiteDataStore.default()
-        let cookies = await allCookies().filter { displayDomain($0.domain) == domain }
+        await delete(domains: [domain])
+    }
 
+    /// 批量删除多个站点的 Cookie。
+    static func delete(domains: Set<String>) async {
+        let cookies = await allCookies().filter {
+            domains.contains(displayDomain($0.domain))
+        }
         for cookie in cookies {
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                store.httpCookieStore.delete(cookie) {
-                    continuation.resume()
-                }
+            await delete(cookie: cookie)
+        }
+    }
+
+    /// 删除单个 Cookie。
+    static func delete(cookie: HTTPCookie) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            WKWebsiteDataStore.default().httpCookieStore.delete(cookie) {
+                continuation.resume()
             }
         }
     }

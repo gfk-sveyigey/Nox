@@ -54,23 +54,9 @@ struct DownloadSettingsView: View {
             }
 
             Section {
-                Picker(L("HLS 下载引擎"), selection: $appState.hlsDownloadEngine) {
-                    ForEach(HLSDownloadEngine.allCases) { engine in
-                        Text(engine.title).tag(engine)
-                    }
-                }
-                .onChange(of: appState.hlsDownloadEngine) { _, engine in
-                    manager.setHLSDownloadEngine(engine)
-                    manager.reconcileQueue()
-                }
-            } footer: {
-                Text(appState.hlsDownloadEngine.detail)
-            }
-
-            Section {
                 Picker(L("最低剩余空间"), selection: $appState.minFreeDiskSpace) {
                     ForEach(NoxDefaults.minFreeDiskSpaceOptions, id: \.self) { value in
-                        Text(value == 0 ? L("不限制") : TransferStats.formattedSize(value))
+                        Text(Self.minFreeSpaceTitle(value))
                             .tag(value)
                     }
                 }
@@ -98,19 +84,6 @@ struct DownloadSettingsView: View {
                         appState.persist()
                     }
                 }
-
-                Picker(L("m3u8 分片并发"), selection: $appState.m3u8SegmentConcurrency) {
-                    Text(L("跟随多线程设置")).tag(0)
-
-                    ForEach(Array(AppState.m3u8ConcurrencyRange), id: \.self) { count in
-                        if count > 0 {
-                            Text(String(count)).tag(count)
-                        }
-                    }
-                }
-                .onChange(of: appState.m3u8SegmentConcurrency) { _, _ in
-                    appState.persist()
-                }
             } footer: {
                 Text(L("把文件分成多个分片并行下载，可能提升速度。部分站点会限速或拒绝多连接，若出现下载失败请关闭此项。已开始的任务需要重试后才会按新设置重新分片。"))
             }
@@ -121,6 +94,19 @@ struct DownloadSettingsView: View {
 
     static func concurrentTitle(_ count: Int) -> String {
         count == AppState.unlimitedConcurrentDownloads ? L("无限制") : String(count)
+    }
+
+    /// 储存保护选项用整数显示，避免 1 GiB 被格式化成「1.1 GB」。
+    static func minFreeSpaceTitle(_ bytes: Int64) -> String {
+        guard bytes > 0 else { return L("不限制") }
+
+        if bytes % NoxDefaults.gigabyte == 0 {
+            return "\(bytes / NoxDefaults.gigabyte) \(L("GB"))"
+        }
+        if bytes % NoxDefaults.megabyte == 0 {
+            return "\(bytes / NoxDefaults.megabyte) \(L("MB"))"
+        }
+        return TransferStats.formattedSize(bytes)
     }
 }
 

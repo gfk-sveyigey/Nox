@@ -246,7 +246,7 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Hell" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Light" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Clair" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "라이트" } }
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "밝게" } }
       }
     },
     "深色" : {
@@ -254,7 +254,7 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Dunkel" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Dark" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sombre" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다크" } }
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "어둡게" } }
       }
     },
     "外观" : {
@@ -262,7 +262,7 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Erscheinungsbild" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Apparence" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 모드" } }
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "테마" } }
       }
     },
     "信息" : {
@@ -579,10 +579,10 @@
     },
     "跟随系统" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Systemeinstellung" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow System" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "System" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Système" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 설정 따르기" } }
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템" } }
       }
     },
     "选择 App 的显示语言。选择「跟随系统」时，App 会与系统语言保持一致。" : {
@@ -2947,6 +2947,198 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "The system could not create an AVAsset download task." } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le système n’a pas pu créer une tâche de téléchargement AVAsset." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템이 AVAsset 다운로드 작업을 만들 수 없습니다." } }
+      }
+    },
+    "偏好设置" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einstellungen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preferences" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Préférences" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "환경설정" } }
+      }
+    },
+    "其他应用数据" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Weitere App-Daten" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Other app data" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Autres données de l’app" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기타 앱 데이터" } }
+      }
+    },
+    "其他文件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Andere Dateien" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Other files" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Autres fichiers" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기타 파일" } }
+      }
+    },
+    "删除后，该网站需要重新登录。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach dem Löschen müssen Sie sich bei dieser Website erneut anmelden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "After deletion, you’ll need to sign in to this website again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Après suppression, vous devrez vous reconnecter à ce site." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "삭제 후 이 웹사이트에 다시 로그인해야 합니다." } }
+      }
+    },
+    "删除所选 Cookie？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ausgewählte Cookies löschen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete selected cookies?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer les cookies sélectionnés ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택한 쿠키를 삭제할까요?" } }
+      }
+    },
+    "删除该站点的 Cookie" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cookies dieser Website löschen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete cookies for this site" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer les cookies de ce site" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 사이트의 쿠키 삭제" } }
+      }
+    },
+    "删除该站点的 Cookie？" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cookies dieser Website löschen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete cookies for this site?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer les cookies de ce site ?" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 사이트의 쿠키를 삭제할까요?" } }
+      }
+    },
+    "双指下滑进入多选，勾选要清理的类别，再点右上角「清理」。统计不含只读的 App 本体。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mit zwei Fingern nach unten wischen, um Kategorien auszuwählen, dann oben rechts auf „Bereinigen“ tippen. Das schreibgeschützte App-Bundle zählt nicht mit." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Swipe down with two fingers to select categories to clear, then tap Clear. The read-only app bundle is not included." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Balayez vers le bas avec deux doigts pour sélectionner les catégories à nettoyer, puis touchez Effacer. Le bundle en lecture seule de l’app n’est pas inclus." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "두 손가락으로 아래로 밀어 정리할 항목을 선택한 뒤 오른쪽 위의 정리를 누르세요. 읽기 전용 앱 번들은 포함되지 않습니다." } }
+      }
+    },
+    "安全 Cookie" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Sicheres Cookie" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Secure cookie" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cookie sécurisé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "보안 쿠키" } }
+      }
+    },
+    "将删除 %d 个站点保存的 Cookie。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dadurch werden Cookies für %d Website(s) gelöscht." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This deletes cookies saved for %d site(s)." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cela supprime les cookies enregistrés pour %d site(s)." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%d개 사이트에 저장된 쿠키를 삭제합니다." } }
+      }
+    },
+    "应用数据" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "App-Daten" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "App data" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Données de l’app" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱 데이터" } }
+      }
+    },
+    "总计" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesamt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Total" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "합계" } }
+      }
+    },
+    "插件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Plugins" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plugins" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plugins" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플러그인" } }
+      }
+    },
+    "暂无文件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Dateien" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No files" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun fichier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 없음" } }
+      }
+    },
+    "系统临时文件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Temporäre Systemdateien" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System temporary files" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichiers temporaires système" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 임시 파일" } }
+      }
+    },
+    "缓存" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Cache" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cache" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cache" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캐시" } }
+      }
+    },
+    "该网站需要重新登录。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Sie müssen sich bei dieser Website erneut anmelden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You’ll need to sign in to this website again." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vous devrez vous reconnecter à ce site." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 웹사이트에 다시 로그인해야 합니다." } }
+      }
+    },
+    "这个文件夹是空的。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieser Ordner ist leer." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This folder is empty." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce dossier est vide." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 폴더는 비어 있습니다." } }
+      }
+    },
+    "这个类别当前没有占用。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Diese Kategorie belegt derzeit keinen Speicher." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This category currently uses no space." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cette catégorie n’occupe actuellement aucun espace." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 항목은 현재 공간을 사용하지 않습니다." } }
+      }
+    },
+    "其他支持文件" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Weitere Support-Dateien" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Other support files" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Autres fichiers de support" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기타 지원 파일" } }
+      }
+    },
+    "其他资料库数据" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Weitere Library-Daten" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Other library data" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Autres données de la bibliothèque" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기타 라이브러리 데이터" } }
+      }
+    },
+    "共享数据" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Geteilte Daten" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shared data" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Données partagées" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공유 데이터" } }
+      }
+    },
+    "会话 Cookie" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Sitzungs-Cookie" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Session cookie" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cookie de session" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "세션 쿠키" } }
+      }
+    },
+    "m3u8 分片并发只影响「兼容分片」引擎；系统 AVAsset 会自行调度。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die m3u8-Segmentparallelität gilt nur für die Engine „Kompatible Segmente“; das System-AVAsset verwaltet die Planung selbst." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "m3u8 segment concurrency only applies to the Compatible segments engine; system AVAsset schedules segments itself." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le parallélisme des segments m3u8 ne s’applique qu’au moteur « Segments compatibles » ; AVAsset système gère lui-même la planification." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "m3u8 조각 동시성은 '호환 조각' 엔진에만 적용되며, 시스템 AVAsset은 자체적으로 예약합니다." } }
       }
     }
   },

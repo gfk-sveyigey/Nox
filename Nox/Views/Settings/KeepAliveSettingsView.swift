@@ -58,6 +58,43 @@ struct KeepAliveSettingsView: View {
                 }
             }
 
+            Section {
+                Picker(L("HLS 下载引擎"), selection: Binding(
+                    get: { appState.hlsDownloadEngine },
+                    set: {
+                        manager.setHLSDownloadEngine($0)
+                        manager.reconcileQueue()
+                    }
+                )) {
+                    ForEach(HLSDownloadEngine.allCases) { engine in
+                        Text(engine.title).tag(engine)
+                    }
+                }
+
+                // 系统 AVAsset 会自行调度分片，这个并发数只对兼容分片引擎有意义。
+                if appState.hlsDownloadEngine == .segmented {
+                    Picker(L("m3u8 分片并发"), selection: $appState.m3u8SegmentConcurrency) {
+                        Text(L("跟随多线程设置")).tag(0)
+
+                        ForEach(Array(AppState.m3u8ConcurrencyRange), id: \.self) { count in
+                            if count > 0 {
+                                Text(String(count)).tag(count)
+                            }
+                        }
+                    }
+                    .onChange(of: appState.m3u8SegmentConcurrency) { _, _ in
+                        appState.persist()
+                    }
+                }
+            } footer: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(appState.hlsDownloadEngine.detail)
+                    if appState.hlsDownloadEngine == .segmented {
+                        Text(L("m3u8 分片并发只影响「兼容分片」引擎；系统 AVAsset 会自行调度。"))
+                    }
+                }
+            }
+
             // 「仅系统下载」和持续处理都不需要选生命周期：
             // 前者没有额外保活，后者由系统按当前下载任务授予执行时间。
             if appState.keepAliveMode != .off,

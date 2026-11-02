@@ -45,7 +45,7 @@ public final class LogStore: ObservableObject {
     private init() {
         let directory = DownloadStorage.rootDirectory
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        fileURL = directory.appendingPathComponent("Nox.log")
+        fileURL = DownloadStorage.logFileURL
 
         dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime]

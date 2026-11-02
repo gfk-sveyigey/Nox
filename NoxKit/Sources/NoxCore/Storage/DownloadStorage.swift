@@ -4,10 +4,17 @@ import WebKit
 /// 下载相关的文件落盘位置。刻意做成非 actor 隔离的枚举，
 /// 这样 URLSession 的 nonisolated 回调里也能安全访问。
 public enum DownloadStorage {
+    /// 与 NoxShare 共享的 App Group 标识。
+    public static let appGroupIdentifier = "group.com.aholic.nox"
+
+    /// Application Support 根目录。
+    public static var applicationSupportDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    }
+
     /// 分片、暂存等中间数据放 Application Support（用户不可见，也不会被系统当缓存清理）
     public static var rootDirectory: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("Nox", isDirectory: true)
+        applicationSupportDirectory.appendingPathComponent("Nox", isDirectory: true)
     }
 
     public static var partsRoot: URL {
@@ -18,8 +25,35 @@ public enum DownloadStorage {
         rootDirectory.appendingPathComponent("Staging", isDirectory: true)
     }
 
+    public static var pluginsDirectory: URL {
+        rootDirectory.appendingPathComponent("Plugins", isDirectory: true)
+    }
+
+    public static var logFileURL: URL {
+        rootDirectory.appendingPathComponent("Nox.log")
+    }
+
     public static var documentsDirectory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+
+    public static var libraryDirectory: URL {
+        FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+    }
+
+    public static var preferencesDirectory: URL {
+        libraryDirectory.appendingPathComponent("Preferences", isDirectory: true)
+    }
+
+    public static var temporaryDirectory: URL {
+        FileManager.default.temporaryDirectory
+    }
+
+    /// 分享扩展使用的 App Group 容器；未签名 App Group 时返回 nil。
+    public static var sharedContainerDirectory: URL? {
+        FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupIdentifier
+        )
     }
 
     /// App 沙盒的缓存目录。网络 / 接口缓存实际落在这里，
@@ -33,8 +67,7 @@ public enum DownloadStorage {
     /// 没有公开 API 能取到 `WKWebsiteDataStore` 的占用，只能按目录估算；
     /// 目录不存在时返回 0。
     public static var webKitDirectory: URL {
-        FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("WebKit", isDirectory: true)
+        libraryDirectory.appendingPathComponent("WebKit", isDirectory: true)
     }
 
     public static func partsDirectory(for id: UUID) -> URL {
