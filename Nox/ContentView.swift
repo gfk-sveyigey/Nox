@@ -5,8 +5,8 @@ import NoxDownload
 import NoxState
 
 struct ContentView: View {
-    @StateObject private var appState: AppState
-    @StateObject private var downloadManager: DownloadManager
+    @ObservedObject private var appState: AppState
+    @ObservedObject private var downloadManager: DownloadManager
     @StateObject private var pluginImport = PluginImportCoordinator.shared
     @ObservedObject private var incomingURL = IncomingURLCenter.shared
     /// 观察语言变化，让底部 Tab 标题跟着刷新。
@@ -21,9 +21,9 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        let state = AppState()
-        _appState = StateObject(wrappedValue: state)
-        _downloadManager = StateObject(wrappedValue: DownloadManager(store: state))
+        let services = AppServices.shared
+        _appState = ObservedObject(wrappedValue: services.appState)
+        _downloadManager = ObservedObject(wrappedValue: services.downloadManager)
     }
 
     var body: some View {

@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import NoxCore
+import NoxKeepAlive
 
 /// 用系统 `AVAssetDownloadURLSession` 下载 HLS，再把系统产物导出为普通 MP4。
 ///
@@ -150,6 +151,13 @@ final class AVAssetHLSDownloader: NSObject {
             presetName: AVAssetExportPresetHighestQuality
         ) else {
             throw AVAssetDownloadError.exportUnavailable
+        }
+
+        let grace = BackgroundExecutionGrace.shared.begin(reason: "AVAsset 导出")
+        defer {
+            if let grace {
+                BackgroundExecutionGrace.shared.end(grace, reason: "AVAsset 导出")
+            }
         }
 
         try? FileManager.default.removeItem(at: destination)

@@ -69,6 +69,10 @@ public final class AppState: ObservableObject {
     /// 后台保活方式：关闭 / 静音音频 / 画中画。
     /// 默认走画中画：它不占用音频会话，不会打断其他 App 正在播放的音频。
     @Published public var keepAliveMode: KeepAliveMode = .pictureInPicture
+    /// 主保活方式被系统打断后，是否自动降级到静音音频。
+    @Published public var keepAliveSilentAudioFallback = false
+    /// 保活失效且仍有下载任务时，是否发送本地通知。
+    @Published public var keepAliveNotifications = false
     /// 画中画共存保护不可用时怎么办（继续用画中画 / 改用静音音频 / 停止保活）。
     @Published public var pipCoexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
@@ -116,6 +120,8 @@ public final class AppState: ObservableObject {
     private let minFreeDiskSpaceKey = "Nox.minFreeDiskSpace"
     private let hlsDownloadEngineKey = "Nox.hlsDownloadEngine"
     private let keepAliveModeKey = "Nox.keepAliveMode"
+    private let keepAliveSilentAudioFallbackKey = "Nox.keepAliveSilentAudioFallback"
+    private let keepAliveNotificationsKey = "Nox.keepAliveNotifications"
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
     private let pipWindowHeightKey = "Nox.pipWindowHeight"
@@ -309,6 +315,8 @@ public final class AppState: ObservableObject {
         defaults.set(minFreeDiskSpace, forKey: minFreeDiskSpaceKey)
         defaults.set(hlsDownloadEngine.rawValue, forKey: hlsDownloadEngineKey)
         defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
+        defaults.set(keepAliveSilentAudioFallback, forKey: keepAliveSilentAudioFallbackKey)
+        defaults.set(keepAliveNotifications, forKey: keepAliveNotificationsKey)
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
@@ -336,11 +344,13 @@ public final class AppState: ObservableObject {
         if let data = defaults.data(forKey: downloadsKey),
            let value = try? JSONDecoder().decode([DownloadRecord].self, from: data) {
             // 进程被系统回收时任务不会回调，残留的 .downloading 需要归位，
-            // 否则会永远显示「下载中」且无法重试。
+            // 否则会永远显示「下载中」且无法重试。这里重新排队而不是标成取消：
+            // 用户在 App 内主动暂停时会明确写入 .cancelled，磁盘上的 .downloading
+            // 只可能来自异常终止，下次启动（包括 BGTask 后台唤醒）应自动续传。
             downloads = value.map { record in
                 guard record.status == .downloading else { return record }
                 var updated = record
-                updated.status = .cancelled
+                updated.status = .queued
                 updated.errorMessage = nil
                 return updated
             }
@@ -410,6 +420,9 @@ public final class AppState: ObservableObject {
         } else {
             keepAliveMode = .pictureInPicture
         }
+
+        keepAliveSilentAudioFallback = defaults.bool(forKey: keepAliveSilentAudioFallbackKey)
+        keepAliveNotifications = defaults.bool(forKey: keepAliveNotificationsKey)
 
         pipCoexistenceFallback = PiPCoexistenceFallback(
             rawValue: defaults.string(forKey: pipCoexistenceFallbackKey) ?? ""

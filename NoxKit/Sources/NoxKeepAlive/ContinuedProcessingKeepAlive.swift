@@ -75,7 +75,10 @@ private final class ContinuedProcessingKeepAlive {
     private var didRegister = false
     private var task: BGContinuedProcessingTask?
     private var heartbeat: Task<Void, Never>?
+    private var startWatchdog: Task<Void, Never>?
     private var progressFraction: Double = 0
+    /// 提交后等待系统真正开始的兜底时间。系统可能接受请求却暂时不调度。
+    private static let startTimeout: Duration = .seconds(60)
 
     private init() {}
 
@@ -117,6 +120,17 @@ private final class ContinuedProcessingKeepAlive {
             try BGTaskScheduler.shared.submit(request)
             isLive = true
             LogStore.shared.info("continued processing submitted")
+            startWatchdog?.cancel()
+            startWatchdog = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: Self.startTimeout)
+                guard let self, !Task.isCancelled, self.isLive, self.task == nil else { return }
+                LogStore.shared.warning("continued processing did not start in time")
+                self.isLive = false
+                BGTaskScheduler.shared.cancel(
+                    taskRequestWithIdentifier: ContinuedProcessingBridge.identifier
+                )
+                self.onInterruption?()
+            }
         } catch {
             throw KeepAliveError.unavailable(
                 String(format: L("持续处理提交失败：%@"), error.localizedDescription)
@@ -127,6 +141,8 @@ private final class ContinuedProcessingKeepAlive {
     func stop() {
         guard isLive || task != nil else { return }
         isLive = false
+        startWatchdog?.cancel()
+        startWatchdog = nil
         heartbeat?.cancel()
         heartbeat = nil
 
@@ -162,6 +178,8 @@ private final class ContinuedProcessingKeepAlive {
         }
 
         self.task = task
+        startWatchdog?.cancel()
+        startWatchdog = nil
         task.progress.totalUnitCount = 1000
         task.progress.completedUnitCount = progressUnits
         task.expirationHandler = { [weak self] in
@@ -190,6 +208,8 @@ private final class ContinuedProcessingKeepAlive {
     private func expire() {
         guard isLive else { return }
         isLive = false
+        startWatchdog?.cancel()
+        startWatchdog = nil
         heartbeat?.cancel()
         heartbeat = nil
         task?.setTaskCompleted(success: false)

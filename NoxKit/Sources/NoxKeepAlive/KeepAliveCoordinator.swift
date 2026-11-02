@@ -18,8 +18,36 @@ public final class KeepAliveCoordinator: ObservableObject {
 
     /// 用户偏好的保活方式。
     public var preferredMode: KeepAliveMode = .off {
-        didSet { reconcile() }
+        didSet {
+            // iOS 26 以下不存在持续处理；即使旧配置或备份里残留了这个值，
+            // 也不能让设置页出现一个当前系统无法执行的选项。
+            guard preferredMode.isAvailable else {
+                if preferredMode != .pictureInPicture {
+                    preferredMode = .pictureInPicture
+                }
+                return
+            }
+            fallbackMode = nil
+            reconcile()
+        }
     }
+
+    /// 主保活方式被系统打断后，是否允许自动降级到静音音频。
+    ///
+    /// 默认关闭：静音音频会占用音频会话，可能打断用户正在播放的内容，
+    /// 必须由用户在设置页明确授权。
+    public var allowsSilentAudioFallback = false {
+        didSet {
+            guard allowsSilentAudioFallback != oldValue else { return }
+            if !allowsSilentAudioFallback {
+                fallbackMode = nil
+            }
+            reconcile()
+        }
+    }
+
+    /// 保活失效且仍有任务时是否发送本地通知。
+    public var notificationsEnabled = false
 
     /// 画中画共存保护不可用时用户选择的兜底方案。
     public var piPCoexistenceFallback: PiPCoexistenceFallback = .keepAlive {
@@ -77,6 +105,9 @@ public final class KeepAliveCoordinator: ObservableObject {
     private let silentAudio = SilentAudioKeepAlive()
     private let pictureInPicture = PictureInPictureKeepAlive()
     private var hasActiveTasks = false
+    /// 当前临时的降级策略；回到前台或用户切换偏好后清除。
+    private var fallbackMode: KeepAliveMode?
+    private var lastNotificationAt = Date.distantPast
 
     /// 保活模式：跟随下载任务（默认）/ 启动即常驻。改动后立刻重新调度。
     public var lifetime: KeepAliveLifetime = .followTasks {
@@ -91,8 +122,13 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 持续处理是系统按“用户发起的一项工作”授予的执行时间，没有下载任务时
     /// 不应该常驻，否则会浪费系统预算，也更容易被系统终止。
     private var keepAliveNeeded: Bool {
-        if preferredMode == .continuedProcessing { return hasActiveTasks }
+        if preferredMode == .off { return false }
+        if targetMode == .continuedProcessing { return hasActiveTasks }
         return hasActiveTasks || lifetime == .alwaysOn
+    }
+
+    private var targetMode: KeepAliveMode {
+        fallbackMode ?? preferredMode
     }
 
     public init() {
@@ -160,8 +196,11 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 只看记录就会漏掉「其实已经掉了」的情况。
     public func didEnterForeground() {
         verboseLog("didEnterForeground · needed=\(keepAliveNeeded) preferred=\(preferredMode.title) active=\(activeMode.title) strategyRunning=\(activeStrategyIsRunning) app=\(Self.applicationStateDescription)")
+        // 回到前台后重新优先尝试用户选择的策略，而不是一直停留在静音音频降级。
+        let wasUsingFallback = fallbackMode != nil
+        fallbackMode = nil
         guard keepAliveNeeded, preferredMode != .off else { return }
-        guard !activeStrategyIsRunning else { return }
+        guard wasUsingFallback || !activeStrategyIsRunning else { return }
         activeMode = .off
         reconcile()
     }
@@ -195,6 +234,7 @@ public final class KeepAliveCoordinator: ObservableObject {
         // 只是「暂时没有活跃任务」：停掉画中画，但**保留**会话与宿主视图，
         // 这样紧接着的「继续」可以直接复用现有会话 —— 刚停就重建几乎必被系统拒绝。
         guard keepAliveNeeded else {
+            fallbackMode = nil
             deactivate()
             return
         }
@@ -204,11 +244,20 @@ public final class KeepAliveCoordinator: ObservableObject {
         if activeMode != .off, !activeStrategyIsRunning {
             activeMode = .off
         }
-        activate(preferredMode)
+        activate(targetMode)
     }
 
     private func activate(_ mode: KeepAliveMode) {
         verboseLog("activate · target=\(mode.title) current=\(activeMode.title) running=\(isRunning(mode)) needed=\(keepAliveNeeded) app=\(Self.applicationStateDescription)")
+        guard mode.isAvailable else {
+            lastError = String(format: L("%@ 在当前设备上不可用"), mode.title)
+            onLog?("保活跳过：\(mode.title) 在当前系统不可用")
+            if mode == .continuedProcessing {
+                fallbackMode = nil
+                activate(.pictureInPicture)
+            }
+            return
+        }
         guard activeMode != mode else {
             verboseLog("activate 跳过：当前已是 \(mode.title)")
             return
@@ -260,10 +309,22 @@ public final class KeepAliveCoordinator: ObservableObject {
             activeMode = .off
             // 共存保护不可用时按用户选的兜底方案处理；其余失败就停在这一档，
             // 不再自动改用别的保活方式（静音音频会打断用户正在播放的其它音频）。
+            var handled = false
             if mode == .pictureInPicture,
                (error as? KeepAliveError)?.isCoexistenceUnavailable == true,
                piPCoexistenceFallback == .silentAudio {
                 activate(.silentAudio)
+                handled = true
+            }
+            if !handled, mode != .silentAudio, allowsSilentAudioFallback {
+                fallbackMode = .silentAudio
+                onLog?("保活启动失败：自动降级为静音音频")
+                activate(.silentAudio)
+                handled = true
+            }
+            if !handled {
+                fallbackMode = nil
+                notifyInterruptionIfNeeded()
             }
         }
     }
@@ -303,14 +364,23 @@ public final class KeepAliveCoordinator: ObservableObject {
         let interrupted = activeMode
         stopAll()
         activeMode = .off
-        // 画中画被系统 / 用户结束：**不要**自动改用静音音频
-        // （那会打断用户正在听的其他音频）。
-        // 静音音频被打断（来电等）结束后，则按用户原本的选择重试。
-        if interrupted == .silentAudio, preferredMode == .silentAudio {
+
+        // 静音音频被来电等打断后可以重试；但画中画或持续处理失效时，
+        // 只有用户显式开启降级才切到静音音频，避免未经允许打断其他音频。
+        if interrupted == .silentAudio {
             activate(.silentAudio)
-        } else {
-            onLog?("保活中断，将在回到前台后重建")
+            return
         }
+
+        if allowsSilentAudioFallback {
+            fallbackMode = .silentAudio
+            onLog?("保活中断：自动降级为静音音频")
+            activate(.silentAudio)
+            return
+        }
+
+        onLog?("保活中断，将在回到前台后重建")
+        notifyInterruptionIfNeeded()
     }
 
     /// 画中画「始终没能启动」（不是启动后被系统/用户结束）。
@@ -322,7 +392,22 @@ public final class KeepAliveCoordinator: ObservableObject {
         guard keepAliveNeeded, preferredMode != .off else { return }
         stopAll()
         activeMode = .off
+        if allowsSilentAudioFallback {
+            fallbackMode = .silentAudio
+            onLog?("画中画启动失败：自动降级为静音音频")
+            activate(.silentAudio)
+            return
+        }
         // 不做自动重试：等用户回到前台由 `didEnterForeground()` 重建。
         onLog?("保活中断，将在回到前台后重建")
+        notifyInterruptionIfNeeded()
+    }
+
+    private func notifyInterruptionIfNeeded() {
+        guard notificationsEnabled, hasActiveTasks else { return }
+        let now = Date()
+        guard now.timeIntervalSince(lastNotificationAt) >= 60 else { return }
+        lastNotificationAt = now
+        Task { await KeepAliveNotifier.notifyInterrupted() }
     }
 }

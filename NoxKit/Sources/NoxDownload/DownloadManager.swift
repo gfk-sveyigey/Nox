@@ -53,6 +53,8 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 冷启动 / 弹窗切换时 SwiftUI 的 `scenePhase` 不一定每次都走 `.active`，用它兜底：
     /// 任何因为「App 尚未进入前台」而被推迟的保活启动，都会在这里补上。
     var becomeActiveObserver: NSObjectProtocol?
+    /// 从前台切到后台时的一段短时宽限，用于保活方式交接和状态落盘。
+    var backgroundTransitionGrace: UUID?
 
     // MARK: - 全局并发调度
 
@@ -185,6 +187,8 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         keepAlive.piPCoexistenceFallback = store.pipCoexistenceFallback
         keepAlive.lifetime = store.keepAliveLifetime
         keepAlive.pipWindowHeight = store.pipWindowHeight
+        keepAlive.allowsSilentAudioFallback = store.keepAliveSilentAudioFallback
+        keepAlive.notificationsEnabled = store.keepAliveNotifications
 
         // 用下载记录的「排队中 / 下载中」驱动保活启停。
         // 直接订阅 `downloads`，而不是在每个状态迁移点手写调用：漏一处就会出现
@@ -259,9 +263,30 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
     /// 设置页切换保活方式。
     public func setKeepAliveMode(_ mode: KeepAliveMode) {
+        // iOS 26 以下不提供持续处理；即便外部传入也不接受。
+        guard mode.isAvailable else { return }
         store.keepAliveMode = mode
         store.persist()
         keepAlive.preferredMode = mode
+    }
+
+    /// 设置页切换「中断后自动降级到静音音频」。
+    public func setKeepAliveSilentAudioFallback(_ enabled: Bool) {
+        store.keepAliveSilentAudioFallback = enabled
+        store.persist()
+        keepAlive.allowsSilentAudioFallback = enabled
+    }
+
+    /// 设置页切换「保活中断时通知我」。
+    public func setKeepAliveNotifications(_ enabled: Bool) {
+        store.keepAliveNotifications = enabled
+        store.persist()
+        keepAlive.notificationsEnabled = enabled
+
+        guard enabled else { return }
+        Task {
+            _ = await KeepAliveNotifier.requestAuthorization()
+        }
     }
 
     /// 设置页选择「画中画共存保护不可用」时的兜底方案。
@@ -306,6 +331,17 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 立刻被排队任务补上。
     public func reconcileQueue() {
         reconcileTaskQueue(reason: "manual")
+    }
+
+    /// 当前是否有排队或下载中的任务。
+    public var hasActiveDownloads: Bool {
+        store.downloads.contains { $0.status == .queued || $0.status == .downloading }
+    }
+
+    /// BGTaskScheduler 获得后台执行时间时调用：恢复队列并修复明显不一致的状态。
+    public func performBackgroundRecovery() {
+        refreshMissingFiles()
+        reconcileTaskQueue(reason: "background task")
     }
 
     /// 启动屏期间做一次轻量准备：注册系统后台任务，并在用户选择画中画时

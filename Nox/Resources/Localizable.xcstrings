@@ -3268,6 +3268,54 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Consultez les projets tiers, licences et remerciements." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "타사 프로젝트, 라이선스 및 감사 정보를 확인합니다." } }
       }
+    },
+    "中断后改用静音音频" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach Unterbrechung auf stille Audiowiedergabe wechseln" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Switch to silent audio after interruption" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Passer à l’audio silencieux après interruption" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "중단 후 무음 오디오로 전환" } }
+      }
+    },
+    "保活中断时通知" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bei Ende der Hintergrundaktivität benachrichtigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notify when keep-alive stops" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Notifier lorsque le maintien en arrière-plan s’arrête" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지 중단 시 알림" } }
+      }
+    },
+    "开启后，画中画或持续处理被系统中断时会自动改用静音音频继续下载。这会占用音频会话，可能打断其他 App 正在播放的声音。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wenn Bild-in-Bild oder kontinuierliche Verarbeitung vom System unterbrochen wird, wechselt Nox zur stillen Audiowiedergabe, um den Download fortzusetzen. Dadurch wird eine Audiositzung belegt und die Wiedergabe anderer Apps kann unterbrochen werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When Picture in Picture or continued processing is interrupted by the system, Nox switches to silent audio to keep downloading. This uses an audio session and may interrupt audio from other apps." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Si l’image dans l’image ou le traitement continu est interrompu par le système, Nox passe à l’audio silencieux pour poursuivre le téléchargement. Cela utilise une session audio et peut interrompre le son d’autres apps." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템이 화면 속 화면 또는 지속 처리를 중단하면 Nox가 무음 오디오로 전환하여 다운로드를 계속합니다. 오디오 세션을 사용하므로 다른 앱의 소리를 방해할 수 있습니다." } }
+      }
+    },
+    "保活失效且仍有下载任务时会发送本地通知；首次开启需要允许 Nox 发送通知。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wenn die Hintergrundaktivität bei ausstehenden Downloads endet, sendet Nox eine lokale Mitteilung. Beim ersten Aktivieren muss die Mitteilungsberechtigung erlaubt werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When keep-alive stops while downloads are still pending, Nox sends a local notification. Allow notifications the first time you enable this." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Si le maintien en arrière-plan s’arrête alors que des téléchargements sont en attente, Nox envoie une notification locale. Autorisez les notifications lors de la première activation." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드가 남아 있는데 백그라운드 유지가 중단되면 Nox가 로컬 알림을 보냅니다. 처음 켤 때 알림 권한을 허용해야 합니다." } }
+      }
+    },
+    "后台下载已暂停" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hintergrunddownload pausiert" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Background download paused" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement en arrière-plan suspendu" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 다운로드 일시 중지" } }
+      }
+    },
+    "打开 Nox 可继续未完成的下载任务。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Öffne Nox, um unvollständige Downloads fortzusetzen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Nox to continue unfinished downloads." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrez Nox pour reprendre les téléchargements inachevés." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Nox를 열어 완료되지 않은 다운로드를 계속하세요." } }
+      }
     }
   },
   "version" : "1.0"
