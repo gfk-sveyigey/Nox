@@ -37,7 +37,8 @@ struct SettingsView: View {
             settingsLink(
                 L("下载设置"),
                 subtitle: L("调整同时任务数、下载网络和线程等选项。"),
-                systemImage: "arrow.down.circle"
+                systemImage: "arrow.down.circle",
+                iconColor: .blue
             ) {
                 DownloadSettingsView(manager: manager)
             }
@@ -45,7 +46,8 @@ struct SettingsView: View {
             settingsLink(
                 L("后台下载"),
                 subtitle: L("配置后台运行方式、保活策略与下载引擎。"),
-                systemImage: "play.circle"
+                systemImage: "play.circle",
+                iconColor: .green
             ) {
                 KeepAliveSettingsView(manager: manager)
             }
@@ -53,7 +55,8 @@ struct SettingsView: View {
             settingsLink(
                 L("储存空间"),
                 subtitle: L("查看储存占用，并清理缓存和临时文件。"),
-                systemImage: "internaldrive"
+                systemImage: "internaldrive",
+                iconColor: .orange
             ) {
                 StorageSettingsView(manager: manager)
             }
@@ -67,7 +70,8 @@ struct SettingsView: View {
                     settingsLabel(
                         L("解析来源"),
                         subtitle: L("管理站点解析插件和匹配顺序。"),
-                        systemImage: "puzzlepiece.extension"
+                        systemImage: "puzzlepiece.extension",
+                        iconColor: .purple
                     )
                     Spacer(minLength: 8)
                     Text("\(enabledSiteCount)/\(registry.parsers.count)")
@@ -79,7 +83,8 @@ struct SettingsView: View {
             settingsLink(
                 L("Cookie 管理"),
                 subtitle: L("查看并清理各网站保存的 Cookie。"),
-                systemImage: "shield"
+                systemImage: "shield",
+                iconColor: .teal
             ) {
                 CookiesView()
             }
@@ -87,7 +92,8 @@ struct SettingsView: View {
             settingsLink(
                 L("历史记录"),
                 subtitle: L("设置历史保留方式，并清理访问记录。"),
-                systemImage: "clock.arrow.circlepath"
+                systemImage: "clock.arrow.circlepath",
+                iconColor: .indigo
             ) {
                 HistorySettingsView()
             }
@@ -95,7 +101,8 @@ struct SettingsView: View {
             settingsLink(
                 L("日志"),
                 subtitle: L("查看运行日志，帮助定位问题。"),
-                systemImage: "doc.text"
+                systemImage: "doc.text",
+                iconColor: .brown
             ) {
                 LogsView()
             }
@@ -110,7 +117,8 @@ struct SettingsView: View {
                 settingsLabel(
                     L("外观"),
                     subtitle: L("选择跟随系统、浅色或深色外观。"),
-                    systemImage: "circle.lefthalf.filled"
+                    systemImage: "circle.lefthalf.filled",
+                    iconColor: .pink
                 )
             }
             .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
@@ -125,7 +133,8 @@ struct SettingsView: View {
                 settingsLabel(
                     L("语言"),
                     subtitle: L("更改应用界面语言。"),
-                    systemImage: "globe"
+                    systemImage: "globe",
+                    iconColor: .cyan
                 )
             }
             // Picker 的系统菜单会缓存选项文案。只重建这一行，既能刷新菜单，
@@ -137,7 +146,8 @@ struct SettingsView: View {
             settingsLink(
                 L("开源许可与致谢"),
                 subtitle: L("查看第三方项目、许可信息与致谢。"),
-                systemImage: "heart.text.square"
+                systemImage: "heart.text.square",
+                iconColor: .red
             ) {
                 LicensesView()
             }
@@ -151,16 +161,27 @@ struct SettingsView: View {
         _ title: String,
         subtitle: String,
         systemImage: String,
+        iconColor: Color,
         @ViewBuilder destination: () -> Destination
     ) -> some View {
         NavigationLink {
             destination()
         } label: {
-            settingsLabel(title, subtitle: subtitle, systemImage: systemImage)
+            settingsLabel(
+                title,
+                subtitle: subtitle,
+                systemImage: systemImage,
+                iconColor: iconColor
+            )
         }
     }
 
-    func settingsLabel(_ title: String, subtitle: String, systemImage: String) -> some View {
+    func settingsLabel(
+        _ title: String,
+        subtitle: String,
+        systemImage: String,
+        iconColor: Color
+    ) -> some View {
         Label {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -174,7 +195,7 @@ struct SettingsView: View {
             }
         } icon: {
             Image(systemName: systemImage)
-                .foregroundStyle(.tint)
+                .foregroundStyle(iconColor)
                 .frame(width: 24, alignment: .center)
         }
         .frame(minHeight: 48)
