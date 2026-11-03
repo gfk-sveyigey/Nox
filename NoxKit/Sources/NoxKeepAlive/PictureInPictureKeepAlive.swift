@@ -194,6 +194,11 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
 
         let pipController = try ensureInfrastructure()
         verboseLog("基础设施就绪 · \(stateSummary)")
+        // 运行期间尺寸只改内容、不改宿主几何；真正启动前在这里补一次，
+        // 保证本次会话用的是最新尺寸，同时避免在停止动画期间移动窗口。
+        if !pipController.isPictureInPictureActive, !isStartPending {
+            applySizeToSourceView()
+        }
 
         stopVerificationTask?.cancel()
         stopVerificationTask = nil
@@ -213,6 +218,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             }
             // 会话其实还在运行：直接复用，绝不重复 start。
             isStartPending = false
+            // 等待启动期间用户可能调过尺寸；会话已在运行时只同步内容尺寸。
+            contentController?.preferredContentSize = pipSize
             onLog?("画中画会话已在运行，复用现有会话")
             verboseLog("start 时会话已激活，复用 · \(stateSummary)")
             coexistence?.schedulePostStartUpdate(for: pipController)
@@ -364,7 +371,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         isStartPending = false
         isActive = false
         isStoppingSelf = true
-        // 内容类型退回 4：下次启动重新走「先 4 后 6」，也让别的 App 的画中画恢复原状。
+        // 内容类型退回 4：下次启动重新提交共存类型，也让别的 App 的画中画恢复原状。
         coexistence?.restore()
         if let controller {
             controller.stopPictureInPicture()
@@ -525,6 +532,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             return
         }
 
+        // 最后一次确认：把 6 紧贴着 start 再提交一次。
+        coexistence?.prepareForStart()
         onLog?("画中画已就绪，开始启动（窗口 \(pipSize.width)×\(pipSize.height) pt）")
         verboseLog("调用 startPictureInPicture() · \(stateSummary)")
         readyStreak = 0
@@ -643,18 +652,35 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         contentController = nil
     }
 
-    /// 把当前尺寸即时应用到已启动的 PiP：更新宿主视图约束与内容尺寸。
+    /// 把当前尺寸即时应用到已启动的 PiP。
     ///
-    /// 只调整几何，不重建会话 —— 重建会打断保活。窗口由系统在下次布局时跟随。
+    /// 运行中**只改内容尺寸，不动宿主视图的约束**：
+    /// 宿主视图是居中对齐的几何来源，改它的高度会带着 PiP 窗口一起移动位置。
+    /// 系统会通过 `preferredContentSize` 自行调整窗口大小并保持位置。
     private func applySizeToRunningPiP() {
-        // 暂停期间也要跟随：会话是复用的，下次启动必须用最新尺寸。
         guard controller != nil else { return }
+        let size = pipSize
+        // 启动尚未落地时先不动任何几何：此刻系统正在计算 willShow 的窗口位置，
+        // 中途改约束会带着悬浮窗跳位。
+        if isStartPending {
+            verboseLog("应用 PiP 尺寸推迟到启动完成 · size=\(size)")
+            return
+        }
+        if controller?.isPictureInPictureActive == true {
+            contentController?.preferredContentSize = size
+        } else {
+            applySizeToSourceView()
+        }
+        verboseLog("应用 PiP 尺寸 · size=\(size) active=\(controller?.isPictureInPictureActive == true) hostFrame=\(sourceView?.frame ?? .zero)")
+    }
+
+    /// 更新宿主视图（PiP 的几何来源）到当前尺寸。只在未运行时做，避免带动窗口位置。
+    private func applySizeToSourceView() {
         let size = pipSize
         sourceWidth?.constant = size.width
         sourceHeight?.constant = size.height
-        contentController?.preferredContentSize = size
         sourceView?.superview?.layoutIfNeeded()
-        verboseLog("应用 PiP 尺寸 · size=\(size) hostFrame=\(sourceView?.frame ?? .zero)")
+        verboseLog("更新宿主几何 · size=\(size) hostFrame=\(sourceView?.frame ?? .zero)")
     }
 
     /// 找一个可用的宿主窗口。
@@ -736,6 +762,8 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
         }
 
         isStoppingSelf = false
+        // 启动等待期间用户改过尺寸：会话此刻才真正激活，补一次内容尺寸。
+        contentController?.preferredContentSize = pipSize
         // 启动前已经是共存类型 6；这里再确认一次，防止启动过程中被退回普通类型。
         coexistence?.confirmCoexistenceType(for: controller)
         coexistence?.schedulePostStartUpdate(for: controller)

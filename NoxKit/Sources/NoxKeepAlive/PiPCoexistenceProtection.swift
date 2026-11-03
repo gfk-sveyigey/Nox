@@ -62,6 +62,14 @@ final class PiPCoexistenceProtection {
         private var storedProvidedType: Int
         /// 正处于「惰性取得 proxy」的过程中，provider 借此机会补记 proxy 身份。
         var isObtainingProxy = false
+        private var callCount = 0
+
+        func recordProviderCall() -> Int {
+            lock.lock()
+            defer { lock.unlock() }
+            callCount += 1
+            return callCount
+        }
 
         init(proxy: NSObject?, providedType: Int) {
             self.proxy = proxy
@@ -301,6 +309,18 @@ final class PiPCoexistenceProtection {
         return true
     }
 
+    /// 启动前把内容类型再提交一次（6）。
+    ///
+    /// 仅靠构造阶段的一次提交不够：App 冷启动时 XPC 连接可能还没建立，
+    /// 中间几十秒的播放状态更新也可能把类型改回 4。因此在
+    /// `startPictureInPicture()` 前再提交一次，保证系统在 `willShow`
+    /// 决策前看到共存类型。
+    func prepareForStart() {
+        guard Thread.isMainThread, isPrepared, configuration != nil,
+              !controller.isPictureInPictureActive else { return }
+        submitContentType(coexistingContentType, quiet: true)
+    }
+
     /// `didStart` 后再次确认共存类型（6）。
     ///
     /// 启动前已经提交过 6；这里只做一次确认，保证启动过程中即使有其他播放状态
@@ -317,7 +337,7 @@ final class PiPCoexistenceProtection {
     }
 
     /// 提交一次内容类型。只走校验过的 `updatePlaybackStateUsingBlock:`。
-    private func submitContentType(_ type: Int) {
+    private func submitContentType(_ type: Int, quiet: Bool = false) {
         let updateSelector = NSSelectorFromString("updatePlaybackStateUsingBlock:")
         let setterSelector = NSSelectorFromString("setContentType:")
         guard let adapter, let proxy, let configuration, let token = installationID,
@@ -331,6 +351,7 @@ final class PiPCoexistenceProtection {
             return
         }
 
+        let previousLocalType = Self.contentType(of: proxy)
         configuration.providedType = type
         let setterIMP = unsafeBitCast(method_getImplementation(setter), to: IntegerSetter.self)
         let mutation: StateMutation = { [weak self, weak adapter] currentState in
@@ -341,8 +362,10 @@ final class PiPCoexistenceProtection {
         }
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(proxy, updateSelector, mutation)
         let localType = Self.contentType(of: proxy).map(String.init) ?? "unknown"
-        noxKeepAliveLog("画中画共存保护：已提交内容类型 \(type)（本地 contentType=\(localType)）")
-        verboseLog("提交内容类型完成 · type=\(type) localType=\(localType)")
+        if !quiet || previousLocalType != type {
+            noxKeepAliveLog("画中画共存保护：已提交内容类型 \(type)（本地 contentType=\(localType)）")
+        }
+        verboseLog("提交内容类型完成 · type=\(type) localType=\(localType) quiet=\(quiet)")
     }
 
     // MARK: - 运行时校验
@@ -379,6 +402,9 @@ final class PiPCoexistenceProtection {
             }
             guard let proxy = configuration.proxy, queriedProxy === proxy else {
                 return (queriedProxy as? NSObject).flatMap { contentType(of: $0) } ?? 4
+            }
+            if configuration.recordProviderCall() == 1 {
+                noxKeepAliveLog("画中画共存保护：系统已查询内容类型（返回 \(configuration.providedType)）")
             }
             return configuration.providedType
         }
