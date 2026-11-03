@@ -17,12 +17,8 @@ final class SilentAudioKeepAlive: KeepAliveStrategy {
     private var observer: NSObjectProtocol?
     private var healthTask: Task<Void, Never>?
 
-    /// 低频、极低电平的测试音，循环播放。
-    ///
-    /// 不用 0 字节 / 全零数据，也不把 player.volume 设为 0：系统可能把
-    /// 「没有实际音频输出」的播放器当作未播放，锁屏一段时间后挂起 App。
-    /// 1 LSB 的正弦波在听感上仍然是静音，但音频会话会持续处于播放状态。
-    private static let silentData = silentWAV()
+    /// 健康检查间隔。锁屏后如果播放器被系统 / 路由变化停掉，
+    /// 只要 App 还有执行时间就重建播放器。
     private static let healthInterval: Duration = .seconds(5)
 
     func start() throws {
@@ -66,7 +62,10 @@ final class SilentAudioKeepAlive: KeepAliveStrategy {
         let session = AVAudioSession.sharedInstance()
         try session.setActive(true)
 
-        let player = try AVAudioPlayer(data: Self.silentData)
+        // 不用全零数据，也不把 player.volume 设为 0：系统可能把
+        // 「没有实际音频输出」的播放器当作未播放，锁屏一段时间后挂起 App。
+        // 1 LSB 的正弦波在听感上仍然是静音，但音频会话会持续处于播放状态。
+        let player = try AVAudioPlayer(data: Self.silentWAV())
         player.numberOfLoops = -1
         player.volume = 1
         player.prepareToPlay()
