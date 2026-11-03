@@ -27,9 +27,7 @@ func noxKeepAliveLog(_ message: String) {
 /// 1. **先**在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:` 并挂上实例配置，
 ///    **再**惰性取得 `pegasusProxy` —— 系统在创建 proxy 时会依据响应能力 / 内容类型决定实现，
 ///    顺序反了这次会话就仍是普通 PiP（表现为启动保活时把其他 App 的画中画挤掉）；
-/// 2. **启动前就用 6**：系统的 `willShow` 阶段会依据新会话的内容类型决定是否允许
-///    与已有画中画共存；等到 `didStart` 之后再改成 6 已经太晚，另一个 App 的画中画
-///    在启动瞬间就已经被挤掉了。
+/// 2. 首次启动用 4，`didStart` 后延迟一小段（当前 0.3 秒）提交 6（一次，不轮询）。
 final class PiPCoexistenceProtection {
 
     private typealias IntegerSetter = @convention(c) (AnyObject, Selector, Int) -> Void
@@ -39,16 +37,11 @@ final class PiPCoexistenceProtection {
     private typealias StateMutation = @convention(block) (AnyObject) -> Void
     private typealias StateUpdater = @convention(c) (AnyObject, Selector, StateMutation) -> Void
 
-    /// 内部内容类型取值：6 是系统允许「与已有画中画共存」的类型，4 是普通视频类型。
+    /// 参考实现使用的两个内部取值：启动时用 4，启动成功后提交 6。
     /// 这两个数字是沿用的内部约定，**不要**当作 Apple 公布的枚举语义。
-    ///
-    /// 关键：类型必须在 `startPictureInPicture()` **之前**就提交为 6。
-    /// 系统在 `willShow` 时就会检查新会话的类型（`canActivateUntetheredAlongsideOtherObject:`），
-    /// 等到 `didStart` 后再改 6 已经来不及，另一个 App 的画中画已经被取消。
+    private let initialContentType = 4
     private let coexistingContentType = 6
-    /// 退场时恢复的普通类型。
-    private let fallbackContentType = 4
-    /// `didStart` 之后再次提交共存类型的延迟（只做一次确认，不轮询）。
+    /// `didStart` 之后延迟提交共存类型的时长（与上游一致：1 秒，只提交一次）。
     private let postStartDelay: TimeInterval = 1
 
     private static var associationKey: UInt8 = 0
@@ -57,36 +50,13 @@ final class PiPCoexistenceProtection {
     /// provider 的实例级状态，挂在 adapter 上，供类方法回调读取。
     private final class Configuration {
         weak var proxy: NSObject?
-        /// 系统可能从任意线程查询内容类型，读写都走锁。
-        private let lock = NSLock()
-        private var storedProvidedType: Int
+        var providedType: Int
         /// 正处于「惰性取得 proxy」的过程中，provider 借此机会补记 proxy 身份。
         var isObtainingProxy = false
-        private var callCount = 0
-
-        func recordProviderCall() -> Int {
-            lock.lock()
-            defer { lock.unlock() }
-            callCount += 1
-            return callCount
-        }
 
         init(proxy: NSObject?, providedType: Int) {
             self.proxy = proxy
-            self.storedProvidedType = providedType
-        }
-
-        var providedType: Int {
-            get {
-                lock.lock()
-                defer { lock.unlock() }
-                return storedProvidedType
-            }
-            set {
-                lock.lock()
-                storedProvidedType = newValue
-                lock.unlock()
-            }
+            self.providedType = providedType
         }
     }
 
@@ -98,8 +68,6 @@ final class PiPCoexistenceProtection {
     private var installationID: UUID?
     private var postStartScheduled = false
     private var isPrepared = false
-    /// prepare 失败只提示一次，避免重试时刷屏。
-    private var hasReportedPrepareFailure = false
 
     init(controller: AVPictureInPictureController) {
         self.controller = controller
@@ -125,21 +93,11 @@ final class PiPCoexistenceProtection {
             verboseLog("prepare 跳过：不在主线程")
             return
         }
-        // 会话已经在运行时**绝不能**重新安装 / 重设内容类型：那会把已经切到共存
-        // 类型的活动会话改回 4，系统随后就会把别的 App 的画中画挤掉。
-        guard !controller.isPictureInPictureActive else {
-            verboseLog("prepare 跳过：画中画已在运行")
-            return
-        }
-        guard !isPrepared else {
-            verboseLog("prepare 跳过：本次会话已安装")
-            return
-        }
         guard let adapter = Self.object(controller, selector: "platformAdapter"),
               let base = object_getClass(adapter),
               Self.addScopedProvider(to: base) else {
             verboseLog("prepare 失败：未找到 adapter 或 provider 安装失败")
-            reportPrepareFailureOnce("未找到内部适配对象，跳过（仅使用公开画中画）")
+            noxKeepAliveLog("画中画共存保护：未找到内部适配对象，跳过（仅使用公开 PiP）")
             return
         }
 
@@ -148,8 +106,7 @@ final class PiPCoexistenceProtection {
         // 系统在创建 proxy 时会依据实例响应能力 / 内容类型决定实现；
         // 先取 proxy 再装 provider，会让本次会话仍是普通 PiP ——
         // 表现就是「启动保活时把其他 App 的画中画挤掉」。
-        // 从 provider 第一次被查询起就返回 6，保证系统在 willShow 前看到共存类型。
-        let configuration = Configuration(proxy: nil, providedType: coexistingContentType)
+        let configuration = Configuration(proxy: nil, providedType: initialContentType)
         objc_setAssociatedObject(adapter, &Self.associationKey, configuration, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         configuration.isObtainingProxy = true
         let candidateProxy = Self.object(adapter, selector: "pegasusProxy")
@@ -161,7 +118,7 @@ final class PiPCoexistenceProtection {
               proxy.isKind(of: expected),
               configuration.proxy == nil || configuration.proxy === proxy else {
             objc_setAssociatedObject(adapter, &Self.associationKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            reportPrepareFailureOnce("未找到内部代理对象，跳过（仅使用公开画中画）")
+            noxKeepAliveLog("画中画共存保护：未找到内部代理对象，跳过（仅使用公开 PiP）")
             return
         }
         configuration.proxy = proxy
@@ -169,18 +126,11 @@ final class PiPCoexistenceProtection {
         verboseLog("校验内部签名并安装 provider · proxy=\(String(describing: type(of: proxy)))")
         guard install(adapter: adapter, proxy: proxy, configuration: configuration) else {
             objc_setAssociatedObject(adapter, &Self.associationKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            reportPrepareFailureOnce("内部签名不匹配，跳过（仅使用公开画中画）")
+            noxKeepAliveLog("画中画共存保护：内部签名不匹配，跳过（仅使用公开 PiP）")
             return
         }
         isPrepared = true
-        hasReportedPrepareFailure = false
         verboseLog("prepare 完成 · provider 已安装")
-    }
-
-    private func reportPrepareFailureOnce(_ message: String) {
-        guard !hasReportedPrepareFailure else { return }
-        hasReportedPrepareFailure = true
-        noxKeepAliveLog("画中画共存保护：\(message)")
     }
 
     /// `didStart` 之后延迟一小段提交一次共存类型。
@@ -242,7 +192,6 @@ final class PiPCoexistenceProtection {
         installationID = nil
         postStartScheduled = false
         isPrepared = false
-        hasReportedPrepareFailure = false
         defer {
             adapter = nil
             proxy = nil
@@ -280,17 +229,15 @@ final class PiPCoexistenceProtection {
               let stateClass = object_getClass(state),
               let setter = Self.method(stateClass, selector: setterSelector, result: "v", arguments: ["q"]),
               let previousType = Self.contentType(of: candidateProxy),
-              previousType == coexistingContentType || previousType == fallbackContentType else {
-            verboseLog("install 失败：内部签名或 contentType 不匹配")
+              previousType == initialContentType else {
+            verboseLog("install 失败：内部签名或初始 contentType 不匹配")
             return false
         }
 
         let token = UUID()
         self.configuration = configuration
         installationID = token
-        // 上一次会话可能没来得及把 6 退回 4（例如 App 被挂起后直接重开）。
-        // 这种情况下仍可继续安装，但退场时要回到标准的 4，而不是 6。
-        originalContentType = previousType == coexistingContentType ? fallbackContentType : previousType
+        originalContentType = previousType
         adapter = candidate
         proxy = candidateProxy
         // 关联配置已在 prepare() 里挂好（必须早于 proxy 创建），这里不再重复设置。
@@ -304,40 +251,13 @@ final class PiPCoexistenceProtection {
         }
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(candidateProxy, updateSelector, mutation)
         let localType = Self.contentType(of: candidateProxy).map(String.init) ?? "unknown"
-        noxKeepAliveLog("画中画共存保护：已安装 provider（启动前即类型 6，本地 contentType=\(localType)）")
+        noxKeepAliveLog("画中画共存保护：已安装 provider（首次类型 4，启动后转 6，本地 contentType=\(localType)）")
         verboseLog("install 成功 · previousType=\(previousType) localType=\(localType)")
         return true
     }
 
-    /// 启动前把内容类型再提交一次（6）。
-    ///
-    /// 仅靠构造阶段的一次提交不够：App 冷启动时 XPC 连接可能还没建立，
-    /// 中间几十秒的播放状态更新也可能把类型改回 4。因此在
-    /// `startPictureInPicture()` 前再提交一次，保证系统在 `willShow`
-    /// 决策前看到共存类型。
-    func prepareForStart() {
-        guard Thread.isMainThread, isPrepared, configuration != nil,
-              !controller.isPictureInPictureActive else { return }
-        submitContentType(coexistingContentType, quiet: true)
-    }
-
-    /// `didStart` 后再次确认共存类型（6）。
-    ///
-    /// 启动前已经提交过 6；这里只做一次确认，保证启动过程中即使有其他播放状态
-    /// 更新也不会把类型退回普通值。
-    func confirmCoexistenceType(for controller: AVPictureInPictureController) {
-        guard Thread.isMainThread, isPrepared, configuration != nil,
-              self.controller === controller, controller.isPictureInPictureActive else { return }
-        submitContentType(coexistingContentType)
-    }
-
     /// 启动成功后提交共存类型 6（一次）。
     private func submitCoexistingType() {
-        submitContentType(coexistingContentType)
-    }
-
-    /// 提交一次内容类型。只走校验过的 `updatePlaybackStateUsingBlock:`。
-    private func submitContentType(_ type: Int, quiet: Bool = false) {
         let updateSelector = NSSelectorFromString("updatePlaybackStateUsingBlock:")
         let setterSelector = NSSelectorFromString("setContentType:")
         guard let adapter, let proxy, let configuration, let token = installationID,
@@ -346,26 +266,23 @@ final class PiPCoexistenceProtection {
               let state = Self.object(proxy, selector: "playbackState"),
               let stateClass = object_getClass(state),
               let setter = Self.method(stateClass, selector: setterSelector, result: "v", arguments: ["q"]) else {
-            noxKeepAliveLog("画中画共存保护：提交内容类型 \(type) 被跳过（运行时不支持）")
-            verboseLog("提交内容类型失败：运行时签名不支持 · type=\(type)")
+            noxKeepAliveLog("画中画共存保护：启动后提交被跳过（运行时不支持）")
+            verboseLog("提交共存类型失败：运行时签名不支持")
             return
         }
 
-        let previousLocalType = Self.contentType(of: proxy)
-        configuration.providedType = type
+        configuration.providedType = coexistingContentType
         let setterIMP = unsafeBitCast(method_getImplementation(setter), to: IntegerSetter.self)
         let mutation: StateMutation = { [weak self, weak adapter] currentState in
             guard let self, self.installationID == token, let adapter,
                   (objc_getAssociatedObject(adapter, &Self.associationKey) as? Configuration) === configuration,
                   object_getClass(currentState) === stateClass else { return }
-            setterIMP(currentState, setterSelector, type)
+            setterIMP(currentState, setterSelector, self.coexistingContentType)
         }
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(proxy, updateSelector, mutation)
         let localType = Self.contentType(of: proxy).map(String.init) ?? "unknown"
-        if !quiet || previousLocalType != type {
-            noxKeepAliveLog("画中画共存保护：已提交内容类型 \(type)（本地 contentType=\(localType)）")
-        }
-        verboseLog("提交内容类型完成 · type=\(type) localType=\(localType) quiet=\(quiet)")
+        noxKeepAliveLog("画中画共存保护：已提交共存内容类型 6（本地 contentType=\(localType)）")
+        verboseLog("提交共存类型完成 · localType=\(localType)")
     }
 
     // MARK: - 运行时校验
@@ -402,9 +319,6 @@ final class PiPCoexistenceProtection {
             }
             guard let proxy = configuration.proxy, queriedProxy === proxy else {
                 return (queriedProxy as? NSObject).flatMap { contentType(of: $0) } ?? 4
-            }
-            if configuration.recordProviderCall() == 1 {
-                noxKeepAliveLog("画中画共存保护：系统已查询内容类型（返回 \(configuration.providedType)）")
             }
             return configuration.providedType
         }

@@ -12,7 +12,11 @@ import NoxCore
 public final class KeepAliveCoordinator: ObservableObject {
 
     /// 当前实际生效的保活方式（可能因降级与偏好不同）。
-    @Published private(set) var activeMode: KeepAliveMode = .off
+    @Published private(set) var activeMode: KeepAliveMode = .off {
+        didSet { isPiPWindowRunning = activeMode == .pictureInPicture }
+    }
+    /// 画中画悬浮窗当前是否已启动（设置页开关用）。
+    @Published public private(set) var isPiPWindowRunning = false
     /// 最近一次失败原因，用于设置页提示。
     @Published private(set) var lastError: String?
 
@@ -38,6 +42,7 @@ public final class KeepAliveCoordinator: ObservableObject {
                 }
                 return
             }
+            manualPiPWindowRequested = nil
             fallbackMode = nil
             reconcile()
         }
@@ -61,12 +66,12 @@ public final class KeepAliveCoordinator: ObservableObject {
     public var notificationsEnabled = false
 
     /// 画中画共存保护不可用时用户选择的兜底方案。
-    public var piPCoexistenceFallback: PiPCoexistenceFallback = .stop {
+    public var piPCoexistenceFallback: PiPCoexistenceFallback = .keepAlive {
         didSet {
             pictureInPicture.coexistenceFallback = piPCoexistenceFallback
             if activeMode == .pictureInPicture, pictureInPicture.isActive,
-               !pictureInPicture.isCoexistenceInstalled {
-                // 当前这档并无共存保护：按新选择重建。
+               !pictureInPicture.isCoexistenceInstalled, piPCoexistenceFallback != .keepAlive {
+                // 用户把「继续用画中画」改成了别的，而当前这档并无共存保护：按新选择重建。
                 deactivate()
                 reconcile()
             }
@@ -118,6 +123,8 @@ public final class KeepAliveCoordinator: ObservableObject {
     private var hasActiveTasks = false
     /// 当前临时的降级策略；回到前台或用户切换偏好后清除。
     private var fallbackMode: KeepAliveMode?
+    /// 用户在设置页手动启动 / 关闭画中画。nil 表示按下载任务与生命周期自动调度。
+    private var manualPiPWindowRequested: Bool?
     private var lastNotificationAt = Date.distantPast
 
     /// 保活模式：跟随下载任务（默认）/ 启动即常驻。改动后立刻重新调度。
@@ -134,6 +141,10 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 不应该常驻，否则会浪费系统预算，也更容易被系统终止。
     private var keepAliveNeeded: Bool {
         guard preferredMode.startsKeepAlive else { return false }
+        // 手动开关优先于自动调度：没有下载任务时也能拉起悬浮窗，关闭时立即停下。
+        if preferredMode == .pictureInPicture, let manual = manualPiPWindowRequested {
+            return manual
+        }
         if targetMode == .continuedProcessing { return hasActiveTasks }
         return hasActiveTasks || lifetime == .alwaysOn
     }
@@ -230,6 +241,21 @@ public final class KeepAliveCoordinator: ObservableObject {
     public func updateProgress(_ fraction: Double) {
         guard activeMode == .continuedProcessing else { return }
         ContinuedProcessingBridge.updateProgress(fraction)
+    }
+
+    /// 设置页手动启动 / 关闭画中画悬浮窗。
+    ///
+    /// 与自动调度分开：开启后即使没有下载任务也会保持悬浮窗；关闭后即使有任务
+    /// 也不会再自动拉起。切换保活方式时恢复为自动调度。
+    public func setPiPWindowEnabled(_ enabled: Bool) {
+        guard preferredMode == .pictureInPicture else { return }
+        manualPiPWindowRequested = enabled
+        if enabled {
+            fallbackMode = nil
+            reconcile()
+        } else {
+            deactivate()
+        }
     }
 
     // MARK: - 内部
@@ -410,7 +436,7 @@ public final class KeepAliveCoordinator: ObservableObject {
         guard keepAliveNeeded, preferredMode.startsKeepAlive else { return }
         stopAll()
         activeMode = .off
-        if allowsSilentAudioFallback || piPCoexistenceFallback == .silentAudio {
+        if allowsSilentAudioFallback {
             fallbackMode = .silentAudio
             onLog?("画中画启动失败：自动降级为静音音频")
             activate(.silentAudio)

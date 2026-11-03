@@ -1,6 +1,7 @@
 import AVFoundation
 import AVKit
 import Foundation
+import ObjectiveC
 import UIKit
 import NoxCore
 
@@ -78,10 +79,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         return "scenes=\(scenes.count) [\(parts.joined(separator: " | "))]"
     }
 
-    /// 共存保护装不上时的兜底方式，由协调器按用户在设置里选的值同步过来。
-    ///
-    /// 无论选哪种，都不会在保护缺失时强行启动画中画（那会挤掉其它 App 的 PiP）。
-    var coexistenceFallback: PiPCoexistenceFallback = .stop
+    /// 共存保护装不上时的处理方式，由协调器按用户在设置里选的值同步过来。
+    var coexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
     /// 画中画基础设施：controller / 内容控制器 / 宿主视图。
     ///
@@ -143,17 +142,14 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private var stopWaitCount = 0
 
     /// 抖动确认窗口：刚创建 controller 时 `isPictureInPicturePossible` 常是瞬时 true，
-    /// 之后系统才算出真值。要求它连续三次为 true 才真正启动。
-    ///
-    /// 宁可多等约 1.6 秒，也不要拿一个瞬时 true 去启动 —— 那会直接把其他 App
-    /// 正在播放的画中画挤掉。
-    private static let startSettleDelay: Double = 0.8
-    /// 启动前要求连续观察到「可启动」的次数。
-    private static let requiredReadyStreak = 3
-    /// 未就绪时的重试间隔。
-    private static let startRetryDelay: Double = 0.8
-    /// 未就绪时保持「快速重试」的次数上限；之后转入低速重试（**不会**放弃会话）。
-    private static let maxFastStartAttempts = 5
+    /// 之后系统才算出真值。要求它连续两次为 true 才真正启动。
+    /// 取值对齐上游：首次请求后 0.12 秒再确认一次。
+    private static let startSettleDelay: Double = 0.12
+    /// 未就绪时的重试间隔（上游 VideoCall 路线为 0.12 秒）。
+    private static let startRetryDelay: Double = 0.12
+    /// 未就绪时保持「快速重试」的次数上限（上游为 8 次）；之后转入低速重试，
+    /// 保证用户随时手动启动时不会因为一次失败就彻底放弃。
+    private static let maxFastStartAttempts = 8
     /// 转入低速重试后的间隔。
     private static let startSlowRetryDelay: Double = 3
     /// 每多少次未就绪上报一次日志，避免刷屏。
@@ -168,9 +164,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private static let startVerificationDelay: Double = 8
     /// 上一次停止 PiP 之后，允许再次启动的最短间隔（秒）。
     ///
-    /// 系统在刚结束一个画中画会话后的一小段时间内会拒绝新建；
-    /// 「先停再立刻起」几乎必失败，因此这里宁可推迟启动。
-    private static let restartCooldown: TimeInterval = 2
+    /// 与上游的停止转场宽限一致：1.5 秒。用户随时切回启动时，最多等这一段。
+    private static let restartCooldown: TimeInterval = 1.5
 
     func start() throws {
         let supported = AVPictureInPictureController.isPictureInPictureSupported()
@@ -182,11 +177,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
 
         let pipController = try ensureInfrastructure()
         verboseLog("基础设施就绪 · \(stateSummary)")
-        // 运行期间尺寸只改内容、不改宿主几何；真正启动前在这里补一次，
-        // 保证本次会话用的是最新尺寸，同时避免在停止动画期间移动窗口。
-        if !pipController.isPictureInPictureActive, !isStartPending {
-            applySizeToSourceView()
-        }
 
         stopVerificationTask?.cancel()
         stopVerificationTask = nil
@@ -206,8 +196,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             }
             // 会话其实还在运行：直接复用，绝不重复 start。
             isStartPending = false
-            // 等待启动期间用户可能调过尺寸；会话已在运行时只同步内容尺寸。
-            contentController?.preferredContentSize = pipSize
             onLog?("画中画会话已在运行，复用现有会话")
             verboseLog("start 时会话已激活，复用 · \(stateSummary)")
             coexistence?.schedulePostStartUpdate(for: pipController)
@@ -246,7 +234,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             verboseLog("复用基础设施 · \(stateSummary) coexistenceInstalled=\(coexistence?.isSupported == true)")
             if let coexistence {
                 coexistence.prepare()
-                if !coexistence.isSupported {
+                if !coexistence.isSupported, coexistenceFallback != .keepAlive {
                     onLog?("画中画共存保护不可用，按设置\(coexistenceFallback.title)")
                     destroyInfrastructure()
                     throw KeepAliveError.coexistenceUnavailable(name)
@@ -269,14 +257,44 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         return true
     }
 
+    /// 上游做法：去掉 0.1pt 隐藏时仍会浮在屏幕上的画中画控制点。
+    ///
+    /// - `requiresLinearPlayback` 是公开属性，可隐藏快进 / 跳过等控件；
+    /// - `controlsStyle = 2` 是 AVKit 内部属性，上游在 iOS 16+ 上直接设置，
+    ///   用来避免「两个白点」。这里先确认类里确实存在对应 ivar 再写，
+    ///   系统改版后找不到就静默跳过。
+    private func configureHiddenControls(for controller: AVPictureInPictureController) {
+        controller.requiresLinearPlayback = true
+        // 上游：iOS 16+ 用 2（彻底去掉两个控制点），iOS 15 用 1（仅隐藏播放控制）。
+        let style: Int
+        if #available(iOS 16.0, *) {
+            style = 2
+        } else {
+            style = 1
+        }
+        var type: AnyClass? = object_getClass(controller)
+        while let current = type {
+            if class_getInstanceVariable(current, "_controlsStyle") != nil
+                || class_getInstanceVariable(current, "controlsStyle") != nil {
+                controller.setValue(style, forKey: "controlsStyle")
+                verboseLog("已设置画中画控件样式 \(style)")
+                return
+            }
+            type = class_getSuperclass(current)
+        }
+        verboseLog("未找到 controlsStyle，跳过控件样式设置")
+    }
+
     /// 建立画中画基础设施（宿主视图 + controller + 共存保护）。
     private func makeInfrastructure() throws -> AVPictureInPictureController {
         verboseLog("创建基础设施 · size=\(pipSize) \(Self.sceneSummary())")
         let host = try makeHostView()
         let content = AVPictureInPictureVideoCallViewController()
         content.preferredContentSize = pipSize
-        content.view.backgroundColor = .clear
-        content.view.isOpaque = false
+        // 与上游的隐藏宿主一致：内容层用不透明黑色。0.1pt 时整块高度不足一个像素，
+        // 不会出现透明层被系统补成浅色胶囊、反而更显眼的问题。
+        content.view.backgroundColor = .black
+        content.view.isOpaque = true
         // 铺满一个透明子视图，保证内容宿主有稳定的内容与布局，而不是空壳。
         // 用约束铺满而非 autoresizing：content.view 初始 bounds 为 .zero，
         // 交给约束跟随其后的尺寸变化更可靠。
@@ -299,6 +317,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         )
         let pipController = AVPictureInPictureController(contentSource: source)
         pipController.delegate = self
+        configureHiddenControls(for: pipController)
         controller = pipController
         verboseLog("controller 已创建 · \(stateSummary) hostFrame=\(host.frame)")
 
@@ -308,8 +327,9 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         protection.prepare()
         verboseLog("共存保护准备完成 · installed=\(protection.isSupported) \(stateSummary)")
 
-        // 共存保护装不上：报错交给协调器按用户选的兜底方案处理。
-        if !protection.isSupported {
+        // 共存保护装不上：按用户选的兜底方案处理。
+        // `.keepAlive` 时继续启动（可能挤掉其它 App 的 PiP），其余情况报错交给协调器。
+        if !protection.isSupported, coexistenceFallback != .keepAlive {
             onLog?("画中画共存保护不可用，按设置\(coexistenceFallback.title)")
             destroyInfrastructure()
             throw KeepAliveError.coexistenceUnavailable(name)
@@ -333,7 +353,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// PiP 是否真的还在显示（回前台时用来判断保活是否被系统 / 用户结束）。
     var isLive: Bool {
         if controller?.isPictureInPictureActive == true { return true }
-        // 正在建立也算「活着」：否则 `reconcile` 的自愈会在启动过程中反复重建。
+        // 正在建立中也算「活着」：否则 `reconcile` 的自愈会在启动过程中反复重建。
         return startTask != nil || startVerificationTask != nil
     }
 
@@ -352,7 +372,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         isStartPending = false
         isActive = false
         isStoppingSelf = true
-        // 内容类型退回 4：下次启动重新提交共存类型，也让别的 App 的画中画恢复原状。
+        // 内容类型退回 4：下次启动重新走「先 4 后 6」，也让别的 App 的画中画恢复原状。
         coexistence?.restore()
         if let controller {
             controller.stopPictureInPicture()
@@ -373,7 +393,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     ) {
         guard attempts > 0 else { return }
         stopVerificationTask = Task { @MainActor [weak self, weak controller] in
-            try? await Task.sleep(for: .seconds(2))
+            // 上游的停止转场宽限为 1.5 秒，之后系统仍未停就说明停止请求被忽略了。
+            try? await Task.sleep(for: .seconds(1.5))
             guard let self, !Task.isCancelled, let controller,
                   self.controller === controller else { return }
             self.stopVerificationTask = nil
@@ -426,7 +447,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         }
     }
 
-    /// 就绪才启动，且要求「连续三次为 true」以避免用瞬时值启动。
+    /// 就绪才启动，且要求「连续两次为 true」以避免用瞬时值启动。
     ///
     /// 为什么不能见到一次 true 就启动：刚创建 controller 时 `isPictureInPicturePossible`
     /// 可能是瞬时 true，随后系统才算出真值 false（例如其他 App 已经有画中画）。
@@ -458,13 +479,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         }
         stopWaitCount = 0
 
-        // 没有共存保护就绝不启动：那会把其他 App 正在播放的画中画挤掉。
-        guard coexistence?.isSupported == true else {
-            onLog?("画中画共存保护不可用，未启动画中画（避免打断其他 App 的画中画）")
-            onStartFailure?()
-            return
-        }
-
         guard controller.isPictureInPicturePossible else {
             readyStreak = 0
             attemptCount += 1
@@ -485,9 +499,9 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         // 一旦就绪，就把「未就绪」的等待计数清零，避免瞬时抖动把预算耗光。
         attemptCount = 0
         readyStreak += 1
-        guard readyStreak >= Self.requiredReadyStreak else {
-            // 看到 true 先不启动，隔一个很短的窗口再确认。
-            verboseLog("就绪抖动确认 · streak=\(readyStreak)/\(Self.requiredReadyStreak)")
+        guard readyStreak >= 2 else {
+            // 第一次看到 true 先不启动，隔一个很短的窗口再确认一次。
+            verboseLog("就绪抖动确认 · streak=\(readyStreak)/2")
             scheduleStartAttempt(for: controller, delay: Self.startSettleDelay)
             return
         }
@@ -501,8 +515,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             return
         }
 
-        // 最后一次确认：把 6 紧贴着 start 再提交一次。
-        coexistence?.prepareForStart()
         onLog?("画中画已就绪，开始启动（窗口 \(pipSize.width)×\(pipSize.height) pt）")
         verboseLog("调用 startPictureInPicture() · \(stateSummary)")
         readyStreak = 0
@@ -576,35 +588,18 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         contentController = nil
     }
 
-    /// 把当前尺寸即时应用到已启动的 PiP。
+    /// 把当前尺寸即时应用到已启动的 PiP：更新宿主视图约束与内容尺寸。
     ///
-    /// 运行中**只改内容尺寸，不动宿主视图的约束**：
-    /// 宿主视图是居中对齐的几何来源，改它的高度会带着 PiP 窗口一起移动位置。
-    /// 系统会通过 `preferredContentSize` 自行调整窗口大小并保持位置。
+    /// 只调整几何，不重建会话 —— 重建会打断保活。窗口由系统在下次布局时跟随。
     private func applySizeToRunningPiP() {
+        // 暂停期间也要跟随：会话是复用的，下次启动必须用最新尺寸。
         guard controller != nil else { return }
-        let size = pipSize
-        // 启动尚未落地时先不动任何几何：此刻系统正在计算 willShow 的窗口位置，
-        // 中途改约束会带着悬浮窗跳位。
-        if isStartPending {
-            verboseLog("应用 PiP 尺寸推迟到启动完成 · size=\(size)")
-            return
-        }
-        if controller?.isPictureInPictureActive == true {
-            contentController?.preferredContentSize = size
-        } else {
-            applySizeToSourceView()
-        }
-        verboseLog("应用 PiP 尺寸 · size=\(size) active=\(controller?.isPictureInPictureActive == true) hostFrame=\(sourceView?.frame ?? .zero)")
-    }
-
-    /// 更新宿主视图（PiP 的几何来源）到当前尺寸。只在未运行时做，避免带动窗口位置。
-    private func applySizeToSourceView() {
         let size = pipSize
         sourceWidth?.constant = size.width
         sourceHeight?.constant = size.height
+        contentController?.preferredContentSize = size
         sourceView?.superview?.layoutIfNeeded()
-        verboseLog("更新宿主几何 · size=\(size) hostFrame=\(sourceView?.frame ?? .zero)")
+        verboseLog("应用 PiP 尺寸 · size=\(size) hostFrame=\(sourceView?.frame ?? .zero)")
     }
 
     /// 找一个可用的宿主窗口。
@@ -686,10 +681,7 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
         }
 
         isStoppingSelf = false
-        // 启动等待期间用户改过尺寸：会话此刻才真正激活，补一次内容尺寸。
-        contentController?.preferredContentSize = pipSize
-        // 启动前已经是共存类型 6；这里再确认一次，防止启动过程中被退回普通类型。
-        coexistence?.confirmCoexistenceType(for: controller)
+        // 启动成功后再延迟提交共存类型，避免与其他 PiP 争抢。
         coexistence?.schedulePostStartUpdate(for: controller)
     }
 
