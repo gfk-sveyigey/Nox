@@ -30,8 +30,9 @@ final class DownloadLiveActivityManager {
     /// 既不会错过保活方式的进度变化，也不会因过密更新被系统节流。
     private static let minimumUpdateInterval: TimeInterval = 1.0
     /// 下载活动可能在后台按分片 / 回调刷新，间隔不一定固定；
-    /// 10 分钟没有新内容才标记为过期，避免慢速任务被过早显示成 stale。
-    private static let staleInterval: TimeInterval = 600
+    /// 留出一小时再标记过期，避免进程短暂挂起（尤其画中画）时
+    /// 卡片被当成 stale 而不再出现在灵动岛。
+    private static let staleInterval: TimeInterval = 3600
     /// 系统最多让一个活动活跃 8 小时，到点会强制结束并立刻从灵动岛移除，
     /// 但锁屏上还会再留最多 4 小时。提前一点换成新活动，避免出现
     /// 「锁屏有、灵动岛没有」的残留。
@@ -57,10 +58,13 @@ final class DownloadLiveActivityManager {
             .map { _ in () }
             .eraseToAnyPublisher()
 
+        // 用 throttle 而不是 debounce：第一次变化立即处理，避免用户点了下载
+        // 马上切走 / 锁定（尤其画中画启动会让 App 状态变化）时错过
+        // 「只能在前台创建」的窗口；后续变化仍然合并到约 4 次/秒。
         downloads
             .merge(with: managerChanges)
             .merge(with: modeChanges)
-            .debounce(for: .milliseconds(250), scheduler: RunLoop.main)
+            .throttle(for: .milliseconds(250), scheduler: RunLoop.main, latest: true)
             .sink { [weak self] in
                 Task { @MainActor in self?.refresh(force: false) }
             }
@@ -99,9 +103,10 @@ final class DownloadLiveActivityManager {
         }
 
         if activity == nil {
-            // Activity.request 只能在 App 前台发起。后台恢复时若没有既有活动，
-            // 只能等下一次进入前台再开始展示。
-            guard UIApplication.shared.applicationState == .active else { return }
+            // Activity.request 只能在 App 前台发起。`.inactive` 仍属于前台
+            // （例如画中画启动、切换 App 的瞬间），也允许尝试；真正的
+            // `.background` 只能等下一次进入前台再开始展示。
+            guard canRequestActivity else { return }
             startActivity(with: state)
         } else {
             updateActivity(with: state, force: force)
@@ -232,11 +237,15 @@ final class DownloadLiveActivityManager {
             guard let self else { return }
             self.startupTask = nil
             guard self.activity == nil,
-                  UIApplication.shared.applicationState == .active,
+                  self.canRequestActivity,
                   self.downloadManager.activeKeepAliveMode != .continuedProcessing,
                   let latest = self.makeState() else { return }
             self.requestActivity(with: latest)
         }
+    }
+
+    private var canRequestActivity: Bool {
+        UIApplication.shared.applicationState != .background
     }
 
     private func requestActivity(with state: DownloadActivityAttributes.ContentState) {
@@ -252,7 +261,9 @@ final class DownloadLiveActivityManager {
             )
             lastState = state
             lastUpdateAt = .now
-            LogStore.shared.info("live activity started")
+            LogStore.shared.info(
+                "live activity started · app=\(UIApplication.shared.applicationState.rawValue)"
+            )
         } catch {
             LogStore.shared.warning(
                 "live activity start failed · \(error.localizedDescription)"
