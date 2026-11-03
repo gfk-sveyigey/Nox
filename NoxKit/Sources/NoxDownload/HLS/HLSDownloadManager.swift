@@ -47,7 +47,7 @@ extension DownloadManager {
         // 自定义下载管线统计，不依赖 AVAsset 的系统 Live Activity。
         let segmentLoader: HLSDownloader.SegmentLoader?
 
-        if store.keepAliveMode == .off {
+        if store.keepAliveMode.usesSystemDownloadSession {
             segmentLoader = { [weak self] request, recordID in
                 guard let self else { throw CancellationError() }
                 return try await self.fetchHLSSegment(request, recordID: recordID)
@@ -74,6 +74,7 @@ extension DownloadManager {
                 Task { @MainActor in
                     guard let self, self.isCurrentRun(id, token: token) else { return }
                     self.hlsProgress[id] = progress
+                    self.publishProgressIfNeeded()
                 }
             }
 
@@ -141,6 +142,7 @@ extension DownloadManager {
                     bytes: bytes,
                     estimatedTotalBytes: estimatedTotal
                 )
+                self.publishProgressIfNeeded()
             }
 
             guard isCurrentRun(id, token: token) else {

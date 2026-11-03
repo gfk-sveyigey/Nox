@@ -21,7 +21,9 @@ final class DownloadLiveActivityManager {
     private var activity: Activity<DownloadActivityAttributes>?
     private var lastState: DownloadActivityAttributes.ContentState?
     private var lastUpdateAt = Date.distantPast
-    private static let minimumUpdateInterval: TimeInterval = 1.5
+    /// 进度定时器每秒刷新一次；Live Activity 合并到约 1 秒一次，
+    /// 既不会错过保活方式的进度变化，也不会因过密更新被系统节流。
+    private static let minimumUpdateInterval: TimeInterval = 1.0
     private static let staleInterval: TimeInterval = 120
 
     init(appState: AppState, downloadManager: DownloadManager) {
@@ -78,13 +80,9 @@ final class DownloadLiveActivityManager {
         }
 
         // iOS 26 持续处理会由系统展示自己的 Live Activity，不能再叠一个。
-        // 冷启动时系统活动可能还没真正启动，因此配置为持续处理且当前尚未
-        // 启用其它策略时也先让位，避免两个活动短暂并存。
-        let activeMode = downloadManager.activeKeepAliveMode
-        let preferredMode = downloadManager.preferredKeepAliveMode
-        let willUseContinuedProcessing = activeMode == .continuedProcessing
-            || (activeMode == .off && preferredMode == .continuedProcessing)
-        guard !willUseContinuedProcessing else {
+        // 只有系统任务确实成为当前策略时才让位；如果它启动失败（activeMode
+        // 仍是 .off），继续使用自定义活动，至少进度和速度不会整个消失。
+        guard downloadManager.activeKeepAliveMode != .continuedProcessing else {
             endActivity(using: state)
             return
         }
@@ -195,9 +193,11 @@ final class DownloadLiveActivityManager {
                 return
             }
             if let lastState,
-               abs(lastState.progress - state.progress) < 0.002,
+               abs(lastState.progress - state.progress) < 0.001,
                lastState.activeCount == state.activeCount,
-               lastState.downloadingCount == state.downloadingCount {
+               lastState.downloadingCount == state.downloadingCount,
+               abs(lastState.bytesPerSecond - state.bytesPerSecond) < 1,
+               lastState.currentTitle == state.currentTitle {
                 return
             }
         }

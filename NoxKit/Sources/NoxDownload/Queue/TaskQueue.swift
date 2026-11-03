@@ -69,6 +69,31 @@ extension DownloadManager {
         }
     }
 
+    /// 后台 / 前台下载会话切换时重启当前任务。
+    ///
+    /// 不把任务标成取消：分片文件仍在磁盘上，重新排队后会从断点继续。
+    func restartActiveDownloadsForSessionChange() {
+        let targets = store.downloads.filter {
+            $0.status == .queued || $0.status == .downloading
+        }
+        guard !targets.isEmpty else { return }
+
+        for record in targets {
+            invalidateRun(for: record.id)
+            resetScheduling(for: record.id)
+            removeFromQueue(record.id)
+            releaseSlotWithoutPump(record.id)
+            clearTransferStats(for: record.id)
+
+            var updated = record
+            updated.status = .queued
+            updated.errorMessage = nil
+            store.updateDownload(updated)
+        }
+
+        reconcileTaskQueue(reason: "download session change")
+    }
+
     /// 让调度器的内部状态与持久化记录重新对齐。
     ///
     /// `store.downloads` 里的 `status` 是唯一事实来源：

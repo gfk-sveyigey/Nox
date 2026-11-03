@@ -30,6 +30,8 @@ extension DownloadManager {
     }
 
     func tickProgress() {
+        lastProgressPublishTime = SpeedMeter.now()
+
         // 储存保护：每 3 秒检查一次整机剩余空间。低于阈值时立即暂停
         // 正在下载的任务，避免继续把设备写满。
         if Date().timeIntervalSince(lastStorageCheck) >= 3 {
@@ -148,6 +150,17 @@ extension DownloadManager {
                 keepAlive.updateProgress(fraction)
             }
         }
+    }
+
+    /// 网络回调刚推进了进度时主动刷新一次。
+    ///
+    /// 后台 URLSession / AVAsset 的回调在自己被系统唤醒的窗口内执行，
+    /// 不能只依赖 RunLoop 定时器；否则 App 再次挂起前，下载记录和
+    /// Live Activity 都会停在上一帧。与定时器共用 1 秒限频。
+    func publishProgressIfNeeded() {
+        let now = SpeedMeter.now()
+        guard now - lastProgressPublishTime >= 0.9 else { return }
+        tickProgress()
     }
 
     func clearTransferStats(for id: UUID) {

@@ -162,6 +162,7 @@ extension DownloadManager {
         }
 
         completedSegments[recordID, default: []].insert(segmentIndex)
+        publishProgressIfNeeded()
 
         pumpSegments(recordID: recordID, token: token)
     }

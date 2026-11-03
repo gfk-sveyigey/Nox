@@ -20,13 +20,14 @@ struct DownloadLiveActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    DownloadActivityMark(size: 34)
+                    DownloadActivityMark(size: 30)
+                        .padding(.leading, 2)
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: 1) {
                         Text(percentText(context.state.progress))
-                            .font(.system(.title3, design: .rounded).weight(.bold))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
                             .monospacedDigit()
                         if context.isStale {
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -34,17 +35,22 @@ struct DownloadLiveActivityWidget: Widget {
                                 .foregroundStyle(.orange)
                         }
                     }
+                    .padding(.trailing, 2)
                 }
 
+                // 展开态的底部区域会一直铺到灵动岛的圆角边缘。
+                // 这里保留水平 / 底部内边距，避免进度条和速度文字压到圆角外。
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 6) {
                         ProgressView(value: context.state.progress)
                             .tint(activityAccent)
 
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             Text(context.state.currentTitle)
                                 .font(.caption)
                                 .lineLimit(1)
+                                .truncationMode(.middle)
+                                .layoutPriority(1)
                                 .foregroundStyle(.secondary)
 
                             Spacer(minLength: 4)
@@ -53,11 +59,14 @@ struct DownloadLiveActivityWidget: Widget {
                                 Text(speedText(context.state.bytesPerSecond))
                                     .font(.caption2.weight(.medium))
                                     .monospacedDigit()
+                                    .fixedSize(horizontal: true, vertical: false)
                                     .foregroundStyle(.secondary)
                             }
                         }
                     }
+                    .padding(.horizontal, 6)
                     .padding(.top, 2)
+                    .padding(.bottom, 2)
                 }
             } compactLeading: {
                 Image(systemName: "arrow.down.circle.fill")
