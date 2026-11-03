@@ -736,8 +736,8 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
         }
 
         isStoppingSelf = false
-        // 先确认启动阶段类型，再延迟提交共存类型（对齐参考实现的 4 → 6 时序）。
-        coexistence?.confirmStartupType(for: controller)
+        // 启动前已经是共存类型 6；这里再确认一次，防止启动过程中被退回普通类型。
+        coexistence?.confirmCoexistenceType(for: controller)
         coexistence?.schedulePostStartUpdate(for: controller)
     }
 
