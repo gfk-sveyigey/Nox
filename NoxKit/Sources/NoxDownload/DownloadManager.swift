@@ -323,13 +323,15 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         guard mode.isAvailable else { return }
 
         let usedBackgroundSession = store.keepAliveMode.usesBackgroundDownloadSession
+        let usedBackgroundHLS = store.keepAliveMode.usesBackgroundHLSSegments
         store.keepAliveMode = mode
         store.persist()
         keepAlive.preferredMode = mode
 
-        // 后台会话与「仅前台下载」的前台会话不能中途互换，切换时重启当前任务，
+        // 普通文件会话或 HLS 分片会话不能中途互换，切换时重启当前任务，
         // 让正在下载的内容也立刻换到新的下载方式，而不是等下一次重试。
-        if usedBackgroundSession != mode.usesBackgroundDownloadSession {
+        if usedBackgroundSession != mode.usesBackgroundDownloadSession
+            || usedBackgroundHLS != mode.usesBackgroundHLSSegments {
             restartActiveDownloadsForSessionChange()
         }
     }
