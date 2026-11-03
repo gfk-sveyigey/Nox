@@ -28,15 +28,15 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
     public var detail: String {
         switch self {
         case .off:
-            return L("仅此模式使用系统后台下载：普通文件走 Background URLSession；HLS 在 iOS 26 及以上交给系统 AVAsset，低版本使用兼容分片。")
+            return L("普通文件和 HLS 都使用 Background URLSession；HLS 走可统计大小、速度并支持断点续传的分片引擎。")
         case .foregroundOnly:
             return L("不使用后台下载，也不启动保活。切到后台时暂停任务，回到前台后自动继续。")
         case .continuedProcessing:
             return L("App 在前台开始下载后，系统授予后台执行时间，并强制在其自带的锁屏 / 灵动岛面板显示进度与取消按钮；该面板无法替换为自定义实时活动。")
         case .silentAudio:
-            return L("循环播放极短静音，并使用前台下载会话保持进度更新。可能打断其他 App 正在播放的音频。")
+            return L("循环播放极低电平静音，让 App 保持运行；普通文件走后台会话，HLS 使用兼容分片引擎。锁屏后仍可继续，可能打断其他 App 正在播放的音频。")
         case .pictureInPicture:
-            return L("用系统画中画保活，并使用前台下载会话：不占用音频会话，不打断其他 App 的音频，也尽量减少与其他画中画的互相挤占。")
+            return L("用系统画中画让 App 保持运行；普通文件走后台会话，HLS 使用兼容分片引擎。锁屏后仍可继续，不占用音频会话，也尽量减少与其他画中画的互相挤占。")
         }
     }
 
@@ -59,12 +59,20 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// 是否把网络传输交给系统的后台下载基础设施。
+    /// 普通文件是否使用 Background URLSession。
     ///
-    /// 只有「系统下载」使用 Background URLSession / AVAsset：App 可能被挂起，
-    /// 必须由系统接管传输。其余方式都依赖 App 进程继续运行，因此使用前台
-    /// URLSession，让进度、速度和 Live Activity 能持续刷新。
-    public var usesSystemDownloadSession: Bool {
+    /// 除「仅前台下载」外都交给系统后台会话：URLSession 的 default 配置没有
+    /// 独立的后台传输能力，App 一旦被系统挂起就会停。静音音频 / 画中画负责
+    /// 尽量让 App 保持运行；普通文件的传输则始终交给后台会话。
+    public var usesBackgroundDownloadSession: Bool {
+        self != .foregroundOnly
+    }
+
+    /// HLS 分片是否使用后台 URLSession。
+    ///
+    /// 只有「系统下载」使用后台分片会话；静音音频 / 画中画 / 持续处理沿用
+    /// 兼容分片引擎（URLSession.shared），由保活策略保证锁屏后的执行时间。
+    public var usesBackgroundHLSSegments: Bool {
         self == .off
     }
 }
