@@ -32,6 +32,23 @@ extension VideoBrowserView {
         parser.load(url)
     }
 
+    /// 双击底部「浏览」标签时回到网页顶部。
+    ///
+    /// 只看网页内容；首页的书签列表不在这里处理。`adjustedContentInset`
+    /// 用来兼容安全区 / 内容内边距，避免滚到 -0 而不是真正的顶部。
+    func scrollBrowserToTop() {
+        guard !showingHome else { return }
+
+        let scrollView = parser.browserWebView.scrollView
+        let topY = -scrollView.adjustedContentInset.top
+        guard scrollView.contentOffset.y > topY + 0.5 else { return }
+
+        scrollView.setContentOffset(
+            CGPoint(x: 0, y: topY),
+            animated: true
+        )
+    }
+
     func openAddress() {
         // 点击打开后收起键盘
         addressFocused = false

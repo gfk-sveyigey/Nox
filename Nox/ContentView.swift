@@ -15,6 +15,11 @@ struct ContentView: View {
     @ObservedObject private var localization = LocalizationManager.shared
     @State private var selectedTab = 0
     @State private var browserURL: URL?
+    /// 双击「浏览」标签时递增，通知浏览页回到顶部。
+    @State private var browserScrollToTopToken = 0
+    /// 从别的标签切到「浏览」的时间。刚切过来时的下一次点击只用于切换，
+    /// 不应该被当成双击的第一下。
+    @State private var browseBecameSelectedAt = Date.distantPast
     @State private var didLogSession = false
     @State private var startupFinished = false
     @State private var didPrepareStartup = false
@@ -28,7 +33,12 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            VideoBrowserView(appState: appState, downloads: downloadManager, requestedURL: $browserURL)
+            VideoBrowserView(
+                appState: appState,
+                downloads: downloadManager,
+                requestedURL: $browserURL,
+                scrollToTopToken: browserScrollToTopToken
+            )
                 .tabItem { Label(L("浏览"), systemImage: "safari") }
                 .tag(0)
 
@@ -50,6 +60,17 @@ struct ContentView: View {
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            TabBarDoubleTapObserver {
+                // 给底层手势再加一道保险：刚切到浏览页时，即使第一下被
+                // 系统提前改写了选中态，也不会把紧接着的第二下误判成双击。
+                let elapsed = Date().timeIntervalSince(browseBecameSelectedAt)
+                guard elapsed >= TabBarDoubleTapObserver.doubleTapInterval else {
+                    return
+                }
+                browserScrollToTopToken += 1
+            }
+        }
         .overlay {
             if !startupFinished {
                 StartupView()
@@ -95,6 +116,12 @@ struct ContentView: View {
             guard !didLogSession else { return }
             didLogSession = true
             LogStore.shared.recordSessionStart()
+        }
+        // 从别的标签切到浏览时记录时间，避免紧接着的点击被当成双击第一下。
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == 0, oldValue != 0 {
+                browseBecameSelectedAt = Date()
+            }
         }
         // 回到前台：重置速度采样（后台期间定时器不触发），并让后台保活自愈。
         .onChange(of: scenePhase) { _, phase in

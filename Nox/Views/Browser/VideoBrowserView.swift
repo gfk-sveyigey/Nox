@@ -18,6 +18,8 @@ struct VideoBrowserView: View {
     @ObservedObject var registry = VideoSiteParserRegistry.shared
 
     @Binding var requestedURL: URL?
+    /// 由 ContentView 在双击「浏览」标签时递增。
+    let scrollToTopToken: Int
 
     @State var address = ""
     @State var parsedVideo: ParsedVideo?
@@ -61,10 +63,16 @@ struct VideoBrowserView: View {
         let defaultFilename: String
     }
 
-    init(appState: AppState, downloads: DownloadManager, requestedURL: Binding<URL?>) {
+    init(
+        appState: AppState,
+        downloads: DownloadManager,
+        requestedURL: Binding<URL?>,
+        scrollToTopToken: Int
+    ) {
         _parser = StateObject(wrappedValue: VideoParser(sites: appState))
         _downloads = ObservedObject(wrappedValue: downloads)
         _requestedURL = requestedURL
+        self.scrollToTopToken = scrollToTopToken
     }
 
     var body: some View {
@@ -125,6 +133,9 @@ struct VideoBrowserView: View {
             }
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()
+            }
+            .onChange(of: scrollToTopToken) { _, _ in
+                scrollBrowserToTop()
             }
             // 地址栏跟随 WebView 的实际地址：页面内点链接、重定向、后退/前进都会更新。
             .onChange(of: parser.currentURL) { _, newValue in
