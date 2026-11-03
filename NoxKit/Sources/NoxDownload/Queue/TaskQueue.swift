@@ -57,6 +57,16 @@ extension DownloadManager {
             contexts[identifier]?.task.cancel()
             contexts.removeValue(forKey: identifier)
         }
+
+        let hlsIdentifiers = hlsSegmentContexts
+            .filter { $0.value.recordID == id }
+            .map(\.key)
+
+        for identifier in hlsIdentifiers {
+            guard let context = hlsSegmentContexts.removeValue(forKey: identifier) else { continue }
+            context.task.cancel()
+            context.continuation.resume(throwing: CancellationError())
+        }
     }
 
     /// 让调度器的内部状态与持久化记录重新对齐。

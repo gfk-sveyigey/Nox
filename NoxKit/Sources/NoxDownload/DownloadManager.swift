@@ -18,6 +18,9 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 此时不再启动新任务，并暂停正在下载的任务。
     @Published public internal(set) var storageBlocked = false
 
+    /// 系统下载模式下，HLS 分片请求的等待上下文。
+    var hlsSegmentContexts: [Int: HLSSegmentContext] = [:]
+
     /// 每个分片的目标大小。
     ///
     /// 必须是**固定值**：分片边界只由 (总大小, 本值) 决定，与线程数无关。
@@ -133,6 +136,16 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         let partURL: URL
         let alreadyWritten: Int64
         let task: URLSessionDownloadTask
+    }
+
+    /// HLS 分片走后台 URLSession 时的等待上下文。
+    ///
+    /// m3u8 的分片不是字节区间，不能复用普通文件的分片调度；单独记录
+    /// task → continuation 的映射即可，完成的分片仍由 HLSDownloader 落到 part 文件。
+    struct HLSSegmentContext {
+        let recordID: UUID
+        let task: URLSessionDownloadTask
+        let continuation: CheckedContinuation<Data, Error>
     }
 
     lazy var session: URLSession = {
@@ -326,6 +339,23 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         Task {
             _ = await KeepAliveNotifier.requestAuthorization()
         }
+    }
+
+    /// 设置页切换「下载完成后通知」。
+    public func setDownloadCompletionNotifications(_ enabled: Bool) {
+        store.downloadCompletionNotifications = enabled
+        store.persist()
+
+        guard enabled else { return }
+        Task {
+            _ = await KeepAliveNotifier.requestAuthorization()
+        }
+    }
+
+    /// 设置页切换实时活动 / 通知是否显示具体任务名。
+    public func setShowsTaskNames(_ enabled: Bool) {
+        store.showsTaskNames = enabled
+        store.persist()
     }
 
     /// 设置页选择「画中画共存保护不可用」时的兜底方案。

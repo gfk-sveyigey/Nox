@@ -15,6 +15,13 @@ extension DownloadManager {
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
+        // HLS 分片的 taskDescription 带 "hls:" 前缀；它不是普通字节分片，
+        // 直接把数据交回 HLSDownloader，由其解密并写入 part 文件。
+        if downloadTask.taskDescription?.hasPrefix("hls:") == true {
+            handleHLSSegment(task: downloadTask, location: location)
+            return
+        }
+
         guard
             let idString = downloadTask.taskDescription,
             let recordID = UUID(uuidString: idString)
@@ -72,6 +79,47 @@ extension DownloadManager {
                 recordID: recordID
             )
         }
+    }
+
+    // MARK: - HLS 分片回调
+
+    private nonisolated func handleHLSSegment(
+        task: URLSessionDownloadTask,
+        location: URL
+    ) {
+        let identifier = task.taskIdentifier
+
+        if let http = task.response as? HTTPURLResponse,
+           !(200..<300).contains(http.statusCode) {
+            Task { @MainActor in
+                self.failHLSSegment(identifier: identifier, error: URLError(.badServerResponse))
+            }
+            return
+        }
+
+        do {
+            // 系统临时文件只在回调期间有效，先读成 Data 再回主线程。
+            let data = try Data(contentsOf: location)
+            Task { @MainActor in
+                self.completeHLSSegment(identifier: identifier, data: data)
+            }
+        } catch {
+            Task { @MainActor in
+                self.failHLSSegment(identifier: identifier, error: error)
+            }
+        }
+    }
+
+    @MainActor
+    private func completeHLSSegment(identifier: Int, data: Data) {
+        guard let context = hlsSegmentContexts.removeValue(forKey: identifier) else { return }
+        context.continuation.resume(returning: data)
+    }
+
+    @MainActor
+    private func failHLSSegment(identifier: Int, error: Error) {
+        guard let context = hlsSegmentContexts.removeValue(forKey: identifier) else { return }
+        context.continuation.resume(throwing: error)
     }
 
     func completeSegment(
@@ -154,6 +202,11 @@ extension DownloadManager {
         let identifier = task.taskIdentifier
 
         Task { @MainActor in
+            if let context = self.hlsSegmentContexts.removeValue(forKey: identifier) {
+                context.continuation.resume(throwing: error)
+                return
+            }
+
             guard let context = self.contexts.removeValue(forKey: identifier) else { return }
             guard self.isCurrentRun(context.recordID, token: context.runToken) else { return }
 

@@ -70,6 +70,13 @@ extension DownloadManager {
             inFlightBytes[context.recordID, default: 0] += max(context.task.countOfBytesReceived, 0)
         }
 
+        // HLS 后台分片：已完成的分片在 hlsProgress 里，正在传输的部分
+        // 从后台任务读取，这样速度和大小在分段之间也能持续更新。
+        var hlsInFlightBytes: [UUID: Int64] = [:]
+        for context in hlsSegmentContexts.values {
+            hlsInFlightBytes[context.recordID, default: 0] += max(context.task.countOfBytesReceived, 0)
+        }
+
         for record in activeRecords {
             let id = record.id
 
@@ -83,9 +90,10 @@ extension DownloadManager {
             let total: Int64
 
             if isHLS {
-                // m3u8 的字节数来自分片累计；总大小按已完成进度估算。
+                // m3u8 的字节数来自已完成分片 + 正在传输的分片；
+                // 总大小按已完成进度估算。
                 guard let snapshot = hlsProgress[id] else { continue }
-                received = snapshot.bytes
+                received = snapshot.bytes + (hlsInFlightBytes[id] ?? 0)
                 total = snapshot.estimatedTotalBytes
             } else {
                 let inFlight = inFlightBytes[id] ?? 0

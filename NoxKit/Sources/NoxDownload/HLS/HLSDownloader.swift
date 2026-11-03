@@ -4,6 +4,9 @@ import NoxCore
 import NoxKeepAlive
 
 final class HLSDownloader {
+    /// 系统下载模式下，把分片请求交给后台 URLSession。
+    typealias SegmentLoader = @Sendable (URLRequest, UUID) async throws -> Data
+
     struct Progress {
         let completed: Int
         let total: Int
@@ -44,17 +47,21 @@ final class HLSDownloader {
     private let maxRetries: Int
     /// 「仅无线局域网」时置为 false，清单 / 密钥 / 分片请求都不走蜂窝。
     private let allowsCellularAccess: Bool
+    /// 非 nil 时，分片请求走后台 URLSession；清单和密钥仍用普通请求。
+    private let segmentLoader: SegmentLoader?
 
     init(
         concurrency: Int = 4,
         timeout: TimeInterval = 30,
         maxRetries: Int = 2,
-        allowsCellularAccess: Bool = true
+        allowsCellularAccess: Bool = true,
+        segmentLoader: SegmentLoader? = nil
     ) {
         self.concurrency = max(1, concurrency)
         self.timeout = timeout
         self.maxRetries = max(0, maxRetries)
         self.allowsCellularAccess = allowsCellularAccess
+        self.segmentLoader = segmentLoader
     }
 
     /// - Returns: 合并完成的暂存文件 URL，由调用方搬到 `Documents/`
@@ -71,6 +78,7 @@ final class HLSDownloader {
         // 捕获成局部值：分片下载在 @Sendable 闭包里执行，
         // 直接读实例属性会让闭包间接捕获整个 HLSDownloader。
         let allowsCellularAccess = self.allowsCellularAccess
+        let segmentLoader = self.segmentLoader
         let partsDirectory = DownloadStorage.partsDirectory(for: recordID)
         let stagingDirectory = DownloadStorage.stagingDirectory(for: recordID)
 
@@ -164,7 +172,9 @@ final class HLSDownloader {
                     referer: referer,
                     cookieHeader: cookieHeader,
                     userAgent: userAgent,
-                    allowsCellularAccess: allowsCellularAccess
+                    allowsCellularAccess: allowsCellularAccess,
+                    recordID: recordID,
+                    segmentLoader: segmentLoader
                 )
             }
 
@@ -229,7 +239,9 @@ final class HLSDownloader {
                             referer: referer,
                             cookieHeader: cookieHeader,
                             userAgent: userAgent,
-                            allowsCellularAccess: allowsCellularAccess
+                            allowsCellularAccess: allowsCellularAccess,
+                            recordID: recordID,
+                            segmentLoader: segmentLoader
                         )
                     }
                 }
@@ -444,7 +456,9 @@ final class HLSDownloader {
         cookieHeader: String?,
         userAgent: String?,
         allowsCellularAccess: Bool,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        recordID: UUID? = nil,
+        segmentLoader: SegmentLoader? = nil
     ) async throws -> Data? {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -458,6 +472,13 @@ final class HLSDownloader {
         if let referer { request.setValue(referer.absoluteString, forHTTPHeaderField: "Referer") }
         if let cookieHeader, !cookieHeader.isEmpty { request.setValue(cookieHeader, forHTTPHeaderField: "Cookie") }
         if let userAgent, !userAgent.isEmpty { request.setValue(userAgent, forHTTPHeaderField: "User-Agent") }
+
+        if let segmentLoader {
+            guard let recordID else {
+                throw ParserError.manifestRequestFailed(L("分片缺少下载任务标识"))
+            }
+            return try await segmentLoader(request, recordID)
+        }
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -477,7 +498,9 @@ final class HLSDownloader {
         referer: URL?,
         cookieHeader: String?,
         userAgent: String?,
-        allowsCellularAccess: Bool
+        allowsCellularAccess: Bool,
+        recordID: UUID,
+        segmentLoader: SegmentLoader?
     ) async throws -> Int64 {
         var lastError: Error = ParserError.manifestRequestFailed(L("分片下载失败"))
         let attempts = 2
@@ -492,7 +515,9 @@ final class HLSDownloader {
                     cookieHeader: cookieHeader,
                     userAgent: userAgent,
                     allowsCellularAccess: allowsCellularAccess,
-                    timeout: 45
+                    timeout: 45,
+                    recordID: recordID,
+                    segmentLoader: segmentLoader
                 ) else {
                     throw ParserError.manifestRequestFailed(L("分片响应为空"))
                 }

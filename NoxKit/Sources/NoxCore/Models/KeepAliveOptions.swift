@@ -4,11 +4,10 @@ import Foundation
 ///
 /// 与下载解耦：是否启动由「保活模式」（`KeepAliveLifetime`）决定 —— 跟随下载任务，或进入前台即常驻。
 public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
-    /// 只依赖系统后台下载（Background URLSession），不额外保活。
-    /// HLS 在支持的系统上会自动交给 AVAsset。
-    case off
     /// 只在 App 前台下载；切到后台时暂停，回到前台后继续。
     case foregroundOnly
+    /// 只依赖系统后台下载（Background URLSession），不额外保活。
+    case off
     /// iOS 26 的 BGContinuedProcessingTask：用户前台发起后，系统继续给进程执行时间。
     case continuedProcessing
     case silentAudio

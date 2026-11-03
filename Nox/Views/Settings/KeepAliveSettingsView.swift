@@ -76,32 +76,17 @@ struct KeepAliveSettingsView: View {
                 }
             }
 
-            if appState.keepAliveMode.startsKeepAlive {
+            if appState.keepAliveMode.startsKeepAlive,
+               appState.keepAliveMode != .silentAudio {
                 Section {
-                    if appState.keepAliveMode != .silentAudio {
-                        Toggle(isOn: Binding(
-                            get: { appState.keepAliveSilentAudioFallback },
-                            set: { manager.setKeepAliveSilentAudioFallback($0) }
-                        )) {
-                            Text(L("中断后改用静音音频"))
-                        }
-                    }
-
                     Toggle(isOn: Binding(
-                        get: { appState.keepAliveNotifications },
-                        set: { manager.setKeepAliveNotifications($0) }
+                        get: { appState.keepAliveSilentAudioFallback },
+                        set: { manager.setKeepAliveSilentAudioFallback($0) }
                     )) {
-                        Text(L("保活中断时通知"))
+                        Text(L("中断后改用静音音频"))
                     }
                 } footer: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        if appState.keepAliveMode != .silentAudio {
-                            Text(L("开启后，画中画或持续处理被系统中断时会自动改用静音音频继续下载。这会占用音频会话，可能打断其他 App 正在播放的声音。"))
-                        }
-                        if appState.keepAliveNotifications {
-                            Text(L("保活失效且仍有下载任务时会发送本地通知；首次开启需要允许 Nox 发送通知。"))
-                        }
-                    }
+                    Text(L("开启后，画中画或持续处理被系统中断时会自动改用静音音频继续下载。这会占用音频会话，可能打断其他 App 正在播放的声音。"))
                 }
             }
 

@@ -2805,6 +2805,102 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 다운로드" } }
       }
     },
+    "推送通知" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mitteilungen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Notifications" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알림" } }
+      }
+    },
+    "设置中断提醒、完成提醒和任务名显示。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unterbrechungs- und Abschlusshinweise sowie die Anzeige von Aufgabennamen einstellen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Configure interruption and completion alerts, and how task names are shown." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Configurer les alertes d’interruption et de fin, ainsi que l’affichage des noms de tâches." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "중단 및 완료 알림과 작업 이름 표시 방식을 설정합니다." } }
+      }
+    },
+    "下载完成后通知" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach Abschluss benachrichtigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notify when downloads finish" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Notifier à la fin des téléchargements" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 완료 시 알림" } }
+      }
+    },
+    "显示内容" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Angezeigter Inhalt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Displayed content" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Contenu affiché" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "표시 내용" } }
+      }
+    },
+    "显示具体任务名" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabennamen anzeigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show task names" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les noms des tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 이름 표시" } }
+      }
+    },
+    "仅提示有任务完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Abschluss melden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only indicate a task finished" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Indiquer seulement qu’une tâche est terminée" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 완료만 표시" } }
+      }
+    },
+    "下载完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download abgeschlossen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download complete" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement terminé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 완료" } }
+      }
+    },
+    "有一个任务完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Eine Aufgabe wurde abgeschlossen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A task has finished" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une tâche est terminée" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 하나가 완료되었습니다" } }
+      }
+    },
+    "配置后台运行方式与保活策略。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hintergrundausführung und Keep-Alive-Strategie konfigurieren." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Configure background execution and keep-alive." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Configurer l’exécution en arrière-plan et le maintien d’activité." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 실행 방식과 유지 전략을 설정합니다." } }
+      }
+    },
+    "保活中断提醒仅在持续处理、静音音频或画中画被系统中断时生效。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unterbrechungshinweise gelten nur, wenn fortgesetzte Verarbeitung, stummes Audio oder PiP vom System unterbrochen werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Interruption alerts only apply when continued processing, silent audio, or PiP is interrupted by the system." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les alertes d’interruption ne s’appliquent que si le traitement continu, l’audio silencieux ou le PiP est interrompu par le système." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "중단 알림은 연속 처리, 무음 오디오 또는 PiP가 시스템에 의해 중단될 때만 적용됩니다." } }
+      }
+    },
+    "首次开启通知时需要允许 Nox 发送通知。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beim ersten Aktivieren muss Nox Mitteilungen senden dürfen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The first time you enable notifications, allow Nox to send them." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lors de la première activation, autorisez Nox à envoyer des notifications." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알림을 처음 켤 때 Nox의 알림 전송을 허용해야 합니다." } }
+      }
+    },
+    "实时活动与通知共用这套设置。关闭任务名后，实时活动显示「正在下载」，完成通知显示「有一个任务完成」。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Live-Aktivitäten und Mitteilungen nutzen diese Einstellung gemeinsam. Ohne Aufgabennamen zeigt die Live-Aktivität „Wird geladen“ und die Abschlussmitteilung „Eine Aufgabe wurde abgeschlossen“." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Live Activities and notifications share this setting. Without task names, the Live Activity shows “Downloading” and completion notifications show “A task has finished”." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les activités en direct et les notifications partagent ce réglage. Sans nom de tâche, l’activité affiche « Téléchargement » et la notification « Une tâche est terminée »." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실시간 활동과 알림은 이 설정을 함께 사용합니다. 작업 이름을 끄면 실시간 활동에는 '다운로드 중', 완료 알림에는 '작업 하나가 완료되었습니다'가 표시됩니다." } }
+      }
+    },
     "仅前台下载" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur im Vordergrund" } },

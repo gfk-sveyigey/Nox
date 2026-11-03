@@ -148,7 +148,9 @@ final class DownloadLiveActivityManager {
             .reduce(Double(0)) { $0 + max($1.bytesPerSecond, 0) }
 
         let current = downloading.first ?? active.first
-        let title = current?.displayTitle ?? "Nox"
+        let title = appState.showsTaskNames
+            ? (current?.displayTitle ?? "Nox")
+            : L("正在下载")
 
         return DownloadActivityAttributes.ContentState(
             progress: progress,

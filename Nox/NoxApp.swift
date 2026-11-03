@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 import NoxCore
 import NoxDownload
 import NoxKeepAlive
@@ -22,6 +23,9 @@ final class NoxAppDelegate: UIResponder, UIApplicationDelegate {
         if let url = launchOptions?[.url] as? URL {
             IncomingURLCenter.shared.submit(url, source: "launch")
         }
+
+        // 允许完成提醒在 App 前台时也显示。
+        UNUserNotificationCenter.current().delegate = NoxNotificationDelegate.shared
 
         // iOS 26 的持续处理任务必须在启动完成前注册，否则提交时会失败。
         ContinuedProcessingBridge.registerIfNeeded()
@@ -122,5 +126,22 @@ struct NoxRootView: View {
     var body: some View {
         ContentView()
             .environment(\.locale, localization.locale)
+    }
+}
+
+
+/// 本地通知在前台时的展示策略。
+///
+/// 系统默认只在后台展示本地通知；下载完成时用户很可能正在 App 里，
+/// 所以显式允许横幅和声音。
+private final class NoxNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NoxNotificationDelegate()
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .list])
     }
 }

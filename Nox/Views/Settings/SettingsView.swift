@@ -35,6 +35,15 @@ struct SettingsView: View {
     var settingsSections: some View {
         Section {
             settingsLink(
+                L("推送通知"),
+                subtitle: L("设置中断提醒、完成提醒和任务名显示。"),
+                systemImage: "bell.badge",
+                iconColor: .red
+            ) {
+                NotificationSettingsView(manager: manager)
+            }
+
+            settingsLink(
                 L("下载设置"),
                 subtitle: L("调整同时任务数、下载网络和线程等选项。"),
                 systemImage: "arrow.down.circle",
@@ -45,7 +54,7 @@ struct SettingsView: View {
 
             settingsLink(
                 L("后台下载"),
-                subtitle: L("配置后台运行方式、保活策略与下载引擎。"),
+                subtitle: L("配置后台运行方式与保活策略。"),
                 systemImage: "play.circle",
                 iconColor: .green
             ) {
