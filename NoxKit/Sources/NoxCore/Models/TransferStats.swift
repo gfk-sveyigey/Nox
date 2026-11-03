@@ -8,18 +8,28 @@ public struct TransferStats: Equatable {
     public var totalBytes: Int64 = 0
     /// 平滑后的瞬时速度（字节/秒）
     public var bytesPerSecond: Double = 0
+    /// 总大小是否为 HLS 按进度估算出来的值
+    public var isTotalEstimated: Bool = false
 
-    public init(bytesReceived: Int64 = 0, totalBytes: Int64 = 0, bytesPerSecond: Double = 0) {
+    public init(
+        bytesReceived: Int64 = 0,
+        totalBytes: Int64 = 0,
+        bytesPerSecond: Double = 0,
+        isTotalEstimated: Bool = false
+    ) {
         self.bytesReceived = bytesReceived
         self.totalBytes = totalBytes
         self.bytesPerSecond = bytesPerSecond
+        self.isTotalEstimated = isTotalEstimated
     }
 
-    /// "12.4 MB / 58.7 MB"，总大小未知时只有已下载部分
+    /// "12.4 MB / 58.7 MB"，总大小未知时只有已下载部分。
+    /// HLS 的总大小只能按已完成进度估算，因此前面加 `≈`。
     public var sizeText: String {
         let received = Self.formattedSize(bytesReceived)
         guard totalBytes > 0 else { return received }
-        return "\(received) / \(Self.formattedSize(totalBytes))"
+        let total = Self.formattedSize(totalBytes)
+        return isTotalEstimated ? "\(received) / ≈ \(total)" : "\(received) / \(total)"
     }
 
     public var speedText: String {

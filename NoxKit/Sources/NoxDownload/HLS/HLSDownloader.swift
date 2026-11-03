@@ -8,10 +8,36 @@ final class HLSDownloader {
         let completed: Int
         let total: Int
         let bytes: Int64
+        /// 按已完成分片的平均大小估算的总字节数；0 表示还无法估算。
+        let estimatedTotalBytes: Int64
+
+        init(
+            completed: Int,
+            total: Int,
+            bytes: Int64,
+            estimatedTotalBytes: Int64 = 0
+        ) {
+            self.completed = completed
+            self.total = total
+            self.bytes = bytes
+            self.estimatedTotalBytes = estimatedTotalBytes
+        }
     }
 
     /// 分片目录里的清单签名文件名
     private static let signatureFileName = "manifest.sig"
+
+    /// HLS 没有总字节数；按「已完成分片的平均大小 × 总片数」估算，
+    /// 首片完成后即可显示，越接近结束越准。
+    private static func estimatedTotalBytes(
+        completed: Int,
+        total: Int,
+        bytes: Int64
+    ) -> Int64 {
+        guard completed > 0, total > 0, bytes > 0 else { return 0 }
+        let estimate = Double(bytes) * Double(total) / Double(completed)
+        return max(bytes, Int64(estimate.rounded()))
+    }
 
     private let concurrency: Int
     private let timeout: TimeInterval
@@ -165,7 +191,18 @@ final class HLSDownloader {
         let tracker = ProgressTracker(completed: resumedCount, bytes: resumedBytes)
 
         // 先把「续传进度」报上去，否则进度条从 0 开始，看起来像没续上
-        onProgress?(Progress(completed: resumedCount, total: total, bytes: resumedBytes))
+        onProgress?(
+            Progress(
+                completed: resumedCount,
+                total: total,
+                bytes: resumedBytes,
+                estimatedTotalBytes: Self.estimatedTotalBytes(
+                    completed: resumedCount,
+                    total: total,
+                    bytes: resumedBytes
+                )
+            )
+        )
 
         if !pendingIndexes.isEmpty {
             try await withThrowingTaskGroup(of: Int64.self) { group in
@@ -204,7 +241,16 @@ final class HLSDownloader {
                 while let bytes = try await group.next() {
                     let snapshot = await tracker.advance(bytes: bytes)
                     onProgress?(
-                        Progress(completed: snapshot.completed, total: total, bytes: snapshot.bytes)
+                        Progress(
+                            completed: snapshot.completed,
+                            total: total,
+                            bytes: snapshot.bytes,
+                            estimatedTotalBytes: Self.estimatedTotalBytes(
+                                completed: snapshot.completed,
+                                total: total,
+                                bytes: snapshot.bytes
+                            )
+                        )
                     )
 
                     addNextTask()

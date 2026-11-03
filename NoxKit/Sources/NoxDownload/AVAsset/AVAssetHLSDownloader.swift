@@ -13,10 +13,22 @@ final class AVAssetHLSDownloader: NSObject {
         let recordID: UUID
         let continuation: CheckedContinuation<URL, Error>
         let task: AVAssetDownloadTask
-        let progress: (Double) -> Void
+        /// (媒体进度, 已下载字节, 估算总字节)
+        let progress: (Double, Int64, Int64) -> Void
+    }
+
+    /// AVAsset 不暴露逐字节进度，iOS 26 的 metric event 会给出每个
+    /// playlist / segment 请求的实际响应体字节数；这里按任务累计。
+    private struct ByteState {
+        var downloaded: Int64 = 0
+        var estimatedTotal: Int64 = 0
+        var totalDuration: Double = 0
+        var loadedDuration: Double = 0
+        var seenRequests: Set<String> = []
     }
 
     private var contexts: [Int: Context] = [:]
+    private var byteStates: [Int: ByteState] = [:]
     private var taskIdentifiers: [UUID: Int] = [:]
     private var session: AVAssetDownloadURLSession?
     private var sessionAllowsCellularAccess: Bool?
@@ -30,7 +42,7 @@ final class AVAssetHLSDownloader: NSObject {
         cookieHeader: String?,
         title: String,
         allowsCellularAccess: Bool,
-        progress: @escaping (Double) -> Void
+        progress: @escaping (Double, Int64, Int64) -> Void
     ) async throws -> URL {
         let session = makeSession(allowsCellularAccess: allowsCellularAccess)
 
@@ -60,13 +72,15 @@ final class AVAssetHLSDownloader: NSObject {
         task.taskDescription = recordID.uuidString
 
         return try await withCheckedThrowingContinuation { continuation in
-            contexts[task.taskIdentifier] = Context(
+            let identifier = task.taskIdentifier
+            contexts[identifier] = Context(
                 recordID: recordID,
                 continuation: continuation,
                 task: task,
                 progress: progress
             )
-            taskIdentifiers[recordID] = task.taskIdentifier
+            byteStates[identifier] = ByteState()
+            taskIdentifiers[recordID] = identifier
             task.resume()
         }
     }
@@ -81,8 +95,117 @@ final class AVAssetHLSDownloader: NSObject {
               let context = contexts.removeValue(forKey: identifier) else {
             return
         }
+        byteStates.removeValue(forKey: identifier)
         context.task.cancel()
         context.continuation.resume(throwing: CancellationError())
+    }
+
+    // MARK: - 字节统计
+
+    @MainActor
+    private func updateTimeProgress(
+        identifier: Int,
+        loaded: Double,
+        expected: Double
+    ) {
+        guard var state = byteStates[identifier],
+              let context = contexts[identifier] else { return }
+
+        state.totalDuration = expected
+        state.loadedDuration = min(max(loaded, 0), expected)
+        refreshEstimate(&state)
+        byteStates[identifier] = state
+        context.progress(fraction(of: state), state.downloaded, state.estimatedTotal)
+    }
+
+    @available(iOS 26.0, *)
+    @MainActor
+    private func handle(metricEvent: AVMetricEvent, identifier: Int) {
+        guard var state = byteStates[identifier],
+              let context = contexts[identifier] else { return }
+
+        // 任务结束时的汇总事件给出精确总字节数，用来校正累计值。
+        if let summary = metricEvent as? AVMetricDownloadSummaryEvent {
+            let total = Int64(max(summary.bytesDownloadedCount, 0))
+            state.downloaded = max(state.downloaded, total)
+            state.estimatedTotal = max(state.estimatedTotal, state.downloaded)
+            byteStates[identifier] = state
+            context.progress(fraction(of: state), state.downloaded, state.estimatedTotal)
+            return
+        }
+
+        guard let request = Self.resourceRequest(from: metricEvent) else { return }
+
+        let key = Self.metricKey(for: request)
+        guard state.seenRequests.insert(key).inserted else { return }
+
+        state.downloaded += max(Self.receivedBytes(from: request), 0)
+        refreshEstimate(&state)
+        byteStates[identifier] = state
+        context.progress(fraction(of: state), state.downloaded, state.estimatedTotal)
+    }
+
+    @MainActor
+    private func fraction(of state: ByteState) -> Double {
+        guard state.totalDuration > 0 else { return 0 }
+        return min(max(state.loadedDuration / state.totalDuration, 0), 1)
+    }
+
+    /// 已下载字节 / 已加载媒体比例 = 估算总字节数。
+    /// 指数平滑避免「总大小」每秒来回跳动。
+    @MainActor
+    private func refreshEstimate(_ state: inout ByteState) {
+        guard state.downloaded > 0,
+              state.loadedDuration > 0,
+              state.totalDuration > 0 else {
+            return
+        }
+
+        let ratio = min(max(state.loadedDuration / state.totalDuration, 0.02), 1)
+        let raw = Int64((Double(state.downloaded) / ratio).rounded())
+
+        if state.estimatedTotal <= 0 {
+            state.estimatedTotal = raw
+        } else {
+            state.estimatedTotal = Int64(
+                (Double(state.estimatedTotal) * 0.75 + Double(raw) * 0.25).rounded()
+            )
+        }
+
+        state.estimatedTotal = max(state.estimatedTotal, state.downloaded)
+    }
+
+    @available(iOS 18.0, *)
+    private nonisolated static func resourceRequest(
+        from event: AVMetricEvent
+    ) -> AVMetricMediaResourceRequestEvent? {
+        if let segment = event as? AVMetricHLSMediaSegmentRequestEvent {
+            return segment.mediaResourceRequestEvent
+        }
+        if let playlist = event as? AVMetricHLSPlaylistRequestEvent {
+            return playlist.mediaResourceRequestEvent
+        }
+        return event as? AVMetricMediaResourceRequestEvent
+    }
+
+    @available(iOS 18.0, *)
+    private nonisolated static func receivedBytes(
+        from request: AVMetricMediaResourceRequestEvent
+    ) -> Int64 {
+        let transactions = request.networkTransactionMetrics?.transactionMetrics ?? []
+        return transactions.reduce(Int64(0)) { partial, transaction in
+            partial + max(transaction.countOfResponseBodyBytesReceived, 0)
+        }
+    }
+
+    @available(iOS 18.0, *)
+    private nonisolated static func metricKey(
+        for request: AVMetricMediaResourceRequestEvent
+    ) -> String {
+        let url = request.url?.absoluteString ?? ""
+        let start = request.requestStartTime.timeIntervalSince1970
+        let range = request.byteRange
+        return "\(url)|\(start)|\(range.location)|\(range.length)"
     }
 
     private func makeSession(allowsCellularAccess: Bool) -> AVAssetDownloadURLSession {
@@ -122,6 +245,7 @@ final class AVAssetHLSDownloader: NSObject {
             try? FileManager.default.removeItem(at: localURL)
             return
         }
+        byteStates.removeValue(forKey: identifier)
         taskIdentifiers.removeValue(forKey: context.recordID)
 
         do {
@@ -191,11 +315,28 @@ extension AVAssetHLSDownloader: AVAssetDownloadDelegate {
         let loaded = loadedTimeRanges.reduce(0.0) { partial, value in
             partial + CMTimeGetSeconds(value.timeRangeValue.duration)
         }
-        let fraction = min(max(loaded / expected, 0), 1)
         let identifier = assetDownloadTask.taskIdentifier
 
         Task { @MainActor in
-            self.contexts[identifier]?.progress(fraction)
+            self.updateTimeProgress(
+                identifier: identifier,
+                loaded: loaded,
+                expected: expected
+            )
+        }
+    }
+
+    /// iOS 26 起每个 playlist / segment 请求都会回调 metric event，
+    /// 其中 `networkTransactionMetrics` 带有实际响应体字节数。
+    @available(iOS 26.0, *)
+    nonisolated func urlSession(
+        _ session: URLSession,
+        assetDownloadTask: AVAssetDownloadTask,
+        didReceive metricEvent: AVMetricEvent
+    ) {
+        let identifier = assetDownloadTask.taskIdentifier
+        Task { @MainActor in
+            self.handle(metricEvent: metricEvent, identifier: identifier)
         }
     }
 
@@ -261,6 +402,7 @@ extension AVAssetHLSDownloader: AVAssetDownloadDelegate {
     @MainActor
     private func fail(identifier: Int, error: Error) {
         guard let context = contexts.removeValue(forKey: identifier) else { return }
+        byteStates.removeValue(forKey: identifier)
         taskIdentifiers.removeValue(forKey: context.recordID)
         context.task.cancel()
         if error is CancellationError || (error as NSError).code == NSURLErrorCancelled {

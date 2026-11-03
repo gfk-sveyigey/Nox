@@ -105,12 +105,13 @@ extension DownloadManager {
                 cookieHeader: record.cookieHeader,
                 title: record.displayTitle,
                 allowsCellularAccess: allowsCellularDownloads
-            ) { [weak self] fraction in
+            ) { [weak self] fraction, bytes, estimatedTotal in
                 guard let self, self.isCurrentRun(id, token: token) else { return }
                 self.hlsProgress[id] = HLSDownloader.Progress(
                     completed: Int((fraction * 1000).rounded()),
                     total: 1000,
-                    bytes: 0
+                    bytes: bytes,
+                    estimatedTotalBytes: estimatedTotal
                 )
             }
 
