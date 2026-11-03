@@ -27,7 +27,9 @@ func noxKeepAliveLog(_ message: String) {
 /// 1. **先**在 adapter 类上安装实例级 provider `pictureInPictureProxyContentType:` 并挂上实例配置，
 ///    **再**惰性取得 `pegasusProxy` —— 系统在创建 proxy 时会依据响应能力 / 内容类型决定实现，
 ///    顺序反了这次会话就仍是普通 PiP（表现为启动保活时把其他 App 的画中画挤掉）；
-/// 2. 首次启动用 4，`didStart` 后再确认一次 4，延迟一小段（当前 1 秒）提交 6（一次，不轮询）。
+/// 2. **启动前就用 6**：系统的 `willShow` 阶段会依据新会话的内容类型决定是否允许
+///    与已有画中画共存；等到 `didStart` 之后再改成 6 已经太晚，另一个 App 的画中画
+///    在启动瞬间就已经被挤掉了。
 final class PiPCoexistenceProtection {
 
     private typealias IntegerSetter = @convention(c) (AnyObject, Selector, Int) -> Void
@@ -37,14 +39,16 @@ final class PiPCoexistenceProtection {
     private typealias StateMutation = @convention(block) (AnyObject) -> Void
     private typealias StateUpdater = @convention(c) (AnyObject, Selector, StateMutation) -> Void
 
-    /// 参考实现使用的两个内部取值：启动时用 4，启动成功后提交 6。
+    /// 内部内容类型取值：6 是系统允许「与已有画中画共存」的类型，4 是普通视频类型。
     /// 这两个数字是沿用的内部约定，**不要**当作 Apple 公布的枚举语义。
-    private let initialContentType = 4
-    private let coexistingContentType = 6
-    /// `didStart` 之后延迟提交共存类型的时长。
     ///
-    /// 对齐参考实现的 1 秒：启动窗口内保持普通类型，等系统真正完成会话建立后
-    /// 再切到共存类型，避免过早切换被系统当成一次新的内容类型变更。
+    /// 关键：类型必须在 `startPictureInPicture()` **之前**就提交为 6。
+    /// 系统在 `willShow` 时就会检查新会话的类型（`canActivateUntetheredAlongsideOtherObject:`），
+    /// 等到 `didStart` 后再改 6 已经来不及，另一个 App 的画中画已经被取消。
+    private let coexistingContentType = 6
+    /// 退场时恢复的普通类型。
+    private let fallbackContentType = 4
+    /// `didStart` 之后再次提交共存类型的延迟（只做一次确认，不轮询）。
     private let postStartDelay: TimeInterval = 1
 
     private static var associationKey: UInt8 = 0
@@ -136,7 +140,8 @@ final class PiPCoexistenceProtection {
         // 系统在创建 proxy 时会依据实例响应能力 / 内容类型决定实现；
         // 先取 proxy 再装 provider，会让本次会话仍是普通 PiP ——
         // 表现就是「启动保活时把其他 App 的画中画挤掉」。
-        let configuration = Configuration(proxy: nil, providedType: initialContentType)
+        // 从 provider 第一次被查询起就返回 6，保证系统在 willShow 前看到共存类型。
+        let configuration = Configuration(proxy: nil, providedType: coexistingContentType)
         objc_setAssociatedObject(adapter, &Self.associationKey, configuration, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         configuration.isObtainingProxy = true
         let candidateProxy = Self.object(adapter, selector: "pegasusProxy")
@@ -267,7 +272,7 @@ final class PiPCoexistenceProtection {
               let stateClass = object_getClass(state),
               let setter = Self.method(stateClass, selector: setterSelector, result: "v", arguments: ["q"]),
               let previousType = Self.contentType(of: candidateProxy),
-              previousType == initialContentType || previousType == coexistingContentType else {
+              previousType == coexistingContentType || previousType == fallbackContentType else {
             verboseLog("install 失败：内部签名或 contentType 不匹配")
             return false
         }
@@ -277,7 +282,7 @@ final class PiPCoexistenceProtection {
         installationID = token
         // 上一次会话可能没来得及把 6 退回 4（例如 App 被挂起后直接重开）。
         // 这种情况下仍可继续安装，但退场时要回到标准的 4，而不是 6。
-        originalContentType = previousType == coexistingContentType ? initialContentType : previousType
+        originalContentType = previousType == coexistingContentType ? fallbackContentType : previousType
         adapter = candidate
         proxy = candidateProxy
         // 关联配置已在 prepare() 里挂好（必须早于 proxy 创建），这里不再重复设置。
@@ -291,20 +296,19 @@ final class PiPCoexistenceProtection {
         }
         unsafeBitCast(method_getImplementation(update), to: StateUpdater.self)(candidateProxy, updateSelector, mutation)
         let localType = Self.contentType(of: candidateProxy).map(String.init) ?? "unknown"
-        noxKeepAliveLog("画中画共存保护：已安装 provider（首次类型 4，启动后转 6，本地 contentType=\(localType)）")
+        noxKeepAliveLog("画中画共存保护：已安装 provider（启动前即类型 6，本地 contentType=\(localType)）")
         verboseLog("install 成功 · previousType=\(previousType) localType=\(localType)")
         return true
     }
 
-    /// `didStart` 时再确认一次启动阶段类型（4）。
+    /// `didStart` 后再次确认共存类型（6）。
     ///
-    /// 参考实现会在 didStart 后显式提交 4，确保启动窗口内仍是普通类型；
-    /// 随后才在延迟任务里切到 6。这里保持同样的顺序，避免系统在启动瞬间
-    /// 依据上一个会话残留的 6 做出错误判断。
-    func confirmStartupType(for controller: AVPictureInPictureController) {
+    /// 启动前已经提交过 6；这里只做一次确认，保证启动过程中即使有其他播放状态
+    /// 更新也不会把类型退回普通值。
+    func confirmCoexistenceType(for controller: AVPictureInPictureController) {
         guard Thread.isMainThread, isPrepared, configuration != nil,
               self.controller === controller, controller.isPictureInPictureActive else { return }
-        submitContentType(initialContentType)
+        submitContentType(coexistingContentType)
     }
 
     /// 启动成功后提交共存类型 6（一次）。
