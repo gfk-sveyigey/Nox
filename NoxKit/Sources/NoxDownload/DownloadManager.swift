@@ -170,11 +170,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         )
     }()
 
-    /// 非「系统下载」方式使用的普通会话。
+    /// 「仅前台下载」使用的普通会话。
     ///
-    /// 它不申请后台会话：下载能继续，依赖的是「仅前台」主动暂停、或静音音频 /
-    /// 画中画 / 持续处理让 App 进程继续存活。进入后台前会有一段短时宽限，
-    /// 让保活完成交接。
+    /// 它不申请后台会话：进入后台时任务会被主动暂停，回到前台后从已有分片
+    /// 继续。其它方式都必须使用后台会话，否则锁屏后 App 一旦被挂起，传输和
+    /// 进度都会停。
     lazy var foregroundSession: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.allowsCellularAccess = allowsCellularDownloads
@@ -188,11 +188,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
     /// 分片请求使用的会话：由当前后台方式决定。
     ///
-    /// 只有「系统下载」使用后台 URLSession。仅前台、静音音频、画中画、
-    /// 持续处理都依赖 App 进程继续运行，改用前台会话才能让进度定时器和
-    /// Live Activity 持续更新，也避免后台会话把完成回调攒到 App 回到前台。
+    /// 只有「仅前台下载」使用普通 URLSession。其余方式都使用 Background
+    /// URLSession：保活策略负责让 App 保持运行、平滑刷新进度；即使进程被
+    /// 系统挂起，后台会话仍能把传输交给系统继续完成。
     var downloadSession: URLSession {
-        store.keepAliveMode.usesSystemDownloadSession ? session : foregroundSession
+        store.keepAliveMode.usesBackgroundDownloadSession ? session : foregroundSession
     }
 
     public init(store: DownloadStateStore) {
@@ -322,15 +322,14 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         // iOS 26 以下不提供持续处理；即便外部传入也不接受。
         guard mode.isAvailable else { return }
 
-        let usedSystemSession = store.keepAliveMode.usesSystemDownloadSession
+        let usedBackgroundSession = store.keepAliveMode.usesBackgroundDownloadSession
         store.keepAliveMode = mode
         store.persist()
         keepAlive.preferredMode = mode
 
-        // 系统下载与其它保活方式使用不同的 URLSession（HLS 在系统下载下还会
-        // 切换为 AVAsset）。切换时重启当前任务，让正在下载的内容也立刻换到
-        // 新的下载方式，而不是等下一次重试。
-        if usedSystemSession != mode.usesSystemDownloadSession {
+        // 后台会话与「仅前台下载」的前台会话不能中途互换，切换时重启当前任务，
+        // 让正在下载的内容也立刻换到新的下载方式，而不是等下一次重试。
+        if usedBackgroundSession != mode.usesBackgroundDownloadSession {
             restartActiveDownloadsForSessionChange()
         }
     }

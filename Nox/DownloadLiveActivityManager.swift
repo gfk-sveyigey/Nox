@@ -24,7 +24,9 @@ final class DownloadLiveActivityManager {
     /// 进度定时器每秒刷新一次；Live Activity 合并到约 1 秒一次，
     /// 既不会错过保活方式的进度变化，也不会因过密更新被系统节流。
     private static let minimumUpdateInterval: TimeInterval = 1.0
-    private static let staleInterval: TimeInterval = 120
+    /// 下载活动可能在后台按分片 / 回调刷新，间隔不一定固定；
+    /// 10 分钟没有新内容才标记为过期，避免慢速任务被过早显示成 stale。
+    private static let staleInterval: TimeInterval = 600
 
     init(appState: AppState, downloadManager: DownloadManager) {
         self.appState = appState

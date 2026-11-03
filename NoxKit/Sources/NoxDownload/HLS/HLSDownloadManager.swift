@@ -42,12 +42,12 @@ extension DownloadManager {
         hlsProgress.removeValue(forKey: id)
         startProgressTimerIfNeeded()
 
-        // 「系统下载」模式下，HLS 分片也交给后台 URLSession：
-        // 已完成的分片会落盘，App 被回收后可以续传；进度、大小和速度也仍由
-        // 自定义下载管线统计，不依赖 AVAsset 的系统 Live Activity。
+        // 除「仅前台下载」外，HLS 分片都交给后台 URLSession：
+        // 已完成的分片会落盘，App 被挂起 / 回收后可以续传；进度、大小和速度
+        // 仍由自定义下载管线统计，不依赖 AVAsset 的系统 Live Activity。
         let segmentLoader: HLSDownloader.SegmentLoader?
 
-        if store.keepAliveMode.usesSystemDownloadSession {
+        if store.keepAliveMode.usesBackgroundDownloadSession {
             segmentLoader = { [weak self] request, recordID in
                 guard let self else { throw CancellationError() }
                 return try await self.fetchHLSSegment(request, recordID: recordID)

@@ -81,6 +81,23 @@ extension DownloadManager {
         }
     }
 
+    /// 后台会话 / 前台会话在传输过程中都会回调这里。
+    ///
+    /// 只依赖 1 秒定时器的话，App 在锁屏后被系统短暂唤醒时可能来不及跑一次
+    /// 定时器；这里顺手触发限频刷新，让下载记录、大小和 Live Activity 跟上。
+    public nonisolated func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        guard downloadTask.taskDescription != nil else { return }
+        Task { @MainActor in
+            self.publishProgressIfNeeded()
+        }
+    }
+
     // MARK: - HLS 分片回调
 
     private nonisolated func handleHLSSegment(
