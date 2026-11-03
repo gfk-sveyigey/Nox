@@ -1,0 +1,133 @@
+/* ==NoxPlugin==
+{
+  "apiVersion": 1,
+  "id": "com.aholic.nox.18av",
+  "name": "18AV",
+  "localizedNames": {
+    "zh-Hans": "18AV",
+    "zh-Hant": "18AV",
+    "en": "18AV"
+  },
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "author": "Nox",
+  "description": "18AV 影片解析插件，支持 720P / 1080P HLS",
+  "icon": "play.rectangle.fill",
+  "priority": 500,
+  "match": {
+    "schemes": ["https"],
+    "hosts": ["18av.mm-cg.com"],
+    "pathRegex": ["^/(?:(?:en|ja|ko|zh|zh-cn|zh-tw)/)?[a-z0-9-]+_content/\\d+/"]
+  },
+  "permissions": ["page.eval", "page.title", "cookies", "http", "log"],
+  "network": ["18av.mm-cg.com"]
+}
+==NoxPlugin== */
+
+Nox.register({
+  async parse(ctx) {
+    // 内容页把真实播放器地址加密后放进 mvarr，并由站点脚本解密写入
+    // #mvspan_2 的 iframe。直接读页面已经算好的结果，避免复刻站点的
+    // AES / base-N 逻辑；站点改密钥时这里也不会失效。
+    const iframeURL = await ctx.page.eval(`
+      (() => {
+        const readPlayer = () => {
+          const frame = document.querySelector('#mvspan_2 iframe[src*="play.php"]');
+          return frame ? frame.src : "";
+        };
+
+        let src = readPlayer();
+
+        // 正常加载时站点已经调用过 720p 的切换函数；下面只是兜底。
+        if (!src && typeof jfun_show_vfcz_720p === "function") {
+          try { jfun_show_vfcz_720p(); } catch (_) {}
+          src = readPlayer();
+        }
+
+        if (!src && typeof jfun_show_vfcz_1080p === "function") {
+          try { jfun_show_vfcz_1080p(); } catch (_) {}
+          src = readPlayer();
+        }
+
+        // 某些片源只有别的服务器选项：逐个尝试 mvarr 里的条目。
+        if (!src && typeof mvarr !== "undefined" && typeof jfun_show_mvinnerHTML === "function") {
+          for (const key of Object.keys(mvarr)) {
+            try {
+              jfun_show_mvinnerHTML(key);
+              src = readPlayer();
+              if (src) break;
+            } catch (_) {}
+          }
+        }
+
+        return src;
+      })()
+    `);
+
+    if (!iframeURL) {
+      throw new Error("没有找到播放器地址");
+    }
+
+    const playerURL = new URL(iframeURL, ctx.url).href;
+
+    const response = await ctx.http.request({
+      url: playerURL,
+      method: "GET",
+      headers: {
+        "Accept": "text/html,application/xhtml+xml,*/*",
+        "Referer": ctx.url,
+        "User-Agent": ctx.userAgent || ""
+      },
+      responseType: "text",
+      timeoutMs: 20000,
+      useCookies: true
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`播放器页面请求失败：HTTP ${response.status}`);
+    }
+
+    const html = String(response.body || "");
+    const variants = [];
+    const seen = new Set();
+
+    // 播放器页里的 videoSources 形如：
+    // {src: 'https://...m3u8',type: 'application/x-mpegURL', size: 720}
+    for (const block of html.match(/\{[^{}]*\}/g) || []) {
+      const srcMatch = block.match(/src\s*:\s*['"]([^'"]+\.m3u8(?:\?[^'"]*)?)['"]/i);
+      if (!srcMatch) continue;
+
+      let url;
+      try {
+        url = new URL(srcMatch[1], playerURL).href;
+      } catch (_) {
+        continue;
+      }
+
+      if (seen.has(url)) continue;
+      seen.add(url);
+
+      const sizeMatch = block.match(/size\s*:\s*(\d+)/i);
+      const height = sizeMatch ? Number(sizeMatch[1]) : 0;
+      const quality = height > 0 ? `${height}P` : "auto";
+
+      variants.push({
+        quality: quality,
+        format: "m3u8",
+        url: url
+      });
+    }
+
+    if (variants.length === 0) {
+      throw new Error("没有找到可下载的视频清晰度");
+    }
+
+    variants.sort((a, b) => {
+      const qa = parseInt(a.quality, 10) || 0;
+      const qb = parseInt(b.quality, 10) || 0;
+      return qb - qa;
+    });
+
+    return { variants: variants };
+  }
+});

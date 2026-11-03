@@ -30,7 +30,7 @@
 
 - 单文件插件规范（草案）：[`docs/PLUGIN_SPEC.md`](docs/PLUGIN_SPEC.md)
 - 解析规则按站点实现，通过注册表按 URL 匹配，`VideoBrowserView` 等调用方无需改动
-- 当前内置：YouTube（原生）、Pornhub / Pornhub Premium（单文件插件 `Nox/Resources/pornhub.noxplugin`）；包内插件启动时自动加载，用户也可以从「文件」App、AirDrop、其他 App 的「用 Nox 打开」或系统分享面板导入 `.noxplugin`，导入后立即出现在解析来源并生效。导入时会校验扩展名、大小、UTF-8、元数据与 JavaScript 语法，但不会执行插件代码
+- 当前内置：YouTube（原生）、Pornhub / Pornhub Premium（`Nox/Resources/pornhub.noxplugin`）、18AV（`Nox/Resources/18av.noxplugin`）；包内插件启动时自动加载，用户也可以从「文件」App、AirDrop、其他 App 的「用 Nox 打开」或系统分享面板导入 `.noxplugin`，导入后立即出现在解析来源并生效。导入时会校验扩展名、大小、UTF-8、元数据与 JavaScript 语法，但不会执行插件代码
 - YouTube 走「页面播放器数据 → InnerTube」多来源尝试：页面把播放器数据压缩成直链字段回传；被风控（「确认你不是聊天机器人」）或被判「视频无法播放」时自动改用 Android VR / iOS / TV / WEB 客户端再试，任一来源拿到直链即可；WebView 使用完整的移动版 Safari UA，WEB 客户端请求带上 `SAPISIDHASH`（由页面 Cookie 算出），保证「已登录」状态被 YouTube 认到；每个来源的结果都会写进日志页（`youtube source …`），失败原因在解析面板里也会区分「被拦」「需要签名解密」「无数据」
 - 每个站点在「设置 → 解析来源」里有独立开关；关闭后该站点的页面无法解析，解析入口不再出现。列表顺序就是匹配优先级，可拖动调整；所有单文件插件（包括随 App 分发的 Pornhub）都支持长按导出 / 删除，内置插件删除后只是从本机隐藏，可在右上角菜单恢复
 - 通用兜底解析器在界面里直接显示为 Sniffer
@@ -109,6 +109,7 @@ nox://open?url=https%3A%2F%2Fexample.com%2Fwatch%3Fv%3D1
 │   │   ├── Localizable.xcstrings   # 字符串目录（5 种语言）
 │   │   ├── MediaSniffer.js         # 页面嗅探脚本
 │   │   ├── pornhub.noxplugin       # Pornhub 单文件插件（运行时加载）
+│   │   ├── 18av.noxplugin          # 18AV 单文件插件（运行时加载）
 │   │   └── Assets.xcassets/        # AppIcon 与设置页预览图
 │   └── Views/                      # Browser / Downloads / History / Settings / Sniffer
 ├── NoxShare/
