@@ -78,10 +78,10 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         return "scenes=\(scenes.count) [\(parts.joined(separator: " | "))]"
     }
 
-    /// 共存保护装不上时的处理方式，由协调器按用户在设置里选的值同步过来。
+    /// 共存保护装不上时的兜底方式，由协调器按用户在设置里选的值同步过来。
     ///
-    /// `.keepAlive` 表示「暂缓启动，等保护就绪」，不是「无视保护强行启动」。
-    var coexistenceFallback: PiPCoexistenceFallback = .keepAlive
+    /// 无论选哪种，都不会在保护缺失时强行启动画中画（那会挤掉其它 App 的 PiP）。
+    var coexistenceFallback: PiPCoexistenceFallback = .stop
 
     /// 画中画基础设施：controller / 内容控制器 / 宿主视图。
     ///
@@ -141,10 +141,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private var startRetryCount = 0
     /// 「等上一次停止收尾」的重试次数（见 `attemptStartIfPossible`）。
     private var stopWaitCount = 0
-    /// 共存保护暂不可用、正在等待它就绪（此时**不会**启动 PiP）。
-    private var isWaitingForCoexistence = false
-    /// 等待共存保护的低频重试任务。
-    private var coexistenceRetryTask: Task<Void, Never>?
 
     /// 抖动确认窗口：刚创建 controller 时 `isPictureInPicturePossible` 常是瞬时 true，
     /// 之后系统才算出真值。要求它连续三次为 true 才真正启动。
@@ -166,14 +162,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     private static let maxStartRetries = 4
     /// 等上一次停止收尾的次数上限（≈ 6.4 秒）。
     private static let maxStopWaitAttempts = 8
-    /// 共存保护暂不可用时的重试间隔。
-    ///
-    /// 多数情况是一次性失败（系统还没把 `playbackState` 准备好），隔一小段时间
-    /// 重新安装即可；重试期间绝不调用 `startPictureInPicture()`，因此不会挤掉
-    /// 其他 App 正在播放的画中画。
-    private static let coexistenceRetryDelay: Double = 2
-    /// 共存保护等待次数上限（约 30 秒）。超过后按「启动失败」交给协调器处理。
-    private static let maxCoexistenceWaitAttempts = 15
     /// 启动后核对是否进入激活状态的延迟。
     ///
     /// 不能太短：核对失败会走重试链，把「只是慢了一点、马上就会激活」的会话当成失败。
@@ -258,7 +246,7 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             verboseLog("复用基础设施 · \(stateSummary) coexistenceInstalled=\(coexistence?.isSupported == true)")
             if let coexistence {
                 coexistence.prepare()
-                if !coexistence.isSupported, coexistenceFallback != .keepAlive {
+                if !coexistence.isSupported {
                     onLog?("画中画共存保护不可用，按设置\(coexistenceFallback.title)")
                     destroyInfrastructure()
                     throw KeepAliveError.coexistenceUnavailable(name)
@@ -320,10 +308,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         protection.prepare()
         verboseLog("共存保护准备完成 · installed=\(protection.isSupported) \(stateSummary)")
 
-        // 共存保护装不上：按用户选的兜底方案处理。
-        // `.keepAlive` 时先保留基础设施并暂缓启动（绝不硬启动挤掉其它 App 的 PiP），
-        // 其余情况报错交给协调器。
-        if !protection.isSupported, coexistenceFallback != .keepAlive {
+        // 共存保护装不上：报错交给协调器按用户选的兜底方案处理。
+        if !protection.isSupported {
             onLog?("画中画共存保护不可用，按设置\(coexistenceFallback.title)")
             destroyInfrastructure()
             throw KeepAliveError.coexistenceUnavailable(name)
@@ -347,10 +333,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// PiP 是否真的还在显示（回前台时用来判断保活是否被系统 / 用户结束）。
     var isLive: Bool {
         if controller?.isPictureInPictureActive == true { return true }
-        // 正在建立 / 正在等待共存保护也算「活着」：否则 `reconcile` 的自愈会
-        // 在启动过程中反复重建。
+        // 正在建立也算「活着」：否则 `reconcile` 的自愈会在启动过程中反复重建。
         return startTask != nil || startVerificationTask != nil
-            || coexistenceRetryTask != nil || isWaitingForCoexistence
     }
 
     func stop() {
@@ -362,9 +346,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         startVerificationTask = nil
         startTask?.cancel()
         startTask = nil
-        coexistenceRetryTask?.cancel()
-        coexistenceRetryTask = nil
-        isWaitingForCoexistence = false
         readyStreak = 0
         attemptCount = 0
         stopWaitCount = 0
@@ -478,22 +459,10 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         stopWaitCount = 0
 
         // 没有共存保护就绝不启动：那会把其他 App 正在播放的画中画挤掉。
-        // `.keepAlive` 现在表示「暂缓启动，等保护就绪」，而不是「硬启动」。
         guard coexistence?.isSupported == true else {
-            switch coexistenceFallback {
-            case .keepAlive:
-                beginWaitingForCoexistence(for: controller)
-            case .silentAudio, .stop:
-                onLog?("画中画共存保护不可用，已停止启动（避免打断其他 App 的画中画）")
-                onStartFailure?()
-            }
+            onLog?("画中画共存保护不可用，未启动画中画（避免打断其他 App 的画中画）")
+            onStartFailure?()
             return
-        }
-        if isWaitingForCoexistence {
-            isWaitingForCoexistence = false
-            coexistenceRetryTask?.cancel()
-            coexistenceRetryTask = nil
-            onLog?("画中画共存保护已就绪，继续启动")
         }
 
         guard controller.isPictureInPicturePossible else {
@@ -540,48 +509,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         isStartPending = true
         controller.startPictureInPicture()
         scheduleStartVerification(for: controller, delay: Self.startVerificationDelay)
-    }
-
-    /// 共存保护不可用时暂缓启动，并低频重试安装。
-    ///
-    /// 这是「不打断其他 App 的画中画」的硬约束：在保护就绪之前，
-    /// `startPictureInPicture()` 一次都不会被调用。
-    private func beginWaitingForCoexistence(
-        for controller: AVPictureInPictureController,
-        attempt: Int = 0
-    ) {
-        guard self.controller === controller, isActive else { return }
-        if attempt == 0 {
-            guard !isWaitingForCoexistence, coexistenceRetryTask == nil else { return }
-            isWaitingForCoexistence = true
-            attemptCount = 0
-            readyStreak = 0
-            onLog?("共存保护暂不可用，已暂缓启动画中画（避免打断其他 App 的画中画）")
-            verboseLog("等待共存保护 · \(stateSummary)")
-        }
-        guard attempt < Self.maxCoexistenceWaitAttempts else {
-            isWaitingForCoexistence = false
-            onLog?("共存保护仍不可用，本次未启动画中画")
-            verboseLog("等待共存保护超时，上报启动失败 · \(stateSummary)")
-            onStartFailure?()
-            return
-        }
-        coexistenceRetryTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(Self.coexistenceRetryDelay))
-            guard let self, !Task.isCancelled, self.isActive,
-                  self.controller === controller else { return }
-            self.coexistenceRetryTask = nil
-            guard self.coexistence?.isSupported != true else {
-                self.attemptStartIfPossible(controller)
-                return
-            }
-            self.coexistence?.prepare()
-            guard self.coexistence?.isSupported == true else {
-                self.beginWaitingForCoexistence(for: controller, attempt: attempt + 1)
-                return
-            }
-            self.attemptStartIfPossible(controller)
-        }
     }
 
     /// 延迟后再试一次（抖动确认 / 未就绪重试共用同一个任务）。
@@ -631,9 +558,6 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         startVerificationTask = nil
         startTask?.cancel()
         startTask = nil
-        coexistenceRetryTask?.cancel()
-        coexistenceRetryTask = nil
-        isWaitingForCoexistence = false
         readyStreak = 0
         attemptCount = 0
         startRetryCount = 0

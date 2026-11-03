@@ -96,11 +96,9 @@ public enum KeepAliveLifetime: String, CaseIterable, Identifiable, Codable {
 
 /// 画中画「共存保护」不可用时的处理方式（用户在设置里选）。
 ///
-/// 共存保护依赖系统内部接口；装不上时就只能做取舍：
-/// 要么暂缓启动画中画（绝不挤掉其他 App 正在播放的画中画），
-/// 要么改用静音音频 / 干脆不保活。
+/// 共存保护依赖系统内部接口；装不上时就不再启动画中画
+/// （绝不挤掉其他 App 正在播放的画中画），只在兜底方式里二选一。
 public enum PiPCoexistenceFallback: String, CaseIterable, Identifiable, Codable {
-    case keepAlive
     case silentAudio
     case stop
 
@@ -108,7 +106,6 @@ public enum PiPCoexistenceFallback: String, CaseIterable, Identifiable, Codable 
 
     public var title: String {
         switch self {
-        case .keepAlive: return L("暂缓启动画中画")
         case .silentAudio: return L("改用静音音频")
         case .stop: return L("停止保活")
         }
