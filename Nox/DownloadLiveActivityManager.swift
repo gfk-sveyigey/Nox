@@ -21,12 +21,21 @@ final class DownloadLiveActivityManager {
     private var activity: Activity<DownloadActivityAttributes>?
     private var lastState: DownloadActivityAttributes.ContentState?
     private var lastUpdateAt = Date.distantPast
+    /// 结束旧活动的清理任务；新建活动前要先等它完成，
+    /// 否则旧的 ended / stale 活动仍会和新的抢灵动岛。
+    private var cleanupTask: Task<Void, Never>?
+    private var cleaningIDs = Set<String>()
+    private var startupTask: Task<Void, Never>?
     /// 进度定时器每秒刷新一次；Live Activity 合并到约 1 秒一次，
     /// 既不会错过保活方式的进度变化，也不会因过密更新被系统节流。
     private static let minimumUpdateInterval: TimeInterval = 1.0
     /// 下载活动可能在后台按分片 / 回调刷新，间隔不一定固定；
     /// 10 分钟没有新内容才标记为过期，避免慢速任务被过早显示成 stale。
     private static let staleInterval: TimeInterval = 600
+    /// 系统最多让一个活动活跃 8 小时，到点会强制结束并立刻从灵动岛移除，
+    /// 但锁屏上还会再留最多 4 小时。提前一点换成新活动，避免出现
+    /// 「锁屏有、灵动岛没有」的残留。
+    private static let maximumActivityAge: TimeInterval = 8 * 3600 - 300
 
     init(appState: AppState, downloadManager: DownloadManager) {
         self.appState = appState
@@ -74,7 +83,7 @@ final class DownloadLiveActivityManager {
     }
 
     private func refresh(force: Bool) {
-        adoptExistingActivityIfNeeded()
+        reconcileExistingActivityIfNeeded()
 
         guard let state = makeState() else {
             endActivity(using: lastState)
@@ -99,21 +108,71 @@ final class DownloadLiveActivityManager {
         }
     }
 
-    private func adoptExistingActivityIfNeeded() {
-        guard activity == nil else { return }
+    /// 让内存里的活动记录与系统里真实存在的活动对齐。
+    ///
+    /// 锁屏会保留已经结束 / stale 的活动，而灵动岛只展示仍在活跃的那个；
+    /// 如果系统里还残留旧活动，并且 relevance 相同，灵动岛会优先展示
+    /// 「最早开始」的那一个。异常退出、重复启动都可能留下这种残留，
+    /// 表现就是「锁屏有实时活动，灵动岛没有」。
+    ///
+    /// 因此这里只保留一个真正可用的活动：其余全部结束，没有可用的就
+    /// 全部清掉，让刷新流程重新创建一个。
+    private func reconcileExistingActivityIfNeeded() {
+        let existing = Activity<DownloadActivityAttributes>.activities
 
-        let existing = Activity<DownloadActivityAttributes>.activities.filter {
-            $0.activityState == .active || $0.activityState == .stale
+        if let current = activity {
+            let stillExists = existing.contains { $0.id == current.id }
+            if !stillExists || !isUsable(current) {
+                activity = nil
+                lastState = nil
+                lastUpdateAt = .distantPast
+            }
         }
-        guard let adopted = existing.first else { return }
 
-        activity = adopted
-        // 后台恢复 / 旧版本异常退出可能留下多个同类型活动；
-        // 只保留一个，其余立即结束，避免灵动岛叠出多张卡片。
-        for extra in existing.dropFirst() {
-            Task { await extra.end(nil, dismissalPolicy: .immediate) }
+        if let current = activity {
+            enqueueCleanup(existing.filter { $0.id != current.id })
+            return
         }
-        LogStore.shared.info("live activity adopted")
+
+        let usable = existing.filter { isUsable($0) }
+        let obsolete = existing.filter { item in
+            !usable.contains { $0.id == item.id }
+        }
+
+        if let adopted = usable.first {
+            activity = adopted
+            lastState = nil
+            lastUpdateAt = .distantPast
+            LogStore.shared.info(
+                "live activity adopted · usable \(usable.count) · stale \(obsolete.count)"
+            )
+            enqueueCleanup(existing.filter { $0.id != adopted.id })
+        } else {
+            enqueueCleanup(obsolete)
+        }
+    }
+
+    private func isUsable(_ activity: Activity<DownloadActivityAttributes>) -> Bool {
+        guard activity.activityState == .active else { return false }
+        return Date().timeIntervalSince(activity.attributes.startedAt)
+            < Self.maximumActivityAge
+    }
+
+    /// 串行结束旧活动。新建活动会等待这里完成，避免同类型活动在系统里
+    /// 同时存在时灵动岛挑中旧的那个。
+    private func enqueueCleanup(_ activities: [Activity<DownloadActivityAttributes>]) {
+        let scheduled = activities.filter { cleaningIDs.insert($0.id).inserted }
+        guard !scheduled.isEmpty else { return }
+        LogStore.shared.info("live activity cleanup · ending \(scheduled.count)")
+
+        let previous = cleanupTask
+        cleanupTask = Task { @MainActor [scheduled] in
+            await previous?.value
+            for item in scheduled {
+                await item.end(nil, dismissalPolicy: .immediate)
+                self.cleaningIDs.remove(item.id)
+            }
+        }
     }
 
     private func makeState() -> DownloadActivityAttributes.ContentState? {
@@ -163,6 +222,24 @@ final class DownloadLiveActivityManager {
 
     private func startActivity(with state: DownloadActivityAttributes.ContentState) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard startupTask == nil else { return }
+
+        // 先等旧活动清理完再请求新活动；等的时候 App 可能已经进入后台，
+        // 或任务已经结束，所以请求前重新检查一遍状态。
+        let cleanup = cleanupTask
+        startupTask = Task { @MainActor [weak self] in
+            await cleanup?.value
+            guard let self else { return }
+            self.startupTask = nil
+            guard self.activity == nil,
+                  UIApplication.shared.applicationState == .active,
+                  self.downloadManager.activeKeepAliveMode != .continuedProcessing,
+                  let latest = self.makeState() else { return }
+            self.requestActivity(with: latest)
+        }
+    }
+
+    private func requestActivity(with state: DownloadActivityAttributes.ContentState) {
         do {
             activity = try Activity.request(
                 attributes: DownloadActivityAttributes(startedAt: .now),
