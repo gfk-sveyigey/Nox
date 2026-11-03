@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import QuartzCore
 import NoxCore
 import NoxDownload
 import NoxState
@@ -13,13 +14,10 @@ struct ContentView: View {
     /// 不要再给 `SettingsView` 套 `.id(language)`：那会重建整个 Form，
     /// 把用户正在浏览的设置列表弹回顶部。
     @ObservedObject private var localization = LocalizationManager.shared
-    @State private var selectedTab = 0
+    /// 用 ObservableObject 包住选中项：TabView 在重复点击当前标签时，
+    /// 会把同一个值再写回绑定，借此可以拿到系统的「再次点击」事件。
+    @StateObject private var tabSelection = TabSelectionState()
     @State private var browserURL: URL?
-    /// 双击「浏览」标签时递增，通知浏览页回到顶部。
-    @State private var browserScrollToTopToken = 0
-    /// 从别的标签切到「浏览」的时间。刚切过来时的下一次点击只用于切换，
-    /// 不应该被当成双击的第一下。
-    @State private var browseBecameSelectedAt = Date.distantPast
     @State private var didLogSession = false
     @State private var startupFinished = false
     @State private var didPrepareStartup = false
@@ -32,12 +30,12 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $tabSelection.selection) {
             VideoBrowserView(
                 appState: appState,
                 downloads: downloadManager,
                 requestedURL: $browserURL,
-                scrollToTopToken: browserScrollToTopToken
+                scrollToTopToken: tabSelection.browseDoubleTapCount
             )
                 .tabItem { Label(L("浏览"), systemImage: "safari") }
                 .tag(0)
@@ -48,7 +46,7 @@ struct ContentView: View {
 
             HistoryView { url in
                 browserURL = url
-                selectedTab = 0
+                tabSelection.selection = 0
             }
             .tabItem { Label(L("历史"), systemImage: "clock") }
             .tag(2)
@@ -60,17 +58,6 @@ struct ContentView: View {
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background {
-            TabBarDoubleTapObserver {
-                // 给底层手势再加一道保险：刚切到浏览页时，即使第一下被
-                // 系统提前改写了选中态，也不会把紧接着的第二下误判成双击。
-                let elapsed = Date().timeIntervalSince(browseBecameSelectedAt)
-                guard elapsed >= TabBarDoubleTapObserver.doubleTapInterval else {
-                    return
-                }
-                browserScrollToTopToken += 1
-            }
-        }
         .overlay {
             if !startupFinished {
                 StartupView()
@@ -116,12 +103,6 @@ struct ContentView: View {
             guard !didLogSession else { return }
             didLogSession = true
             LogStore.shared.recordSessionStart()
-        }
-        // 从别的标签切到浏览时记录时间，避免紧接着的点击被当成双击第一下。
-        .onChange(of: selectedTab) { oldValue, newValue in
-            if newValue == 0, oldValue != 0 {
-                browseBecameSelectedAt = Date()
-            }
         }
         // 回到前台：重置速度采样（后台期间定时器不触发），并让后台保活自愈。
         .onChange(of: scenePhase) { _, phase in
@@ -207,10 +188,10 @@ struct ContentView: View {
             }
         } else if IncomingLink.isDownloads(url) {
             LogStore.shared.info("handle incoming: downloads")
-            selectedTab = 1
+            tabSelection.selection = 1
         } else if let webURL = IncomingLink.webURL(from: url) {
             LogStore.shared.info("handle incoming: web url")
-            selectedTab = 0
+            tabSelection.selection = 0
             browserURL = webURL
         } else {
             LogStore.shared.info("handle incoming: file")
@@ -218,4 +199,60 @@ struct ContentView: View {
         }
     }
 
+}
+
+/// `TabView` 的 selection 包装。
+///
+/// SwiftUI 在用户再次点击**当前已选中**的标签时，会把同一个值重新写回
+/// `selection` 绑定。设置页的「点当前标签回到顶部」就是系统基于这个事件做的；
+/// 浏览页是 `WKWebView`，不参与 SwiftUI 的滚动视图管理，所以需要自己处理。
+final class TabSelectionState: ObservableObject {
+    /// 两下之间允许的最长间隔。
+    static let doubleTapInterval: TimeInterval = 0.45
+
+    @Published var selection: Int = 0 {
+        didSet {
+            let now = CACurrentMediaTime()
+
+            guard oldValue == selection else {
+                if selection == 0 {
+                    // 从别的标签切到浏览：紧接着的那一下只用于切换，
+                    // 不能算作双击的第一下。
+                    switchedToBrowseAt = now
+                    resetDoubleTap()
+                }
+                return
+            }
+
+            guard selection == 0 else { return }
+            handleBrowseReselect(at: now)
+        }
+    }
+
+    /// 双击「浏览」的次数；浏览页观察它并滚回顶部。
+    @Published private(set) var browseDoubleTapCount = 0
+
+    private var switchedToBrowseAt = -Double.infinity
+    private var lastReselectAt = -Double.infinity
+
+    private func handleBrowseReselect(at now: CFTimeInterval) {
+        if now - switchedToBrowseAt < Self.doubleTapInterval {
+            resetDoubleTap()
+            return
+        }
+
+        if now - lastReselectAt <= Self.doubleTapInterval {
+            resetDoubleTap()
+            browseDoubleTapCount += 1
+            Task { @MainActor in
+                LogStore.shared.info("browse tab · double tap")
+            }
+        } else {
+            lastReselectAt = now
+        }
+    }
+
+    private func resetDoubleTap() {
+        lastReselectAt = -Double.infinity
+    }
 }

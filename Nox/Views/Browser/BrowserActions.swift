@@ -47,6 +47,7 @@ extension VideoBrowserView {
             CGPoint(x: 0, y: topY),
             animated: true
         )
+        LogStore.shared.info("browser · scroll to top")
     }
 
     func openAddress() {
