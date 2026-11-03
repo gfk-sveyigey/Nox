@@ -19,7 +19,6 @@ public protocol DownloadStateStore: AnyObject {
     var maxConcurrentDownloads: Int { get }
     var downloadNetworkMode: DownloadNetworkMode { get }
     var minFreeDiskSpace: Int64 { get }
-    var hlsDownloadEngine: HLSDownloadEngine { get set }
 
     var keepAliveMode: KeepAliveMode { get set }
     var keepAliveSilentAudioFallback: Bool { get set }

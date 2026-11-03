@@ -58,25 +58,9 @@ struct KeepAliveSettingsView: View {
                 }
             }
 
-            Section {
-                Picker(L("HLS 下载引擎"), selection: Binding(
-                    get: { appState.hlsDownloadEngine },
-                    set: {
-                        manager.setHLSDownloadEngine($0)
-                        manager.reconcileQueue()
-                    }
-                )) {
-                    ForEach(HLSDownloadEngine.allCases) { engine in
-                        Text(engine.title).tag(engine)
-                    }
-                }
-            } footer: {
-                Text(appState.hlsDownloadEngine.detail)
-            }
-
-            // 「仅系统下载」和持续处理都不需要选生命周期：
-            // 前者没有额外保活，后者由系统按当前下载任务授予执行时间。
-            if appState.keepAliveMode != .off,
+            // 系统下载和仅前台下载都没有额外保活，持续处理则由系统
+            // 按当前下载任务授予执行时间，这三档都不需要选生命周期。
+            if appState.keepAliveMode.startsKeepAlive,
                appState.keepAliveMode != .continuedProcessing {
                 Section {
                     Picker(L("保活模式"), selection: Binding(
@@ -88,11 +72,11 @@ struct KeepAliveSettingsView: View {
                         }
                     }
                 } footer: {
-                    Text(L("跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到把保活方式设为「关闭」。"))
+                    Text(L("跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到切换到「系统下载」或「仅前台下载」。"))
                 }
             }
 
-            if appState.keepAliveMode != .off {
+            if appState.keepAliveMode.startsKeepAlive {
                 Section {
                     if appState.keepAliveMode != .silentAudio {
                         Toggle(isOn: Binding(

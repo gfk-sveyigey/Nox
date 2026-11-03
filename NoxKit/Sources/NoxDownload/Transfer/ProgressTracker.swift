@@ -83,10 +83,10 @@ extension DownloadManager {
             let total: Int64
 
             if isHLS {
-                // m3u8 的字节数来自解密后的分片累计，总大小未知
+                // m3u8 的字节数来自分片累计；总大小按已完成进度估算。
                 guard let snapshot = hlsProgress[id] else { continue }
                 received = snapshot.bytes
-                total = 0
+                total = snapshot.estimatedTotalBytes
             } else {
                 let inFlight = inFlightBytes[id] ?? 0
                 let segments = plannedSegments[id] ?? []

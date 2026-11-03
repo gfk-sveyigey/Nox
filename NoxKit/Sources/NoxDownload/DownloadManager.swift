@@ -87,6 +87,8 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     var activeIDs = Set<UUID>()
     /// 排队等待槽位的任务，先进先出
     var pendingQueue: [UUID] = []
+    /// 「仅前台下载」进入后台时主动暂停的任务；回前台后自动继续。
+    var foregroundPausedIDs = Set<UUID>()
     /// 每个任务的调度句柄；取消它会一路中止其内部的 async 工作
     var slotTasks: [UUID: Task<Void, Never>] = [:]
     /// 防止状态变更回调重入调度器
@@ -149,6 +151,26 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
             delegateQueue: nil
         )
     }()
+
+    /// 「仅前台下载」模式使用的普通会话。
+    ///
+    /// 它不申请后台会话：App 被挂起后任务不会由系统继续执行。
+    /// 进入后台时还会主动暂停，回到前台后再从已有分片继续。
+    lazy var foregroundSession: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.allowsCellularAccess = allowsCellularDownloads
+        configuration.httpMaximumConnectionsPerHost = NoxDefaults.segmentCountRange.upperBound
+        return URLSession(
+            configuration: configuration,
+            delegate: self,
+            delegateQueue: nil
+        )
+    }()
+
+    /// 分片请求使用的会话：由当前后台方式决定。
+    var downloadSession: URLSession {
+        store.keepAliveMode == .foregroundOnly ? foregroundSession : session
+    }
 
     public init(store: DownloadStateStore) {
         self.store = store
@@ -325,12 +347,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         store.pipWindowHeight = height
         store.persist()
         keepAlive.pipWindowHeight = height
-    }
-
-    /// 设置页切换 HLS 下载引擎。只影响之后开始 / 重试的 m3u8 任务。
-    public func setHLSDownloadEngine(_ engine: HLSDownloadEngine) {
-        store.hlsDownloadEngine = engine
-        store.persist()
     }
 
     /// 设置页切换「画中画详细日志」。

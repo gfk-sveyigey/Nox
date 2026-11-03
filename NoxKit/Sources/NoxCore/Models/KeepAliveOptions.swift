@@ -5,7 +5,10 @@ import Foundation
 /// 与下载解耦：是否启动由「保活模式」（`KeepAliveLifetime`）决定 —— 跟随下载任务，或进入前台即常驻。
 public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
     /// 只依赖系统后台下载（Background URLSession），不额外保活。
+    /// HLS 在支持的系统上会自动交给 AVAsset。
     case off
+    /// 只在 App 前台下载；切到后台时暂停，回到前台后继续。
+    case foregroundOnly
     /// iOS 26 的 BGContinuedProcessingTask：用户前台发起后，系统继续给进程执行时间。
     case continuedProcessing
     case silentAudio
@@ -15,8 +18,9 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
 
     public var title: String {
         switch self {
-        case .off: return L("仅系统下载")
-        case .continuedProcessing: return L("持续处理 (iOS 26)")
+        case .off: return L("系统下载")
+        case .foregroundOnly: return L("仅前台下载")
+        case .continuedProcessing: return L("持续处理")
         case .silentAudio: return L("静音音频")
         case .pictureInPicture: return L("画中画 (PiP)")
         }
@@ -25,9 +29,11 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
     public var detail: String {
         switch self {
         case .off:
-            return L("普通文件交给系统后台 URLSession 继续；HLS 分片编排、合并等必须让 App 进程执行的任务，切后台后可能暂停。")
+            return L("普通文件交给系统后台 URLSession；HLS 在 iOS 26 及以上交给系统 AVAsset，低版本使用兼容分片。")
+        case .foregroundOnly:
+            return L("不使用后台下载，也不启动保活。切到后台时暂停任务，回到前台后自动继续。")
         case .continuedProcessing:
-            return L("iOS 26 起可用：用户在前台开始下载后，系统允许进程在后台继续处理，并显示进度与取消入口。")
+            return L("用户在前台开始下载后，系统允许进程在后台继续处理，并显示进度与取消入口。")
         case .silentAudio:
             return L("循环播放极短静音。可能打断其他 App 正在播放的音频。")
         case .pictureInPicture:
@@ -43,6 +49,14 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
             return false
         default:
             return true
+        }
+    }
+
+    /// 这一档是否会启动额外的保活策略。
+    public var startsKeepAlive: Bool {
+        switch self {
+        case .off, .foregroundOnly: return false
+        default: return true
         }
     }
 }

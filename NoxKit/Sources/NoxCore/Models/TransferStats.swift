@@ -9,17 +9,22 @@ public struct TransferStats: Equatable {
     /// 平滑后的瞬时速度（字节/秒）
     public var bytesPerSecond: Double = 0
 
-    public init(bytesReceived: Int64 = 0, totalBytes: Int64 = 0, bytesPerSecond: Double = 0) {
+    public init(
+        bytesReceived: Int64 = 0,
+        totalBytes: Int64 = 0,
+        bytesPerSecond: Double = 0
+    ) {
         self.bytesReceived = bytesReceived
         self.totalBytes = totalBytes
         self.bytesPerSecond = bytesPerSecond
     }
 
-    /// "12.4 MB / 58.7 MB"，总大小未知时只有已下载部分
+    /// "12.4 MB / 58.7 MB"，总大小未知时只有已下载部分。
     public var sizeText: String {
         let received = Self.formattedSize(bytesReceived)
         guard totalBytes > 0 else { return received }
-        return "\(received) / \(Self.formattedSize(totalBytes))"
+        let total = Self.formattedSize(totalBytes)
+        return "\(received) / \(total)"
     }
 
     public var speedText: String {

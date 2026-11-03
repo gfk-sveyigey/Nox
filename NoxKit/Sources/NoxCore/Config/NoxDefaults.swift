@@ -31,9 +31,6 @@ public enum NoxDefaults {
     /// 下载网络默认值：无线局域网与蜂窝
     public static let defaultDownloadNetworkMode = DownloadNetworkMode.wifiAndCellular
 
-    /// HLS 默认使用兼容分片；用户可在下载设置里切换为系统 AVAsset。
-    public static let defaultHLSDownloadEngine = HLSDownloadEngine.segmented
-
     /// 储存保护：整机剩余空间低于阈值时暂停下载。
     public static let megabyte: Int64 = 1024 * 1024
     public static let gigabyte: Int64 = 1024 * megabyte
