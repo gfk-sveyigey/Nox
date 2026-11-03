@@ -143,6 +143,35 @@ public enum DownloadStorage {
         }
     }
 
+    /// 清掉很久以前中断的合并留下的临时文件。
+    ///
+    /// 合并过程被系统结束后，`merged-<UUID>.tmp` 会留在暂存目录里；同一个
+    /// 下载任务重试时会再生成一份。长时间、多次中断的任务因此会叠出好几份
+    /// 接近成品大小的临时文件，最后真的把空间吃光、再也合不出来。
+    ///
+    /// 只删 30 分钟以前的：正在进行的合并不会跑这么久，活跃任务不受影响。
+    public static func removeStaleMergeTemps(
+        in directory: URL,
+        olderThan age: TimeInterval = 30 * 60
+    ) {
+        let fileManager = FileManager.default
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey]
+        ) else { return }
+
+        let cutoff = Date().addingTimeInterval(-age)
+
+        for url in entries {
+            let name = url.lastPathComponent
+            guard name.hasPrefix("merged-"), url.pathExtension == "tmp" else { continue }
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate
+            guard (modified ?? .distantPast) < cutoff else { continue }
+            try? fileManager.removeItem(at: url)
+        }
+    }
+
     /// 按顺序合并分片为最终文件
     public static func concatenate(_ parts: [URL], into destination: URL) throws {
         try? FileManager.default.removeItem(at: destination)
@@ -162,7 +191,7 @@ public enum DownloadStorage {
             let input = try FileHandle(forReadingFrom: part)
             defer { try? input.close() }
 
-            while let chunk = try input.read(upToCount: 1 << 20), !chunk.isEmpty {
+            while let chunk = try input.read(upToCount: 1 << 22), !chunk.isEmpty {
                 try output.write(contentsOf: chunk)
             }
         }

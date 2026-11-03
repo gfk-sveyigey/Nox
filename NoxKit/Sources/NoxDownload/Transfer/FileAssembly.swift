@@ -64,8 +64,22 @@ extension DownloadManager {
             // 先拼到暂存目录，再整体移到 Documents：
             // 中途进程被杀时留下的只是暂存文件，不会残留半截成品 ——
             // 否则下次合并会另生成一个新文件，看起来就是「重复合片」。
+            // 清掉以前中断的合并留下的临时文件，避免长任务反复重试时叠加出多份成品大小的临时数据。
+            DownloadStorage.removeStaleMergeTemps(in: stagingDirectory)
+
             let temporary = stagingDirectory
                 .appendingPathComponent("merged-\(UUID().uuidString).tmp")
+
+            // 与大文件一样，合并本身可能超过系统给后台唤醒的瞬间执行时间。
+            // 申请一段短时后台宽限，避免刚写完一半就被挂起（之后只能整段重来）。
+            let grace = BackgroundExecutionGrace.shared.begin(reason: "分片合并")
+            defer {
+                if let grace {
+                    Task { @MainActor in
+                        BackgroundExecutionGrace.shared.end(grace, reason: "分片合并")
+                    }
+                }
+            }
 
             try await Task.detached(priority: .utility) {
                 try DownloadStorage.concatenate(parts, into: temporary)

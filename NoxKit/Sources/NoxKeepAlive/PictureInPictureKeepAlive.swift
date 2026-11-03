@@ -122,6 +122,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
 
     /// 启动重试 / 抖动确认的统一任务。
     private var startTask: Task<Void, Never>?
+    /// 停止后的核对任务：系统偶尔会忽略「启动尚未完成时」的停止请求。
+    private var stopVerificationTask: Task<Void, Never>?
     /// 连续观察到 `isPictureInPicturePossible == true` 的次数（抖动确认用）。
     private var readyStreak = 0
     /// 已尝试启动的次数（`isPictureInPicturePossible` 一直 false 时的低速重试用）。
@@ -174,6 +176,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         let pipController = try ensureInfrastructure()
         verboseLog("基础设施就绪 · \(stateSummary)")
 
+        stopVerificationTask?.cancel()
+        stopVerificationTask = nil
         isActive = true
         readyStreak = 0
         attemptCount = 0
@@ -305,6 +309,14 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 共存保护是否真的装上了（装不上时按 `coexistenceFallback` 处理）。
     var isCoexistenceInstalled: Bool { coexistence?.isSupported ?? false }
 
+    /// 系统里的画中画当前是否真的在显示。
+    ///
+    /// 与 `isActive`（我们是否还想保活）分开：启动/停止存在时间差，
+    /// 判断「要不要再停一次」必须看 controller 的真实状态。
+    var isDisplaying: Bool {
+        controller?.isPictureInPictureActive == true
+    }
+
     /// PiP 是否真的还在显示（回前台时用来判断保活是否被系统 / 用户结束）。
     var isLive: Bool {
         if controller?.isPictureInPictureActive == true { return true }
@@ -315,6 +327,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     func stop() {
         verboseLog("stop 请求 · 之前 \(stateSummary)")
         lastStopUptime = ProcessInfo.processInfo.systemUptime
+        stopVerificationTask?.cancel()
+        stopVerificationTask = nil
         startVerificationTask?.cancel()
         startVerificationTask = nil
         startTask?.cancel()
@@ -327,9 +341,38 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         isStoppingSelf = true
         // 内容类型退回 4：下次启动重新走「先 4 后 6」，也让别的 App 的画中画恢复原状。
         coexistence?.restore()
-        controller?.stopPictureInPicture()
+        if let controller {
+            controller.stopPictureInPicture()
+            scheduleStopVerification(for: controller)
+        }
         // 刻意**不**销毁 controller / 宿主视图：保留会话，下次 start() 直接复用。
         verboseLog("stop 已请求，保留会话 · \(stateSummary)")
+    }
+
+    /// 停止后核对一次真实状态，必要时重试。
+    ///
+    /// 系统在「startPictureInPicture() 已调用、但还没真正激活」时收到的
+    /// stop 请求可能被忽略，随后窗口照样弹出来；任务结束时如果正好处于
+    /// 这个窗口期，就会出现「下载已完成，画中画还在」。
+    private func scheduleStopVerification(
+        for controller: AVPictureInPictureController,
+        attempts: Int = 3
+    ) {
+        guard attempts > 0 else { return }
+        stopVerificationTask = Task { @MainActor [weak self, weak controller] in
+            try? await Task.sleep(for: .seconds(2))
+            guard let self, !Task.isCancelled, let controller,
+                  self.controller === controller else { return }
+            self.stopVerificationTask = nil
+            // 期间可能已经重新开始保活，不能误停新的会话。
+            guard !self.isActive, controller.isPictureInPictureActive else { return }
+            self.verboseLog(
+                "停止后仍在显示，重试 \(attempts) · \(self.stateSummary)"
+            )
+            self.isStoppingSelf = true
+            controller.stopPictureInPicture()
+            self.scheduleStopVerification(for: controller, attempts: attempts - 1)
+        }
     }
 
     /// 彻底销毁画中画基础设施（用户把保活方式关掉时用）。
@@ -487,6 +530,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         isActive = false
         possibleObservation?.invalidate()
         possibleObservation = nil
+        stopVerificationTask?.cancel()
+        stopVerificationTask = nil
         startVerificationTask?.cancel()
         startVerificationTask = nil
         startTask?.cancel()
@@ -580,7 +625,6 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
     func pictureInPictureControllerDidStartPictureInPicture(_ controller: AVPictureInPictureController) {
         verboseLog("delegate didStart · \(stateSummary)")
         isStartPending = false
-        isStoppingSelf = false
         startVerificationTask?.cancel()
         startVerificationTask = nil
         startTask?.cancel()
@@ -588,6 +632,21 @@ extension PictureInPictureKeepAlive: @preconcurrency AVPictureInPictureControlle
         readyStreak = 0
         attemptCount = 0
         startRetryCount = 0
+
+        // 启动是异步的：等待期间任务可能已经结束 / 切换了保活方式。
+        // 这时 stop() 可能早于系统真正激活而被忽略，窗口随后才弹出来；
+        // 必须在这里补一次停止，否则它会一直留着。
+        guard isActive else {
+            stopVerificationTask?.cancel()
+            stopVerificationTask = nil
+            isStoppingSelf = true
+            verboseLog("didStart 但已不需要保活，立即停止 · \(stateSummary)")
+            controller.stopPictureInPicture()
+            scheduleStopVerification(for: controller)
+            return
+        }
+
+        isStoppingSelf = false
         // 启动成功后再延迟提交共存类型，避免与其他 PiP 争抢。
         coexistence?.schedulePostStartUpdate(for: controller)
     }
