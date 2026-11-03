@@ -2789,6 +2789,38 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "AVAssetDownloadURLSession에 맡겨 iOS가 백그라운드 일정을 관리하고 완료 후 MP4로 내보냅니다. m3u8에만 적용됩니다." } }
       }
     },
+    "仅此模式使用系统后台下载：普通文件走 Background URLSession；HLS 在 iOS 26 及以上交给系统 AVAsset，低版本使用兼容分片。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur dieser Modus nutzt System-Hintergrunddownloads: normale Dateien über Background URLSession, HLS unter iOS 26+ über AVAsset, ältere Versionen über kompatible Segmente." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only this mode uses system background downloads: regular files use Background URLSession; HLS uses AVAsset on iOS 26 and later, with compatible segments on older versions." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Seul ce mode utilise les téléchargements système en arrière-plan : les fichiers normaux passent par Background URLSession ; le HLS utilise AVAsset sur iOS 26 et versions ultérieures, avec des segments compatibles sur les versions antérieures." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이 모드만 시스템 백그라운드 다운로드를 사용합니다. 일반 파일은 Background URLSession, HLS는 iOS 26 이상에서 AVAsset, 이전 버전에서는 호환 세그먼트를 사용합니다." } }
+      }
+    },
+    "App 在前台开始下载后，系统授予后台执行时间，并强制在其自带的锁屏 / 灵动岛面板显示进度与取消按钮；该面板无法替换为自定义实时活动。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach dem Start im Vordergrund gewährt das System Ausführungszeit im Hintergrund und zeigt Fortschritt sowie Abbrechen zwingend in seinem eigenen Sperrbildschirm-/Dynamic-Island-Panel an. Dieses Panel kann nicht durch eine eigene Live Activity ersetzt werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "After a download starts in the foreground, the system grants background execution time and requires its own Lock Screen / Dynamic Island panel for progress and cancellation. That panel cannot be replaced by a custom Live Activity." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lorsqu’un téléchargement démarre au premier plan, le système accorde du temps d’exécution en arrière-plan et affiche obligatoirement la progression et l’annulation dans son propre panneau écran verrouillé / Dynamic Island. Ce panneau ne peut pas être remplacé par une Live Activity personnalisée." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱이 전경에서 다운로드를 시작하면 시스템이 백그라운드 실행 시간을 부여하고 자체 잠금 화면 / 다이내믹 아일랜드 패널에 진행률과 취소 버튼을 표시합니다. 이 패널은 사용자 지정 실시간 활동으로 대체할 수 없습니다." } }
+      }
+    },
+    "循环播放极短静音，并使用前台下载会话保持进度更新。可能打断其他 App 正在播放的音频。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Spielt sehr kurzen stillen Ton in Schleife und nutzt eine Vordergrund-Downloadsitzung für aktuelle Fortschritte. Kann Audio anderer Apps unterbrechen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loops very short silent audio and uses a foreground download session so progress keeps updating. May interrupt audio from other apps." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lit en boucle un très court silence et utilise une session de téléchargement au premier plan pour actualiser la progression. Peut interrompre l’audio d’autres apps." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "매우 짧은 무음을 반복 재생하고 전경 다운로드 세션을 사용해 진행률을 계속 갱신합니다. 다른 앱의 오디오를 중단할 수 있습니다." } }
+      }
+    },
+    "用系统画中画保活，并使用前台下载会话：不占用音频会话，不打断其他 App 的音频，也尽量减少与其他画中画的互相挤占。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hält die App per System-PiP aktiv und nutzt eine Vordergrund-Downloadsitzung: belegt keine Audiositzung, unterbricht kein Audio anderer Apps und minimiert Konflikte mit anderen PiP-Fenstern." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keeps the app alive with system PiP and uses a foreground download session: no audio session, no interruption of other apps’ audio, and minimal contention with other PiP windows." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Maintient l’app active via PiP système et utilise une session de téléchargement au premier plan : pas de session audio, pas d’interruption de l’audio des autres apps et moins de conflits avec d’autres fenêtres PiP." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 PiP로 앱을 유지하고 전경 다운로드 세션을 사용합니다. 오디오 세션을 차지하지 않고 다른 앱의 오디오를 방해하지 않으며 다른 PiP 창과의 충돌을 최소화합니다." } }
+      }
+    },
     "仅系统下载" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Systemdownload" } },
@@ -2803,6 +2835,102 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "System download" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement système" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 다운로드" } }
+      }
+    },
+    "推送通知" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mitteilungen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Notifications" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알림" } }
+      }
+    },
+    "设置中断提醒、完成提醒和任务名显示。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unterbrechungs- und Abschlusshinweise sowie die Anzeige von Aufgabennamen einstellen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Configure interruption and completion alerts, and how task names are shown." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Configurer les alertes d’interruption et de fin, ainsi que l’affichage des noms de tâches." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "중단 및 완료 알림과 작업 이름 표시 방식을 설정합니다." } }
+      }
+    },
+    "下载完成后通知" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach Abschluss benachrichtigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notify when downloads finish" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Notifier à la fin des téléchargements" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 완료 시 알림" } }
+      }
+    },
+    "显示内容" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Angezeigter Inhalt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Displayed content" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Contenu affiché" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "표시 내용" } }
+      }
+    },
+    "显示具体任务名" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabennamen anzeigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show task names" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les noms des tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 이름 표시" } }
+      }
+    },
+    "仅提示有任务完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Abschluss melden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only indicate a task finished" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Indiquer seulement qu’une tâche est terminée" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 완료만 표시" } }
+      }
+    },
+    "下载完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download abgeschlossen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download complete" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement terminé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 완료" } }
+      }
+    },
+    "有一个任务完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Eine Aufgabe wurde abgeschlossen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A task has finished" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une tâche est terminée" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 하나가 완료되었습니다" } }
+      }
+    },
+    "配置后台运行方式与保活策略。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hintergrundausführung und Keep-Alive-Strategie konfigurieren." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Configure background execution and keep-alive." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Configurer l’exécution en arrière-plan et le maintien d’activité." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 실행 방식과 유지 전략을 설정합니다." } }
+      }
+    },
+    "保活中断提醒仅在持续处理、静音音频或画中画被系统中断时生效。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unterbrechungshinweise gelten nur, wenn fortgesetzte Verarbeitung, stummes Audio oder PiP vom System unterbrochen werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Interruption alerts only apply when continued processing, silent audio, or PiP is interrupted by the system." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les alertes d’interruption ne s’appliquent que si le traitement continu, l’audio silencieux ou le PiP est interrompu par le système." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "중단 알림은 연속 처리, 무음 오디오 또는 PiP가 시스템에 의해 중단될 때만 적용됩니다." } }
+      }
+    },
+    "首次开启通知时需要允许 Nox 发送通知。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beim ersten Aktivieren muss Nox Mitteilungen senden dürfen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The first time you enable notifications, allow Nox to send them." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lors de la première activation, autorisez Nox à envoyer des notifications." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알림을 처음 켤 때 Nox의 알림 전송을 허용해야 합니다." } }
+      }
+    },
+    "实时活动与通知共用这套设置。关闭任务名后，实时活动显示「正在下载」，完成通知显示「有一个任务完成」。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Live-Aktivitäten und Mitteilungen nutzen diese Einstellung gemeinsam. Ohne Aufgabennamen zeigt die Live-Aktivität „Wird geladen“ und die Abschlussmitteilung „Eine Aufgabe wurde abgeschlossen“." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Live Activities and notifications share this setting. Without task names, the Live Activity shows “Downloading” and completion notifications show “A task has finished”." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les activités en direct et les notifications partagent ce réglage. Sans nom de tâche, l’activité affiche « Téléchargement » et la notification « Une tâche est terminée »." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실시간 활동과 알림은 이 설정을 함께 사용합니다. 작업 이름을 끄면 실시간 활동에는 '다운로드 중', 완료 알림에는 '작업 하나가 완료되었습니다'가 표시됩니다." } }
       }
     },
     "仅前台下载" : {

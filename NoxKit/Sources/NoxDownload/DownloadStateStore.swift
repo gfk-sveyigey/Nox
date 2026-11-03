@@ -23,6 +23,8 @@ public protocol DownloadStateStore: AnyObject {
     var keepAliveMode: KeepAliveMode { get set }
     var keepAliveSilentAudioFallback: Bool { get set }
     var keepAliveNotifications: Bool { get set }
+    var downloadCompletionNotifications: Bool { get set }
+    var showsTaskNames: Bool { get set }
     var keepAliveLifetime: KeepAliveLifetime { get set }
     var pipCoexistenceFallback: PiPCoexistenceFallback { get set }
     var pipWindowHeight: Double { get set }

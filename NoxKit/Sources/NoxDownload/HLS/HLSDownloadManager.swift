@@ -42,18 +42,25 @@ extension DownloadManager {
         hlsProgress.removeValue(forKey: id)
         startProgressTimerIfNeeded()
 
-        // 「系统下载」模式下，普通文件走 Background URLSession；
-        // HLS 则自动交给 AVAsset。低版本没有字节统计，继续用分片引擎。
-        if store.keepAliveMode == .off,
-           HLSDownloadEngine.avAsset.isAvailable {
-            await beginAVAssetHLS(record, token: token)
-            return
+        // 「系统下载」模式下，HLS 分片也交给后台 URLSession：
+        // 已完成的分片会落盘，App 被回收后可以续传；进度、大小和速度也仍由
+        // 自定义下载管线统计，不依赖 AVAsset 的系统 Live Activity。
+        let segmentLoader: HLSDownloader.SegmentLoader?
+
+        if store.keepAliveMode.usesSystemDownloadSession {
+            segmentLoader = { [weak self] request, recordID in
+                guard let self else { throw CancellationError() }
+                return try await self.fetchHLSSegment(request, recordID: recordID)
+            }
+        } else {
+            segmentLoader = nil
         }
 
         do {
             let merged = try await HLSDownloader(
                 concurrency: concurrency,
-                allowsCellularAccess: allowsCellularDownloads
+                allowsCellularAccess: allowsCellularDownloads,
+                segmentLoader: segmentLoader
             ).download(
                 recordID: id,
                 playlistURL: record.sourceURL,
@@ -67,6 +74,7 @@ extension DownloadManager {
                 Task { @MainActor in
                     guard let self, self.isCurrentRun(id, token: token) else { return }
                     self.hlsProgress[id] = progress
+                    self.publishProgressIfNeeded()
                 }
             }
 
@@ -83,6 +91,24 @@ extension DownloadManager {
         } catch {
             guard isCurrentRun(id, token: token) else { return }
             abort(id: id, token: token, message: downloadErrorMessage(for: error))
+        }
+    }
+
+    /// 用后台 URLSession 下载单个 HLS 分片。
+    ///
+    /// 后台会话会在 App 挂起时继续传输；完成回调把数据交给 HLSDownloader
+    /// 解密并写入 part 文件，因此重启后可以直接从磁盘续传。
+    func fetchHLSSegment(_ request: URLRequest, recordID: UUID) async throws -> Data {
+        let task = session.downloadTask(with: request)
+        task.taskDescription = "hls:\(recordID.uuidString)"
+
+        return try await withCheckedThrowingContinuation { continuation in
+            hlsSegmentContexts[task.taskIdentifier] = HLSSegmentContext(
+                recordID: recordID,
+                task: task,
+                continuation: continuation
+            )
+            task.resume()
         }
     }
 
@@ -116,6 +142,7 @@ extension DownloadManager {
                     bytes: bytes,
                     estimatedTotalBytes: estimatedTotal
                 )
+                self.publishProgressIfNeeded()
             }
 
             guard isCurrentRun(id, token: token) else {

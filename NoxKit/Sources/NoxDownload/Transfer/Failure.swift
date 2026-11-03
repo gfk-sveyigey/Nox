@@ -72,6 +72,18 @@ extension DownloadManager {
     func logCompletion(_ record: DownloadRecord) {
         if record.status == .finished {
             LogStore.shared.info("finished \(record.displayFilename) · \(TransferStats.formattedSize(record.receivedBytes ?? 0))")
+
+            let completionNotifications = store.downloadCompletionNotifications
+            let showsTaskNames = store.showsTaskNames
+            let taskName = record.displayTitle
+
+            if completionNotifications {
+                Task {
+                    await KeepAliveNotifier.notifyDownloadFinished(
+                        taskName: showsTaskNames ? taskName : nil
+                    )
+                }
+            }
         } else if let message = record.errorMessage {
             LogStore.shared.error("failed \(record.displayFilename): \(message)")
         }

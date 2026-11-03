@@ -70,6 +70,10 @@ public final class AppState: ObservableObject {
     @Published public var keepAliveSilentAudioFallback = false
     /// 保活失效且仍有下载任务时，是否发送本地通知。
     @Published public var keepAliveNotifications = false
+    /// 下载完成后是否发送本地通知。
+    @Published public var downloadCompletionNotifications = false
+    /// 实时活动与通知里是否显示具体任务名；关闭时只显示「有任务完成」。
+    @Published public var showsTaskNames = true
     /// 画中画共存保护不可用时怎么办（继续用画中画 / 改用静音音频 / 停止保活）。
     @Published public var pipCoexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
@@ -118,6 +122,8 @@ public final class AppState: ObservableObject {
     private let keepAliveModeKey = "Nox.keepAliveMode"
     private let keepAliveSilentAudioFallbackKey = "Nox.keepAliveSilentAudioFallback"
     private let keepAliveNotificationsKey = "Nox.keepAliveNotifications"
+    private let downloadCompletionNotificationsKey = "Nox.downloadCompletionNotifications"
+    private let showsTaskNamesKey = "Nox.showsTaskNames"
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
     private let pipWindowHeightKey = "Nox.pipWindowHeight"
@@ -312,6 +318,8 @@ public final class AppState: ObservableObject {
         defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
         defaults.set(keepAliveSilentAudioFallback, forKey: keepAliveSilentAudioFallbackKey)
         defaults.set(keepAliveNotifications, forKey: keepAliveNotificationsKey)
+        defaults.set(downloadCompletionNotifications, forKey: downloadCompletionNotificationsKey)
+        defaults.set(showsTaskNames, forKey: showsTaskNamesKey)
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
@@ -414,6 +422,9 @@ public final class AppState: ObservableObject {
 
         keepAliveSilentAudioFallback = defaults.bool(forKey: keepAliveSilentAudioFallbackKey)
         keepAliveNotifications = defaults.bool(forKey: keepAliveNotificationsKey)
+        // 缺键时默认关闭完成通知；显示任务名默认开启，保持原有行为。
+        downloadCompletionNotifications = defaults.bool(forKey: downloadCompletionNotificationsKey)
+        showsTaskNames = defaults.object(forKey: showsTaskNamesKey) as? Bool ?? true
 
         pipCoexistenceFallback = PiPCoexistenceFallback(
             rawValue: defaults.string(forKey: pipCoexistenceFallbackKey) ?? ""

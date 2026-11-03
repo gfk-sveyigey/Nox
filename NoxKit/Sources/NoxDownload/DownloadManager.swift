@@ -18,6 +18,9 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 此时不再启动新任务，并暂停正在下载的任务。
     @Published public internal(set) var storageBlocked = false
 
+    /// 系统下载模式下，HLS 分片请求的等待上下文。
+    var hlsSegmentContexts: [Int: HLSSegmentContext] = [:]
+
     /// 每个分片的目标大小。
     ///
     /// 必须是**固定值**：分片边界只由 (总大小, 本值) 决定，与线程数无关。
@@ -38,6 +41,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 每个任务一个速度估算器；取代原先的「逐帧瞬时值 + 指数平滑」。
     var speedMeters: [UUID: SpeedMeter] = [:]
     var progressTimer: Timer?
+    /// 进度落库 / Live Activity 的最近一次发布时间。
+    ///
+    /// 后台 URLSession 回调可能只在系统唤醒 App 的瞬间执行；此时 1 秒定时器
+    /// 不一定来得及跑，所以回调里会主动触发一次（并在这里做 1 秒限频）。
+    var lastProgressPublishTime: TimeInterval = 0
     /// 限频检查整机剩余空间，避免每秒都读文件系统。
     var lastStorageCheck = Date.distantPast
 
@@ -135,6 +143,16 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         let task: URLSessionDownloadTask
     }
 
+    /// HLS 分片走后台 URLSession 时的等待上下文。
+    ///
+    /// m3u8 的分片不是字节区间，不能复用普通文件的分片调度；单独记录
+    /// task → continuation 的映射即可，完成的分片仍由 HLSDownloader 落到 part 文件。
+    struct HLSSegmentContext {
+        let recordID: UUID
+        let task: URLSessionDownloadTask
+        let continuation: CheckedContinuation<Data, Error>
+    }
+
     lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.background(
             withIdentifier: "com.aholic.nox.downloads"
@@ -152,10 +170,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         )
     }()
 
-    /// 「仅前台下载」模式使用的普通会话。
+    /// 非「系统下载」方式使用的普通会话。
     ///
-    /// 它不申请后台会话：App 被挂起后任务不会由系统继续执行。
-    /// 进入后台时还会主动暂停，回到前台后再从已有分片继续。
+    /// 它不申请后台会话：下载能继续，依赖的是「仅前台」主动暂停、或静音音频 /
+    /// 画中画 / 持续处理让 App 进程继续存活。进入后台前会有一段短时宽限，
+    /// 让保活完成交接。
     lazy var foregroundSession: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.allowsCellularAccess = allowsCellularDownloads
@@ -168,8 +187,12 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     }()
 
     /// 分片请求使用的会话：由当前后台方式决定。
+    ///
+    /// 只有「系统下载」使用后台 URLSession。仅前台、静音音频、画中画、
+    /// 持续处理都依赖 App 进程继续运行，改用前台会话才能让进度定时器和
+    /// Live Activity 持续更新，也避免后台会话把完成回调攒到 App 回到前台。
     var downloadSession: URLSession {
-        store.keepAliveMode == .foregroundOnly ? foregroundSession : session
+        store.keepAliveMode.usesSystemDownloadSession ? session : foregroundSession
     }
 
     public init(store: DownloadStateStore) {
@@ -289,12 +312,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         keepAlive.currentMode
     }
 
-    /// 用户配置的保活方式。用于避免持续处理尚未来得及启动时，
-    /// 自定义 Live Activity 先短暂出现再被系统活动替换。
-    public var preferredKeepAliveMode: KeepAliveMode {
-        keepAlive.preferredMode
-    }
-
     /// 保活方式变化（例如切换到持续处理）的发布者。
     public var activeKeepAliveModePublisher: AnyPublisher<KeepAliveMode, Never> {
         keepAlive.modePublisher
@@ -304,9 +321,18 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     public func setKeepAliveMode(_ mode: KeepAliveMode) {
         // iOS 26 以下不提供持续处理；即便外部传入也不接受。
         guard mode.isAvailable else { return }
+
+        let usedSystemSession = store.keepAliveMode.usesSystemDownloadSession
         store.keepAliveMode = mode
         store.persist()
         keepAlive.preferredMode = mode
+
+        // 系统下载与其它保活方式使用不同的 URLSession（HLS 在系统下载下还会
+        // 切换为 AVAsset）。切换时重启当前任务，让正在下载的内容也立刻换到
+        // 新的下载方式，而不是等下一次重试。
+        if usedSystemSession != mode.usesSystemDownloadSession {
+            restartActiveDownloadsForSessionChange()
+        }
     }
 
     /// 设置页切换「中断后自动降级到静音音频」。
@@ -326,6 +352,23 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         Task {
             _ = await KeepAliveNotifier.requestAuthorization()
         }
+    }
+
+    /// 设置页切换「下载完成后通知」。
+    public func setDownloadCompletionNotifications(_ enabled: Bool) {
+        store.downloadCompletionNotifications = enabled
+        store.persist()
+
+        guard enabled else { return }
+        Task {
+            _ = await KeepAliveNotifier.requestAuthorization()
+        }
+    }
+
+    /// 设置页切换实时活动 / 通知是否显示具体任务名。
+    public func setShowsTaskNames(_ enabled: Bool) {
+        store.showsTaskNames = enabled
+        store.persist()
     }
 
     /// 设置页选择「画中画共存保护不可用」时的兜底方案。

@@ -30,6 +30,8 @@ extension DownloadManager {
     }
 
     func tickProgress() {
+        lastProgressPublishTime = SpeedMeter.now()
+
         // 储存保护：每 3 秒检查一次整机剩余空间。低于阈值时立即暂停
         // 正在下载的任务，避免继续把设备写满。
         if Date().timeIntervalSince(lastStorageCheck) >= 3 {
@@ -70,6 +72,13 @@ extension DownloadManager {
             inFlightBytes[context.recordID, default: 0] += max(context.task.countOfBytesReceived, 0)
         }
 
+        // HLS 后台分片：已完成的分片在 hlsProgress 里，正在传输的部分
+        // 从后台任务读取，这样速度和大小在分段之间也能持续更新。
+        var hlsInFlightBytes: [UUID: Int64] = [:]
+        for context in hlsSegmentContexts.values {
+            hlsInFlightBytes[context.recordID, default: 0] += max(context.task.countOfBytesReceived, 0)
+        }
+
         for record in activeRecords {
             let id = record.id
 
@@ -83,9 +92,10 @@ extension DownloadManager {
             let total: Int64
 
             if isHLS {
-                // m3u8 的字节数来自分片累计；总大小按已完成进度估算。
+                // m3u8 的字节数来自已完成分片 + 正在传输的分片；
+                // 总大小按已完成进度估算。
                 guard let snapshot = hlsProgress[id] else { continue }
-                received = snapshot.bytes
+                received = snapshot.bytes + (hlsInFlightBytes[id] ?? 0)
                 total = snapshot.estimatedTotalBytes
             } else {
                 let inFlight = inFlightBytes[id] ?? 0
@@ -140,6 +150,17 @@ extension DownloadManager {
                 keepAlive.updateProgress(fraction)
             }
         }
+    }
+
+    /// 网络回调刚推进了进度时主动刷新一次。
+    ///
+    /// 后台 URLSession / AVAsset 的回调在自己被系统唤醒的窗口内执行，
+    /// 不能只依赖 RunLoop 定时器；否则 App 再次挂起前，下载记录和
+    /// Live Activity 都会停在上一帧。与定时器共用 1 秒限频。
+    func publishProgressIfNeeded() {
+        let now = SpeedMeter.now()
+        guard now - lastProgressPublishTime >= 0.9 else { return }
+        tickProgress()
     }
 
     func clearTransferStats(for id: UUID) {
