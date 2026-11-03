@@ -1,4 +1,5 @@
 import SwiftUI
+import NoxCore
 import NoxDownload
 import NoxState
 
