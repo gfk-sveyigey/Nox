@@ -236,9 +236,6 @@ final class TabSelectionState: ObservableObject {
         if now - lastReselectAt <= Self.doubleTapInterval {
             resetDoubleTap()
             browseDoubleTapCount += 1
-            Task { @MainActor in
-                LogStore.shared.info("browse tab · double tap")
-            }
         } else {
             lastReselectAt = now
         }
