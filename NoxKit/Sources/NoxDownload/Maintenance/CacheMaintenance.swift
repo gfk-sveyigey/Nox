@@ -96,6 +96,12 @@ extension DownloadManager {
     /// 场景切换：回前台重算速度采样，并让保活自愈（例如 PiP 被系统结束后重建）。
     public func handleScenePhase(isActive: Bool) {
         guard isActive else {
+            // 「仅前台下载」不依赖系统继续执行：进后台前主动停下，
+            // 已下载分片留在磁盘上，回前台后从断点继续。
+            if store.keepAliveMode == .foregroundOnly {
+                pauseForForegroundOnly()
+            }
+
             if backgroundTransitionGrace == nil, hasActiveDownloads {
                 backgroundTransitionGrace = BackgroundExecutionGrace.shared.begin(
                     reason: "进入后台"
@@ -113,9 +119,41 @@ extension DownloadManager {
         }
         resetSpeedSamples()
         keepAlive.didEnterForeground()
+        resumeAfterForegroundOnly()
         // 后台期间可能错过了某个下载结束回调；回前台时重新对齐队列，
         // 让等待中的任务补上空出来的槽位。
         reconcileTaskQueue(reason: "foreground")
+    }
+
+    /// 切到后台时暂停所有排队 / 下载中的任务。
+    private func pauseForForegroundOnly() {
+        let targets = store.downloads.filter {
+            $0.status == .queued || $0.status == .downloading
+        }
+        guard !targets.isEmpty else { return }
+
+        for record in targets {
+            // 快照之后任务可能刚好完成，重新确认一次，避免把终态改成已取消。
+            guard let live = store.downloads.first(where: { $0.id == record.id }),
+                  live.status == .queued || live.status == .downloading else { continue }
+            foregroundPausedIDs.insert(live.id)
+            performCancel(live)
+        }
+        reconcileTaskQueue(reason: "foreground only")
+    }
+
+    /// 回到前台后恢复由「仅前台下载」暂停的任务。
+    private func resumeAfterForegroundOnly() {
+        guard !foregroundPausedIDs.isEmpty else { return }
+
+        let ids = foregroundPausedIDs
+        foregroundPausedIDs.removeAll()
+
+        for id in ids {
+            guard let record = store.downloads.first(where: { $0.id == id }),
+                  record.status == .cancelled else { continue }
+            retry(record)
+        }
     }
 
     /// 清空缓存：删除未完成下载的分片与暂存文件，以及 HTTP 网络缓存。

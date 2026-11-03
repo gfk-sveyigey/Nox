@@ -116,7 +116,7 @@ extension DownloadManager {
             request.setValue("bytes=\(segment.start + existing)-\(end)", forHTTPHeaderField: "Range")
         }
 
-        let task = session.downloadTask(with: request)
+        let task = downloadSession.downloadTask(with: request)
         task.taskDescription = recordID.uuidString
 
         contexts[task.taskIdentifier] = SegmentContext(

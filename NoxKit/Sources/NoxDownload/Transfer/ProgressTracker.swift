@@ -111,8 +111,7 @@ extension DownloadManager {
             transfers[id] = TransferStats(
                 bytesReceived: received,
                 totalBytes: total,
-                bytesPerSecond: speed,
-                isTotalEstimated: isHLS && total > 0
+                bytesPerSecond: speed
             )
 
             var updated = record

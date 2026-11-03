@@ -35,6 +35,12 @@ final class AVAssetHLSDownloader: NSObject {
 
     nonisolated static let sessionIdentifier = "com.aholic.nox.hls.avasset"
 
+    /// 旧系统没有 metric event，无法显示总大小和速度，因此不启用这条路径。
+    nonisolated static var isSupported: Bool {
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
+
     func download(
         recordID: UUID,
         playlistURL: URL,
@@ -223,7 +229,10 @@ final class AVAssetHLSDownloader: NSObject {
         let configuration = URLSessionConfiguration.background(
             withIdentifier: Self.sessionIdentifier
         )
-        configuration.isDiscretionary = false
+        // 非 discretionary 的 AVAsset 下载会让系统自动再显示一个 Live Activity。
+        // 本 App 使用自定义 Live Activity，因此交给系统择机调度来关闭系统活动。
+        // 代价是系统可能等到网络 / 电量条件合适时才真正开始下载。
+        configuration.isDiscretionary = true
         configuration.sessionSendsLaunchEvents = true
         configuration.allowsCellularAccess = allowsCellularAccess
 

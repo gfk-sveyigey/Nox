@@ -9,7 +9,7 @@ import NoxState
 
 /// 把下载状态投射到锁屏 / 灵动岛的 Live Activity。
 ///
-/// 与保活方式解耦：关闭、静音音频、画中画都使用这里创建的活动；
+/// 与保活方式解耦：系统下载、仅前台、静音音频、画中画都使用这里创建的活动；
 /// 持续处理则由系统自动展示它自己的活动，本类会主动结束自定义活动，
 /// 避免出现两个进度界面。
 @MainActor
@@ -101,12 +101,19 @@ final class DownloadLiveActivityManager {
 
     private func adoptExistingActivityIfNeeded() {
         guard activity == nil else { return }
-        activity = Activity<DownloadActivityAttributes>.activities.first {
+
+        let existing = Activity<DownloadActivityAttributes>.activities.filter {
             $0.activityState == .active || $0.activityState == .stale
         }
-        if activity != nil {
-            LogStore.shared.info("live activity adopted")
+        guard let adopted = existing.first else { return }
+
+        activity = adopted
+        // 后台恢复 / 旧版本异常退出可能留下多个同类型活动；
+        // 只保留一个，其余立即结束，避免灵动岛叠出多张卡片。
+        for extra in existing.dropFirst() {
+            Task { await extra.end(nil, dismissalPolicy: .immediate) }
         }
+        LogStore.shared.info("live activity adopted")
     }
 
     private func makeState() -> DownloadActivityAttributes.ContentState? {

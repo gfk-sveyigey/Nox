@@ -42,7 +42,10 @@ extension DownloadManager {
         hlsProgress.removeValue(forKey: id)
         startProgressTimerIfNeeded()
 
-        if store.hlsDownloadEngine == .avAsset {
+        // 「系统下载」模式下，普通文件走 Background URLSession；
+        // HLS 则自动交给 AVAsset。低版本没有字节统计，继续用分片引擎。
+        if store.keepAliveMode == .off,
+           HLSDownloadEngine.avAsset.isAvailable {
             await beginAVAssetHLS(record, token: token)
             return
         }

@@ -133,7 +133,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 持续处理是系统按“用户发起的一项工作”授予的执行时间，没有下载任务时
     /// 不应该常驻，否则会浪费系统预算，也更容易被系统终止。
     private var keepAliveNeeded: Bool {
-        if preferredMode == .off { return false }
+        guard preferredMode.startsKeepAlive else { return false }
         if targetMode == .continuedProcessing { return hasActiveTasks }
         return hasActiveTasks || lifetime == .alwaysOn
     }
@@ -194,7 +194,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 「继续」不一定改变 `hasActiveTasks`（比如本来就还有别的任务在跑），而画中画
     /// 很可能已经因为启动被拒 / 被系统结束而掉了 —— 这里补一次确定性的重建。
     public func retryKeepAlive() {
-        guard preferredMode != .off, keepAliveNeeded else { return }
+        guard preferredMode.startsKeepAlive, keepAliveNeeded else { return }
         onLog?("用户继续任务，重新检查保活")
         verboseLog("retryKeepAlive · preferred=\(preferredMode.title) active=\(activeMode.title) strategyRunning=\(activeStrategyIsRunning)")
         reconcile()
@@ -210,7 +210,7 @@ public final class KeepAliveCoordinator: ObservableObject {
         // 回到前台后重新优先尝试用户选择的策略，而不是一直停留在静音音频降级。
         let wasUsingFallback = fallbackMode != nil
         fallbackMode = nil
-        guard keepAliveNeeded, preferredMode != .off else { return }
+        guard keepAliveNeeded, preferredMode.startsKeepAlive else { return }
         guard wasUsingFallback || !activeStrategyIsRunning else { return }
         activeMode = .off
         reconcile()
@@ -219,7 +219,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 当前生效的保活策略是否真的还在运行。
     private var activeStrategyIsRunning: Bool {
         switch activeMode {
-        case .off: return false
+        case .off, .foregroundOnly: return false
         case .continuedProcessing: return ContinuedProcessingBridge.isLive
         case .silentAudio: return silentAudio.isLive
         case .pictureInPicture: return pictureInPicture.isLive
@@ -237,7 +237,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     private func reconcile() {
         verboseLog("reconcile · preferred=\(preferredMode.title) active=\(activeMode.title) needed=\(keepAliveNeeded) hasActiveTasks=\(hasActiveTasks) lifetime=\(lifetime.title) strategyRunning=\(activeStrategyIsRunning)")
         // 用户把保活方式关掉：彻底销毁画中画基础设施（宿主视图 + 会话）。
-        if preferredMode == .off {
+        if !preferredMode.startsKeepAlive {
             deactivate()
             pictureInPicture.invalidate()
             return
@@ -300,7 +300,7 @@ public final class KeepAliveCoordinator: ObservableObject {
         stopAll()
         do {
             switch mode {
-            case .off:
+            case .off, .foregroundOnly:
                 break
             case .continuedProcessing:
                 try ContinuedProcessingBridge.start()
@@ -355,7 +355,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 策略是否真的还在运行（画中画把「正在建立中」也算活着）。
     private func isRunning(_ mode: KeepAliveMode) -> Bool {
         switch mode {
-        case .off: return false
+        case .off, .foregroundOnly: return false
         case .continuedProcessing: return ContinuedProcessingBridge.isLive
         case .silentAudio: return silentAudio.isLive
         case .pictureInPicture: return pictureInPicture.isLive
@@ -371,7 +371,7 @@ public final class KeepAliveCoordinator: ObservableObject {
 
     private func handleInterruption() {
         verboseLog("handleInterruption · active=\(activeMode.title) needed=\(keepAliveNeeded) preferred=\(preferredMode.title)")
-        guard keepAliveNeeded, preferredMode != .off else { return }
+        guard keepAliveNeeded, preferredMode.startsKeepAlive else { return }
         let interrupted = activeMode
         stopAll()
         activeMode = .off
@@ -400,7 +400,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 只停止并等待用户回到前台再重建（见 `didEnterForeground()`）。
     private func handleStartFailure() {
         verboseLog("handleStartFailure · active=\(activeMode.title) needed=\(keepAliveNeeded) preferred=\(preferredMode.title)")
-        guard keepAliveNeeded, preferredMode != .off else { return }
+        guard keepAliveNeeded, preferredMode.startsKeepAlive else { return }
         stopAll()
         activeMode = .off
         if allowsSilentAudioFallback {

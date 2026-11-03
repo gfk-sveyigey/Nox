@@ -63,10 +63,7 @@ public final class AppState: ObservableObject {
     /// 整机剩余空间低于此值时暂停下载（0 = 不限制）。
     @Published public var minFreeDiskSpace: Int64 = NoxDefaults.defaultMinFreeDiskSpace
 
-    /// HLS 下载引擎：兼容分片 / 系统 AVAsset。
-    @Published public var hlsDownloadEngine: HLSDownloadEngine = NoxDefaults.defaultHLSDownloadEngine
-
-    /// 后台保活方式：关闭 / 静音音频 / 画中画。
+    /// 后台方式：系统下载 / 仅前台 / 持续处理 / 静音音频 / 画中画。
     /// 默认走画中画：它不占用音频会话，不会打断其他 App 正在播放的音频。
     @Published public var keepAliveMode: KeepAliveMode = .pictureInPicture
     /// 主保活方式被系统打断后，是否自动降级到静音音频。
@@ -118,7 +115,6 @@ public final class AppState: ObservableObject {
     private let maxConcurrentDownloadsKey = "Nox.maxConcurrentDownloads"
     private let downloadNetworkModeKey = "Nox.downloadNetworkMode"
     private let minFreeDiskSpaceKey = "Nox.minFreeDiskSpace"
-    private let hlsDownloadEngineKey = "Nox.hlsDownloadEngine"
     private let keepAliveModeKey = "Nox.keepAliveMode"
     private let keepAliveSilentAudioFallbackKey = "Nox.keepAliveSilentAudioFallback"
     private let keepAliveNotificationsKey = "Nox.keepAliveNotifications"
@@ -313,7 +309,6 @@ public final class AppState: ObservableObject {
         defaults.set(maxConcurrentDownloads, forKey: maxConcurrentDownloadsKey)
         defaults.set(downloadNetworkMode.rawValue, forKey: downloadNetworkModeKey)
         defaults.set(minFreeDiskSpace, forKey: minFreeDiskSpaceKey)
-        defaults.set(hlsDownloadEngine.rawValue, forKey: hlsDownloadEngineKey)
         defaults.set(keepAliveMode.rawValue, forKey: keepAliveModeKey)
         defaults.set(keepAliveSilentAudioFallback, forKey: keepAliveSilentAudioFallbackKey)
         defaults.set(keepAliveNotifications, forKey: keepAliveNotificationsKey)
@@ -390,10 +385,6 @@ public final class AppState: ObservableObject {
         } else {
             minFreeDiskSpace = NoxDefaults.defaultMinFreeDiskSpace
         }
-
-        hlsDownloadEngine = HLSDownloadEngine(
-            rawValue: defaults.string(forKey: hlsDownloadEngineKey) ?? ""
-        ) ?? NoxDefaults.defaultHLSDownloadEngine
 
         historyRetentionMode = HistoryRetentionMode(
             rawValue: defaults.string(forKey: historyRetentionModeKey) ?? ""

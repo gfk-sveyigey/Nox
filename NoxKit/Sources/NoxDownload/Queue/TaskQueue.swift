@@ -143,6 +143,12 @@ extension DownloadManager {
             return
         }
 
+        // 「仅前台下载」在后台不启动新任务；回到前台后会重新对齐队列。
+        if store.keepAliveMode == .foregroundOnly,
+           UIApplication.shared.applicationState == .background {
+            return
+        }
+
         // 5. 按 FIFO 补满空闲槽位。调小上限时不打断正在跑的任务，
         //    只让 active 数自然降到新上限以下后再继续取队列。
         while activeIDs.count < maxConcurrentTasks, !pendingQueue.isEmpty {

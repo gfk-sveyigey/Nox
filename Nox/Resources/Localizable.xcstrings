@@ -1853,12 +1853,12 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "실행 시 상시 유지" } }
       }
     },
-    "跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到把保活方式设为「关闭」。" : {
+    "跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到切换到「系统下载」或「仅前台下载」。" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Aufgaben folgen: nur aktiv, solange Downloads laufen. Dauerhaft ab dem Start: startet beim Aktivwerden der App und bleibt aktiv, bis die Keep-Alive-Methode auf „Aus“ gesetzt wird." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow download tasks: keep alive only while downloads are active. Persistent from launch: start when the app becomes active and keep running until the keep-alive method is set to Off." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre les tâches de téléchargement : maintien actif uniquement pendant les téléchargements. Persistant dès le lancement : démarre à l'activation de l'app et reste actif jusqu'à ce que la méthode soit réglée sur « Désactivé »." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 작업에 따름: 다운로드가 있을 때만 유지합니다. 실행 시 상시 유지: 앱이 활성화될 때 시작해 유지 방식을 「끔」으로 설정할 때까지 계속 유지합니다." } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben folgen: Keep-Alive nur bei Downloads. Immer aktiv: ab dem Vordergrund dauerhaft, bis zu „Systemdownload“ oder „Nur im Vordergrund“ gewechselt wird." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow tasks: keep alive only while downloading. Always on: start in the foreground and stay active until switching to System download or Foreground only." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre les tâches : maintien uniquement pendant les téléchargements. Toujours actif : dès le premier plan, jusqu’au passage à Téléchargement système ou Premier plan uniquement." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 따르기: 다운로드 중에만 유지합니다. 항상 켜기: 포그라운드에서 시작해 시스템 다운로드 또는 포그라운드에서만으로 전환할 때까지 유지합니다." } }
       }
     },
     "开源许可与致谢" : {
@@ -2795,6 +2795,46 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "System download only" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement système uniquement" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 다운로드만" } }
+      }
+    },
+    "系统下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Systemdownload" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System download" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement système" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 다운로드" } }
+      }
+    },
+    "仅前台下载" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur im Vordergrund" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Foreground only" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Premier plan uniquement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "포그라운드에서만" } }
+      }
+    },
+    "普通文件交给系统后台 URLSession；HLS 在 iOS 26 及以上交给系统 AVAsset，低版本使用兼容分片。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Normale Dateien laufen über die Hintergrund-URLSession des Systems; HLS wird ab iOS 26 an AVAsset übergeben, ältere Versionen nutzen Segmentierung." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Regular files use the system background URLSession; HLS uses system AVAsset on iOS 26 and later, with segmented downloads on older versions." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les fichiers normaux utilisent l’URLSession d’arrière-plan du système ; le HLS passe par AVAsset à partir d’iOS 26, avec un téléchargement segmenté sur les versions antérieures." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일반 파일은 시스템 백그라운드 URLSession을 사용하고, HLS는 iOS 26 이상에서 시스템 AVAsset을 사용하며 이전 버전에서는 분할 다운로드를 사용합니다." } }
+      }
+    },
+    "不使用后台下载，也不启动保活。切到后台时暂停任务，回到前台后自动继续。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein Hintergrunddownload und keine Keep-Alive-Strategie. Beim Wechsel in den Hintergrund werden Aufgaben pausiert und im Vordergrund fortgesetzt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No background downloads or keep-alive. Tasks pause when the app goes to the background and resume in the foreground." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun téléchargement en arrière-plan ni maintien d’activité. Les tâches se mettent en pause en arrière-plan et reprennent au premier plan." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 다운로드나 유지 전략을 사용하지 않습니다. 앱이 백그라운드로 가면 작업을 일시 중지하고 포그라운드에서 다시 시작합니다." } }
+      }
+    },
+    "用户在前台开始下载后，系统允许进程在后台继续处理，并显示进度与取消入口。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach einem vom Nutzer im Vordergrund gestarteten Download darf der Prozess im Hintergrund weiterarbeiten; das System zeigt Fortschritt und Abbrechen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "After the user starts a download in the foreground, the system lets the process continue in the background and shows progress and a cancel action." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Après un lancement au premier plan, le système autorise le processus à continuer en arrière-plan et affiche la progression ainsi que l’annulation." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용자가 포그라운드에서 다운로드를 시작하면 시스템이 프로세스의 백그라운드 계속 실행을 허용하고 진행률과 취소를 표시합니다." } }
       }
     },
     "储存空间不足" : {
