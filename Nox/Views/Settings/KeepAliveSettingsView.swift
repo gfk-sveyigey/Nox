@@ -48,21 +48,12 @@ struct KeepAliveSettingsView: View {
                             step: 1
                         )
                     }
-
-                    // 上游是首页的一键开关；这里放在设置里，随时可以拉起或关闭悬浮窗。
-                    Toggle(isOn: Binding(
-                        get: { manager.isPiPWindowRunning },
-                        set: { manager.setPiPWindowEnabled($0) }
-                    )) {
-                        Text(L("启动悬浮窗"))
-                    }
                 }
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(appState.keepAliveMode.detail)
                     if appState.keepAliveMode == .pictureInPicture {
                         Text(L("拖动到最左即最小：窗口高 0.1pt，视觉隐藏、不影响操作；越往右窗口越大。"))
-                        Text(L("也可以随时手动启动或关闭悬浮窗，不受下载任务影响；关闭后下载仍按当前后台方式继续。"))
                     }
                 }
             }

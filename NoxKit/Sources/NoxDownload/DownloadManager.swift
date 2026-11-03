@@ -18,9 +18,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 此时不再启动新任务，并暂停正在下载的任务。
     @Published public internal(set) var storageBlocked = false
 
-    /// 画中画悬浮窗当前是否已启动（设置页手动开关用）。
-    @Published public private(set) var isPiPWindowRunning = false
-
     /// 系统下载模式下，HLS 分片请求的等待上下文。
     var hlsSegmentContexts: [Int: HLSSegmentContext] = [:]
 
@@ -57,7 +54,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// HLS 的系统 AVAsset 引擎。只有用户选择该引擎时才会创建后台会话。
     lazy var avAssetDownloader = AVAssetHLSDownloader()
     var keepAliveObservation: AnyCancellable?
-    var piPWindowObservation: AnyCancellable?
     /// 下载记录状态变化的兜底观察：任何状态迁移都会触发一次队列对齐。
     var recordObservation: AnyCancellable?
     /// App 真正激活的系统通知。
@@ -239,15 +235,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         keepAlive.allowsSilentAudioFallback = store.keepAliveSilentAudioFallback
         keepAlive.notificationsEnabled = store.keepAliveNotifications
 
-        // 设置页开关需要实时反映画中画是否已启动。
-        piPWindowObservation = keepAlive.$isPiPWindowRunning
-            .removeDuplicates()
-            .sink { [weak self] running in
-                Task { @MainActor in
-                    self?.isPiPWindowRunning = running
-                }
-            }
-
         // 用下载记录的「排队中 / 下载中」驱动保活启停。
         // 直接订阅 `downloads`，而不是在每个状态迁移点手写调用：漏一处就会出现
         // 「任务已经全部结束，保活却还开着」的情况。
@@ -404,11 +391,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         store.pipWindowHeight = height
         store.persist()
         keepAlive.pipWindowHeight = height
-    }
-
-    /// 设置页手动启动 / 关闭画中画悬浮窗。
-    public func setPiPWindowEnabled(_ enabled: Bool) {
-        keepAlive.setPiPWindowEnabled(enabled)
     }
 
     /// 设置页切换「画中画详细日志」。

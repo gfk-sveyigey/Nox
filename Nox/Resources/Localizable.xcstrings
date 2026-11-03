@@ -1821,14 +1821,6 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "왼쪽 끝은 최소: 높이 0.1pt로 보이지 않고 조작에 영향을 주지 않습니다. 오른쪽으로 갈수록 창이 커집니다." } }
       }
     },
-    "也可以随时手动启动或关闭悬浮窗，不受下载任务影响；关闭后下载仍按当前后台方式继续。" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das Schwebefenster lässt sich jederzeit unabhängig von Downloads manuell starten oder schließen; nach dem Ausschalten laufen Downloads mit der aktuellen Hintergrundmethode weiter." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "You can also start or close the floating window manually at any time, independent of download tasks; downloads continue with the current background method after it is turned off." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vous pouvez aussi démarrer ou fermer la fenêtre flottante manuellement à tout moment, indépendamment des téléchargements ; une fois désactivée, les téléchargements continuent avec la méthode d’arrière-plan actuelle." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 작업과 관계없이 언제든 플로팅 창을 직접 켜거나 끌 수 있으며, 끄면 다운로드는 현재 백그라운드 방식으로 계속됩니다." } }
-      }
-    },
     "画中画可能与其他 App 的画中画互相打断。这里选择共存保护不可用时如何处理。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Das Bild-in-Bild kann Bild-in-Bild-Fenster anderer Apps unterbrechen. Legen Sie hier fest, was bei fehlendem Koexistenzschutz geschehen soll." } },
@@ -1859,14 +1851,6 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Persistent from launch" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Persistant dès le lancement" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "실행 시 상시 유지" } }
-      }
-    },
-    "启动悬浮窗" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Schwebefenster starten" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start floating window" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Démarrer la fenêtre flottante" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플로팅 창 시작" } }
       }
     },
     "跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到切换到「系统下载」或「仅前台下载」。" : {

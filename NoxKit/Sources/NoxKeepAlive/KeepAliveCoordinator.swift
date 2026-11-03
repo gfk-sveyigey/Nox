@@ -12,11 +12,7 @@ import NoxCore
 public final class KeepAliveCoordinator: ObservableObject {
 
     /// 当前实际生效的保活方式（可能因降级与偏好不同）。
-    @Published private(set) var activeMode: KeepAliveMode = .off {
-        didSet { isPiPWindowRunning = activeMode == .pictureInPicture }
-    }
-    /// 画中画悬浮窗当前是否已启动（设置页开关用）。
-    @Published public private(set) var isPiPWindowRunning = false
+    @Published private(set) var activeMode: KeepAliveMode = .off
     /// 最近一次失败原因，用于设置页提示。
     @Published private(set) var lastError: String?
 
@@ -42,7 +38,6 @@ public final class KeepAliveCoordinator: ObservableObject {
                 }
                 return
             }
-            manualPiPWindowRequested = nil
             fallbackMode = nil
             reconcile()
         }
@@ -123,8 +118,6 @@ public final class KeepAliveCoordinator: ObservableObject {
     private var hasActiveTasks = false
     /// 当前临时的降级策略；回到前台或用户切换偏好后清除。
     private var fallbackMode: KeepAliveMode?
-    /// 用户在设置页手动启动 / 关闭画中画。nil 表示按下载任务与生命周期自动调度。
-    private var manualPiPWindowRequested: Bool?
     private var lastNotificationAt = Date.distantPast
 
     /// 保活模式：跟随下载任务（默认）/ 启动即常驻。改动后立刻重新调度。
@@ -141,10 +134,6 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 不应该常驻，否则会浪费系统预算，也更容易被系统终止。
     private var keepAliveNeeded: Bool {
         guard preferredMode.startsKeepAlive else { return false }
-        // 手动开关优先于自动调度：没有下载任务时也能拉起悬浮窗，关闭时立即停下。
-        if preferredMode == .pictureInPicture, let manual = manualPiPWindowRequested {
-            return manual
-        }
         if targetMode == .continuedProcessing { return hasActiveTasks }
         return hasActiveTasks || lifetime == .alwaysOn
     }
@@ -241,21 +230,6 @@ public final class KeepAliveCoordinator: ObservableObject {
     public func updateProgress(_ fraction: Double) {
         guard activeMode == .continuedProcessing else { return }
         ContinuedProcessingBridge.updateProgress(fraction)
-    }
-
-    /// 设置页手动启动 / 关闭画中画悬浮窗。
-    ///
-    /// 与自动调度分开：开启后即使没有下载任务也会保持悬浮窗；关闭后即使有任务
-    /// 也不会再自动拉起。切换保活方式时恢复为自动调度。
-    public func setPiPWindowEnabled(_ enabled: Bool) {
-        guard preferredMode == .pictureInPicture else { return }
-        manualPiPWindowRequested = enabled
-        if enabled {
-            fallbackMode = nil
-            reconcile()
-        } else {
-            deactivate()
-        }
     }
 
     // MARK: - 内部
