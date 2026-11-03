@@ -212,34 +212,26 @@ final class TabSelectionState: ObservableObject {
 
     @Published var selection: Int = 0 {
         didSet {
-            let now = CACurrentMediaTime()
-
             guard oldValue == selection else {
-                if selection == 0 {
-                    // 从别的标签切到浏览：紧接着的那一下只用于切换，
-                    // 不能算作双击的第一下。
-                    switchedToBrowseAt = now
-                    resetDoubleTap()
-                }
+                // 正常的标签切换不是「再次点击」，并清掉切换前残留的候选，
+                // 避免换到别的标签再回来后被拼成一次双击。
+                resetDoubleTap()
                 return
             }
 
+            // 重复点击当前标签才会走到这里。
             guard selection == 0 else { return }
-            handleBrowseReselect(at: now)
+            handleBrowseReselect()
         }
     }
 
     /// 双击「浏览」的次数；浏览页观察它并滚回顶部。
     @Published private(set) var browseDoubleTapCount = 0
 
-    private var switchedToBrowseAt = -Double.infinity
     private var lastReselectAt = -Double.infinity
 
-    private func handleBrowseReselect(at now: CFTimeInterval) {
-        if now - switchedToBrowseAt < Self.doubleTapInterval {
-            resetDoubleTap()
-            return
-        }
+    private func handleBrowseReselect() {
+        let now = CACurrentMediaTime()
 
         if now - lastReselectAt <= Self.doubleTapInterval {
             resetDoubleTap()
