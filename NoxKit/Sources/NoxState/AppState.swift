@@ -74,8 +74,8 @@ public final class AppState: ObservableObject {
     @Published public var downloadCompletionNotifications = false
     /// 实时活动与通知里是否显示具体任务名；关闭时只显示「有任务完成」。
     @Published public var showsTaskNames = true
-    /// 画中画共存保护不可用时怎么办（暂缓启动画中画 / 改用静音音频 / 停止保活）。
-    @Published public var pipCoexistenceFallback: PiPCoexistenceFallback = .keepAlive
+    /// 画中画共存保护不可用时怎么办（改用静音音频 / 停止保活）。
+    @Published public var pipCoexistenceFallback: PiPCoexistenceFallback = .stop
 
     /// 保活模式：跟随下载任务（默认）/ 启动即常驻。
     @Published public var keepAliveLifetime: KeepAliveLifetime = .followTasks
@@ -426,9 +426,10 @@ public final class AppState: ObservableObject {
         downloadCompletionNotifications = defaults.bool(forKey: downloadCompletionNotificationsKey)
         showsTaskNames = defaults.object(forKey: showsTaskNamesKey) as? Bool ?? true
 
+        // 旧版本默认值是「暂缓启动画中画」；该选项已删除，迁移为停止保活。
         pipCoexistenceFallback = PiPCoexistenceFallback(
             rawValue: defaults.string(forKey: pipCoexistenceFallbackKey) ?? ""
-        ) ?? .keepAlive
+        ) ?? .stop
 
         keepAliveLifetime = KeepAliveLifetime(
             rawValue: defaults.string(forKey: keepAliveLifetimeKey) ?? ""
