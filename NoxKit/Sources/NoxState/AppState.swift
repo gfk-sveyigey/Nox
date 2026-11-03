@@ -74,7 +74,7 @@ public final class AppState: ObservableObject {
     @Published public var downloadCompletionNotifications = false
     /// 实时活动与通知里是否显示具体任务名；关闭时只显示「有任务完成」。
     @Published public var showsTaskNames = true
-    /// 画中画共存保护不可用时怎么办（继续用画中画 / 改用静音音频 / 停止保活）。
+    /// 画中画共存保护不可用时怎么办（暂缓启动画中画 / 改用静音音频 / 停止保活）。
     @Published public var pipCoexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
     /// 保活模式：跟随下载任务（默认）/ 启动即常驻。

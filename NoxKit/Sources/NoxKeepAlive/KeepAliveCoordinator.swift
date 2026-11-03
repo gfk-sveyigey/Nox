@@ -66,7 +66,7 @@ public final class KeepAliveCoordinator: ObservableObject {
             pictureInPicture.coexistenceFallback = piPCoexistenceFallback
             if activeMode == .pictureInPicture, pictureInPicture.isActive,
                !pictureInPicture.isCoexistenceInstalled, piPCoexistenceFallback != .keepAlive {
-                // 用户把「继续用画中画」改成了别的，而当前这档并无共存保护：按新选择重建。
+                // 用户把「暂缓启动画中画」改成了别的，而当前这档并无共存保护：按新选择重建。
                 deactivate()
                 reconcile()
             }
