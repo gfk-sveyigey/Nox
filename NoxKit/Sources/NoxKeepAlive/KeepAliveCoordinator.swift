@@ -61,12 +61,12 @@ public final class KeepAliveCoordinator: ObservableObject {
     public var notificationsEnabled = false
 
     /// 画中画共存保护不可用时用户选择的兜底方案。
-    public var piPCoexistenceFallback: PiPCoexistenceFallback = .stop {
+    public var piPCoexistenceFallback: PiPCoexistenceFallback = .keepAlive {
         didSet {
             pictureInPicture.coexistenceFallback = piPCoexistenceFallback
             if activeMode == .pictureInPicture, pictureInPicture.isActive,
-               !pictureInPicture.isCoexistenceInstalled {
-                // 当前这档并无共存保护：按新选择重建。
+               !pictureInPicture.isCoexistenceInstalled, piPCoexistenceFallback != .keepAlive {
+                // 用户把「继续用画中画」改成了别的，而当前这档并无共存保护：按新选择重建。
                 deactivate()
                 reconcile()
             }
@@ -410,7 +410,7 @@ public final class KeepAliveCoordinator: ObservableObject {
         guard keepAliveNeeded, preferredMode.startsKeepAlive else { return }
         stopAll()
         activeMode = .off
-        if allowsSilentAudioFallback || piPCoexistenceFallback == .silentAudio {
+        if allowsSilentAudioFallback {
             fallbackMode = .silentAudio
             onLog?("画中画启动失败：自动降级为静音音频")
             activate(.silentAudio)

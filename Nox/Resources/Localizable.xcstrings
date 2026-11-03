@@ -1757,14 +1757,6 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면 계속 사용" } }
       }
     },
-    "共存保护不可用时不会强行启动画中画，以免挤掉其他 App 正在播放的画中画；可在这里选择改用静音音频或停止保活。" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wenn der Koexistenzschutz nicht verfügbar ist, wird Bild-in-Bild nicht erzwungen, damit laufende PiP-Fenster anderer Apps nicht verdrängt werden. Wählen Sie hier stilles Audio oder Beenden der Hintergrundaktivität." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "When coexistence protection is unavailable, PiP won't be forced to start, so it won't displace another app's playing PiP window. Choose to switch to silent audio or stop keep-alive here." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Si la protection de coexistence est indisponible, l'image dans l'image ne sera pas forcée afin de ne pas remplacer celle d'une autre app. Choisissez ici l'audio silencieux ou l'arrêt du maintien en arrière-plan." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공존 보호를 사용할 수 없을 때 화면 속 화면을 강제로 시작하지 않아 다른 앱의 재생 중인 PiP 창을 밀어내지 않습니다. 여기에서 무음 오디오 전환 또는 백그라운드 유지 중지를 선택하세요." } }
-      }
-    },
     "改用静音音频" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Zu stillem Ton wechseln" } },
