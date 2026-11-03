@@ -79,8 +79,8 @@ extension DownloadManager {
             }
 
             guard isCurrentRun(id, token: token) else {
-                // 旧 run 失效后才下载完的临时合并文件没人接手，直接清掉
-                try? FileManager.default.removeItem(at: merged)
+                // 旧 run 失效：合并结果留在暂存目录。新的 run 会复用同一份
+                // merged.mp4 和检查点，删掉反而要从头再拼一遍。
                 return
             }
 
@@ -161,7 +161,7 @@ extension DownloadManager {
 
     func finishHLS(recordID: UUID, token: UUID, mergedFile: URL) {
         guard isCurrentRun(recordID, token: token) else {
-            try? FileManager.default.removeItem(at: mergedFile)
+            // 合并结果保留在暂存目录，下一次 run 可以直接复用。
             return
         }
 
@@ -173,7 +173,18 @@ extension DownloadManager {
         }
 
         guard var record = store.downloads.first(where: { $0.id == recordID }) else { return }
-        guard record.status != .cancelled, record.status != .finished else { return }
+        guard record.status != .cancelled, record.status != .finished else {
+            // 已经完成（另一路 run 先收尾）：合并结果不再需要，清掉暂存。
+            if record.status == .finished {
+                try? FileManager.default.removeItem(
+                    at: DownloadStorage.partsDirectory(for: recordID)
+                )
+                try? FileManager.default.removeItem(
+                    at: DownloadStorage.stagingDirectory(for: recordID)
+                )
+            }
+            return
+        }
 
         do {
             let directory = DownloadStorage.documentsDirectory

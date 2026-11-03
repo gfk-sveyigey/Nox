@@ -287,13 +287,25 @@ final class HLSDownloader {
                 }
             }
         }
+
+        // 暂停 / 重试后旧 run 的合并可能还没退出；排队后再写，避免两个
+        // FileHandle 同时改 merged.mp4。
+        await DownloadStorage.MergeGate.shared.acquire("merge-\(recordID.uuidString)")
+        defer { DownloadStorage.MergeGate.shared.release("merge-\(recordID.uuidString)") }
+
+        try Task.checkCancellation()
+
+        let identity = "hls-\(signature)-\(total)-\(initPart != nil)"
         try await Task.detached(priority: .utility) {
-            try DownloadStorage.concatenate(orderedParts, into: merged)
+            try DownloadStorage.concatenate(
+                orderedParts,
+                into: merged,
+                resumableIdentity: identity
+            )
         }.value
 
-        // 合并成功才清分片；失败时保留，下次重试可以接着下
-        try? fileManager.removeItem(at: partsDirectory)
-
+        // 分片目录由 finishHLS 在确认写入成品后统一清理：
+        // 旧 run 在这里删会把新 run 正在续传的分片一起删掉。
         return merged
     }
 

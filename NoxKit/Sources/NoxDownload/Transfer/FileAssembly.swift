@@ -64,19 +64,42 @@ extension DownloadManager {
             // 先拼到暂存目录，再整体移到 Documents：
             // 中途进程被杀时留下的只是暂存文件，不会残留半截成品 ——
             // 否则下次合并会另生成一个新文件，看起来就是「重复合片」。
-            let temporary = stagingDirectory
-                .appendingPathComponent("merged-\(UUID().uuidString).tmp")
+            // 清掉旧版本（UUID 命名）中断合并留下的临时文件。
+            // 现在固定使用 merged.tmp，它配合检查点续传，不能清。
+            DownloadStorage.removeStaleMergeTemps(in: stagingDirectory)
+
+            let temporary = stagingDirectory.appendingPathComponent("merged.tmp")
+            let identity = "plain-\(recordID.uuidString)-\(record.totalBytes ?? -1)-\(segments.count)"
+
+            // 与大文件一样，合并本身可能超过系统给后台唤醒的瞬间执行时间。
+            // 申请一段短时后台宽限，避免刚写完一半就被挂起（之后只能整段重来）。
+            let grace = BackgroundExecutionGrace.shared.begin(reason: "分片合并")
+            defer {
+                if let grace {
+                    Task { @MainActor in
+                        BackgroundExecutionGrace.shared.end(grace, reason: "分片合并")
+                    }
+                }
+            }
+
+            // 同一任务的旧合并可能还在写同一个临时文件（暂停 / 重试时旧 run
+            // 不会被立刻取消），先排队，避免两个 FileHandle 同时往一个文件写。
+            await DownloadStorage.MergeGate.shared.acquire("merge-\(recordID.uuidString)")
+            defer { DownloadStorage.MergeGate.shared.release("merge-\(recordID.uuidString)") }
+
+            guard isCurrentRun(recordID, token: token) else { return }
 
             try await Task.detached(priority: .utility) {
-                try DownloadStorage.concatenate(parts, into: temporary)
+                try DownloadStorage.concatenate(
+                    parts,
+                    into: temporary,
+                    resumableIdentity: identity
+                )
             }.value
 
-            // 合并期间用户暂停 / 删除 / 重试了：不要再写成「已完成」，
-            // 也不要动新 run 的调度状态。
-            guard isCurrentRun(recordID, token: token) else {
-                try? FileManager.default.removeItem(at: temporary)
-                return
-            }
+            // 合并期间用户暂停 / 删除 / 重试了：不要写成「已完成」。
+            // 临时文件和检查点保留，下一次合并可以直接接着拷。
+            guard isCurrentRun(recordID, token: token) else { return }
 
             // 分片齐全但拼出来的大小对不上，说明磁盘上的分片已经和远端不一致
             // （链接过期、文件被替换等），不能当成成功。

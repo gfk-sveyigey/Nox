@@ -349,7 +349,11 @@ public final class KeepAliveCoordinator: ObservableObject {
     private func stopAll() {
         ContinuedProcessingBridge.stop()
         if silentAudio.isActive { silentAudio.stop() }
-        if pictureInPicture.isActive { pictureInPicture.stop() }
+        // 以真实显示状态兜底：启动/停止竞态下 isActive 可能已经是 false，
+        // 但系统窗口仍然弹了出来。
+        if pictureInPicture.isActive || pictureInPicture.isDisplaying {
+            pictureInPicture.stop()
+        }
     }
 
     /// 策略是否真的还在运行（画中画把「正在建立中」也算活着）。
@@ -366,7 +370,10 @@ public final class KeepAliveCoordinator: ObservableObject {
     private func stopOthers(than mode: KeepAliveMode) {
         if mode != .continuedProcessing { ContinuedProcessingBridge.stop() }
         if mode != .silentAudio, silentAudio.isActive { silentAudio.stop() }
-        if mode != .pictureInPicture, pictureInPicture.isActive { pictureInPicture.stop() }
+        if mode != .pictureInPicture,
+           pictureInPicture.isActive || pictureInPicture.isDisplaying {
+            pictureInPicture.stop()
+        }
     }
 
     private func handleInterruption() {
