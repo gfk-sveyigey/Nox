@@ -45,12 +45,16 @@ extension DownloadManager {
         // 「系统下载」模式下，HLS 分片也交给后台 URLSession：
         // 已完成的分片会落盘，App 被回收后可以续传；进度、大小和速度也仍由
         // 自定义下载管线统计，不依赖 AVAsset 的系统 Live Activity。
-        let segmentLoader: HLSDownloader.SegmentLoader? = store.keepAliveMode == .off
-            ? { [weak self] request, recordID in
+        let segmentLoader: HLSDownloader.SegmentLoader?
+
+        if store.keepAliveMode == .off {
+            segmentLoader = { [weak self] request, recordID in
                 guard let self else { throw CancellationError() }
                 return try await self.fetchHLSSegment(request, recordID: recordID)
             }
-            : nil
+        } else {
+            segmentLoader = nil
+        }
 
         do {
             let merged = try await HLSDownloader(
