@@ -172,28 +172,133 @@ public enum DownloadStorage {
         }
     }
 
-    /// 按顺序合并分片为最终文件
-    public static func concatenate(_ parts: [URL], into destination: URL) throws {
-        try? FileManager.default.removeItem(at: destination)
+    /// 合并进度检查点。
+    ///
+    /// 记录「已按顺序复制到第几个分片、目标文件写到多少字节」。进程在合并中途
+    /// 被系统结束时，下次可以从这里继续，而不是把整部片子重新拷贝一遍。
+    public struct MergeCheckpoint: Codable {
+        /// 输入是否还是同一批分片；不一致就作废重来，避免把不同任务的数据拼在一起。
+        public var identity: String
+        public var partIndex: Int
+        public var offset: Int64
+
+        public init(identity: String, partIndex: Int, offset: Int64) {
+            self.identity = identity
+            self.partIndex = partIndex
+            self.offset = offset
+        }
+    }
+
+    /// 同一任务的重叠合并串行化。
+    ///
+    /// 暂停 / 重试会让旧的合并变成「无主的任务」，但它仍在后台写临时文件；
+    /// 新 run 如果同时开始合并，两个 FileHandle 会往同一个文件里写。
+    /// 这里按任务 ID 排队，后到的合并等前一个退出后再开始。
+    public final class MergeGate {
+        public static let shared = MergeGate()
+
+        private let lock = NSLock()
+        private var busy = Set<String>()
+
+        public func acquire(_ key: String) async {
+            while true {
+                lock.lock()
+                let inserted = busy.insert(key).inserted
+                lock.unlock()
+                if inserted { return }
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+        }
+
+        public func release(_ key: String) {
+            lock.lock()
+            busy.remove(key)
+            lock.unlock()
+        }
+    }
+
+    /// 按顺序合并分片为最终文件。
+    ///
+    /// - Parameter resumableIdentity: 非 nil 时启用断点续传：检查点与目标文件
+    ///   会保留在磁盘上，进程中断后再次调用会从上次的位置继续。
+    public static func concatenate(
+        _ parts: [URL],
+        into destination: URL,
+        resumableIdentity identity: String? = nil
+    ) throws {
+        let fileManager = FileManager.default
+        let checkpointURL = identity.map { mergeStateURL(for: destination) }
 
         if parts.count == 1, let only = parts.first {
-            // 单片时直接移动，省掉一次完整拷贝
-            try FileManager.default.moveItem(at: only, to: destination)
+            if let checkpointURL {
+                try? fileManager.removeItem(at: checkpointURL)
+            }
+            try? fileManager.removeItem(at: destination)
+            // 用拷贝而不是移动：分片留在原处，进程在「拼完还没搬走」时被杀
+            // 也能重新来一遍，不会因为源文件已被移走而永久失败。
+            try fileManager.copyItem(at: only, to: destination)
             return
         }
 
-        FileManager.default.createFile(atPath: destination.path, contents: nil)
+        var resumeIndex = 0
+        var resumeOffset: Int64 = 0
+
+        if let identity, let checkpointURL,
+           let data = try? Data(contentsOf: checkpointURL),
+           let state = try? JSONDecoder().decode(MergeCheckpoint.self, from: data),
+           state.identity == identity,
+           state.partIndex >= 0,
+           state.partIndex <= parts.count,
+           state.offset >= 0,
+           fileManager.fileExists(atPath: destination.path),
+           fileSize(at: destination) >= state.offset {
+            resumeIndex = state.partIndex
+            resumeOffset = state.offset
+        } else {
+            if let checkpointURL {
+                try? fileManager.removeItem(at: checkpointURL)
+            }
+            try? fileManager.removeItem(at: destination)
+            fileManager.createFile(atPath: destination.path, contents: nil)
+        }
 
         let output = try FileHandle(forWritingTo: destination)
         defer { try? output.close() }
 
-        for part in parts {
-            let input = try FileHandle(forReadingFrom: part)
+        // 上次可能刚好写到一半：截掉检查点之后的数据，避免重复内容。
+        try output.truncate(atOffset: UInt64(resumeOffset))
+        _ = try output.seek(toOffset: UInt64(resumeOffset))
+
+        var offset = resumeOffset
+
+        for index in resumeIndex..<parts.count {
+            let input = try FileHandle(forReadingFrom: parts[index])
             defer { try? input.close() }
 
             while let chunk = try input.read(upToCount: 1 << 22), !chunk.isEmpty {
                 try output.write(contentsOf: chunk)
+                offset += Int64(chunk.count)
+            }
+
+            if let identity, let checkpointURL {
+                let state = MergeCheckpoint(
+                    identity: identity,
+                    partIndex: index + 1,
+                    offset: offset
+                )
+                if let data = try? JSONEncoder().encode(state) {
+                    try? data.write(to: checkpointURL, options: .atomic)
+                }
             }
         }
+
+        // 检查点保留到调用方真正把成品移走（或删除任务）：
+        // 如果进程刚好在「合并完成、还没移走」时被杀，下次可以直接复用。
+    }
+
+    private static func mergeStateURL(for destination: URL) -> URL {
+        destination
+            .deletingLastPathComponent()
+            .appendingPathComponent(destination.lastPathComponent + ".merge-state")
     }
 }
