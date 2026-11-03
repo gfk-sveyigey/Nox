@@ -227,7 +227,7 @@ public enum DownloadStorage {
         resumableIdentity identity: String? = nil
     ) throws {
         let fileManager = FileManager.default
-        let checkpointURL = identity.map { mergeStateURL(for: destination) }
+        let checkpointURL = identity.map { _ in mergeStateURL(for: destination) }
 
         if parts.count == 1, let only = parts.first {
             if let checkpointURL {
