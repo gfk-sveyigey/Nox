@@ -91,7 +91,7 @@ struct DownloadSettingsView: View {
                 SettingsPickerRow(
                     title: L("m3u8 分片并发"),
                     selection: $appState.m3u8SegmentConcurrency,
-                    options: [SettingsPickerOption(value: 0, title: L("跟随多线程设置"))]
+                    options: [SettingsPickerOption(value: 0, title: L("跟随多线程"))]
                         + AppState.m3u8ConcurrencyRange.filter { $0 > 0 }.map {
                             SettingsPickerOption(value: $0, title: String($0))
                         }
@@ -101,6 +101,7 @@ struct DownloadSettingsView: View {
                 }
             }
         }
+        .settingsValueColumn()
         .navigationTitle(L("下载设置"))
         .navigationBarTitleDisplayMode(.inline)
     }

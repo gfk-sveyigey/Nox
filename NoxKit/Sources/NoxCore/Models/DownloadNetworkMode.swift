@@ -19,8 +19,8 @@ public enum DownloadNetworkMode: String, CaseIterable, Identifiable {
 
     public var title: String {
         switch self {
-        case .wifiAndCellular: return L("无线局域网与蜂窝")
-        case .wifiOnly: return L("仅无线局域网")
+        case .wifiAndCellular: return L("Wi-Fi 与蜂窝")
+        case .wifiOnly: return L("仅 Wi-Fi")
         }
     }
 }

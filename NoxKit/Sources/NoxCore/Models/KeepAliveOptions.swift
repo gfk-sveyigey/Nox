@@ -21,7 +21,7 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
         case .foregroundOnly: return L("仅前台下载")
         case .continuedProcessing: return L("持续处理")
         case .silentAudio: return L("静音音频")
-        case .pictureInPicture: return L("画中画 (PiP)")
+        case .pictureInPicture: return L("画中画")
         }
     }
 
