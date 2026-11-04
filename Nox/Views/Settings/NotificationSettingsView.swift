@@ -29,10 +29,7 @@ struct NotificationSettingsView: View {
                     Text(L("下载完成后通知"))
                 }
             } footer: {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L("保活中断提醒仅在持续处理、静音音频或画中画被系统中断时生效。"))
-                    Text(L("首次开启通知时需要允许 Nox 发送通知。"))
-                }
+                Text(L("保活中断提醒仅在持续处理、静音音频或画中画被系统中断时生效。"))
             }
 
             Section {
@@ -46,8 +43,6 @@ struct NotificationSettingsView: View {
                     Text(L("显示内容"))
                 }
                 .pickerStyle(.inline)
-            } footer: {
-                Text(L("实时活动与通知共用这套设置。关闭任务名后，实时活动显示「正在下载」，完成通知显示「有一个任务完成」。"))
             }
         }
         .navigationTitle(L("推送通知"))

@@ -75,17 +75,19 @@ struct SettingsView: View {
             NavigationLink {
                 SiteSettingsView()
             } label: {
-                HStack(spacing: 8) {
-                    settingsLabel(
-                        L("解析来源"),
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    SettingsRowLabel(
+                        title: L("解析来源"),
                         subtitle: L("管理站点解析插件和匹配顺序。"),
                         systemImage: "puzzlepiece.extension",
                         iconColor: .purple
                     )
-                    Spacer(minLength: 8)
                     Text("\(enabledSiteCount)/\(registry.parsers.count)")
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .layoutPriority(1)
                 }
             }
 
@@ -118,37 +120,28 @@ struct SettingsView: View {
         }
 
         Section {
-            Picker(selection: $appState.appearanceMode) {
-                ForEach(AppearanceMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
+            SettingsPickerRow(
+                title: L("外观"),
+                subtitle: L("选择跟随系统、浅色或深色外观。"),
+                systemImage: "circle.lefthalf.filled",
+                iconColor: .pink,
+                selection: $appState.appearanceMode,
+                options: AppearanceMode.allCases.map {
+                    SettingsPickerOption(value: $0, title: $0.title)
                 }
-            } label: {
-                settingsLabel(
-                    L("外观"),
-                    subtitle: L("选择跟随系统、浅色或深色外观。"),
-                    systemImage: "circle.lefthalf.filled",
-                    iconColor: .pink
-                )
-            }
+            )
             .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
-            // 系统 Picker 菜单会缓存选项文案；切语言后重建这一行即可刷新。
-            .id(localization.language)
 
-            Picker(selection: $localization.language) {
-                ForEach(AppLanguage.allCases) { language in
-                    Text(language.title).tag(language)
+            SettingsPickerRow(
+                title: L("语言"),
+                subtitle: L("更改应用界面语言。"),
+                systemImage: "globe",
+                iconColor: .cyan,
+                selection: $localization.language,
+                options: AppLanguage.allCases.map {
+                    SettingsPickerOption(value: $0, title: $0.title)
                 }
-            } label: {
-                settingsLabel(
-                    L("语言"),
-                    subtitle: L("更改应用界面语言。"),
-                    systemImage: "globe",
-                    iconColor: .cyan
-                )
-            }
-            // Picker 的系统菜单会缓存选项文案。只重建这一行，既能刷新菜单，
-            // 又不会像重建设置页那样把整个 Form 的滚动位置带回顶部。
-            .id(localization.language)
+            )
         }
 
         Section {
@@ -176,38 +169,13 @@ struct SettingsView: View {
         NavigationLink {
             destination()
         } label: {
-            settingsLabel(
-                title,
+            SettingsRowLabel(
+                title: title,
                 subtitle: subtitle,
                 systemImage: systemImage,
                 iconColor: iconColor
             )
         }
-    }
-
-    func settingsLabel(
-        _ title: String,
-        subtitle: String,
-        systemImage: String,
-        iconColor: Color
-    ) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body)
-
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        } icon: {
-            Image(systemName: systemImage)
-                .foregroundStyle(iconColor)
-                .frame(width: 24, alignment: .center)
-        }
-        .frame(minHeight: 40)
     }
 
     /// 页脚：居中显示版本与作者，形如「Nox v1.0.16 · Aholic」。
