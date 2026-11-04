@@ -1861,6 +1861,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지 모드" } }
       }
     },
+    "跟随任务" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben folgen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow tasks" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre les tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 따르기" } }
+      }
+    },
     "跟随下载任务" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Aufgaben folgen" } },
@@ -1869,12 +1877,28 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 작업에 따름" } }
       }
     },
+    "常驻" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dauerhaft" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Always on" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Toujours actif" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "상시 유지" } }
+      }
+    },
     "启动即常驻" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Dauerhaft ab dem Start" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Persistent from launch" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Persistant dès le lancement" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "실행 시 상시 유지" } }
+      }
+    },
+    "跟随任务：有下载任务时才保活。常驻：进入前台即拉起并一直保持，直到切换到「系统下载」或「仅前台下载」。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben folgen: Nur bei aktiven Downloads aktiv bleiben. Dauerhaft: Beim Start aktivieren und beibehalten, bis „Systemdownload“ oder „Nur im Vordergrund“ gewählt wird." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow tasks: stay alive only while downloads are active. Always on: start on launch and keep running until switching to “System download” or “Foreground only”." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre les tâches : rester actif uniquement pendant les téléchargements. Toujours actif : démarrer au lancement et rester actif jusqu’au passage à « Téléchargement système » ou « Premier plan uniquement »." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 따르기: 다운로드 작업이 있을 때만 유지합니다. 상시 유지: 앱을 열면 시작하여 「시스템 다운로드」 또는 「포그라운드에서만」으로 전환할 때까지 계속 유지합니다." } }
       }
     },
     "跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到切换到「系统下载」或「仅前台下载」。" : {

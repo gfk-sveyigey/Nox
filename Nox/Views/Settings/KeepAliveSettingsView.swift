@@ -76,7 +76,7 @@ struct KeepAliveSettingsView: View {
                         }
                     )
                 } footer: {
-                    Text(L("跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到切换到「系统下载」或「仅前台下载」。"))
+                    Text(L("跟随任务：有下载任务时才保活。常驻：进入前台即拉起并一直保持，直到切换到「系统下载」或「仅前台下载」。"))
                 }
             }
 
@@ -126,7 +126,6 @@ struct KeepAliveSettingsView: View {
                 }
             }
         }
-        .settingsValueColumn()
         .navigationTitle(L("后台下载"))
         .navigationBarTitleDisplayMode(.inline)
     }

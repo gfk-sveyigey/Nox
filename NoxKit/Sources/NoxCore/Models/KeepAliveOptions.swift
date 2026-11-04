@@ -2,7 +2,7 @@ import Foundation
 
 /// 后台保活方式（设置项）。
 ///
-/// 与下载解耦：是否启动由「保活模式」（`KeepAliveLifetime`）决定 —— 跟随下载任务，或进入前台即常驻。
+/// 与下载解耦：是否启动由「保活模式」（`KeepAliveLifetime`）决定 —— 跟随任务，或进入前台即常驻。
 public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
     /// 只在 App 前台下载；切到后台时暂停，回到前台后继续。
     case foregroundOnly
@@ -88,8 +88,8 @@ public enum KeepAliveLifetime: String, CaseIterable, Identifiable, Codable {
 
     public var title: String {
         switch self {
-        case .followTasks: return L("跟随下载任务")
-        case .alwaysOn: return L("启动即常驻")
+        case .followTasks: return L("跟随任务")
+        case .alwaysOn: return L("常驻")
         }
     }
 }
