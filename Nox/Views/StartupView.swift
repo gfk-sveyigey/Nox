@@ -39,9 +39,9 @@ struct StartupView: View {
 
                 VStack(spacing: 6) {
                     Text(verbatim: Self.appName.uppercased())
-                        .font(.custom("Futura-CondensedExtraBold", size: 46))
+                        .font(.custom("Didot-Bold", size: 46))
                         .foregroundStyle(Color.primary.opacity(0.92))
-                        .tracking(1.5)
+                        .tracking(1.2)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
 

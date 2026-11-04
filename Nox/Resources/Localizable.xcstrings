@@ -2909,6 +2909,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 완료 시 알림" } }
       }
     },
+    "自定义灵动岛与实时活动" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Eigene Dynamic Island & Live Activity" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom Dynamic Island & Live Activity" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Dynamic Island et activité en direct personnalisés" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "사용자 지정 다이내믹 아일랜드 및 실시간 활동" } }
+      }
+    },
     "显示内容" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Angezeigter Inhalt" } },

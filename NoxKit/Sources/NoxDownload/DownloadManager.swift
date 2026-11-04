@@ -372,6 +372,12 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         store.persist()
     }
 
+    /// 设置页切换自定义灵动岛 / 实时活动。
+    public func setCustomLiveActivityEnabled(_ enabled: Bool) {
+        store.customLiveActivityEnabled = enabled
+        store.persist()
+    }
+
     /// 设置页选择「画中画共存保护不可用」时的兜底方案。
     public func setPiPCoexistenceFallback(_ fallback: PiPCoexistenceFallback) {
         store.pipCoexistenceFallback = fallback

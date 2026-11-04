@@ -142,6 +142,8 @@ struct DownloadsView: View {
     var list: some View {
         List(selection: listSelection) { rows }
             .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
+            // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
+            .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
     }
 
     /// 非多选态把行选中转成一次短暂高亮，随后自动清空；
@@ -190,6 +192,7 @@ struct DownloadsView: View {
                 }
                 .padding(.vertical, 4)
             }
+            .transition(.opacity)
         }
 
         ForEach(appState.downloads) { record in

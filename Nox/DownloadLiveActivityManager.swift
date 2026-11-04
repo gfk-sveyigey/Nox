@@ -84,10 +84,24 @@ final class DownloadLiveActivityManager {
                 Task { @MainActor in self?.refresh(force: true) }
             }
             .store(in: &cancellables)
+
+        // 设置页关闭自定义灵动岛 / 实时活动后，立即结束现有活动；
+        // 重新打开时，若仍有下载任务会在前台重新创建。
+        appState.$customLiveActivityEnabled
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.refresh(force: true) }
+            }
+            .store(in: &cancellables)
     }
 
     private func refresh(force: Bool) {
         reconcileExistingActivityIfNeeded()
+
+        guard appState.customLiveActivityEnabled else {
+            endActivity(using: lastState)
+            return
+        }
 
         guard let state = makeState() else {
             endActivity(using: lastState)

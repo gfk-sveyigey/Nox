@@ -2,13 +2,16 @@ import SwiftUI
 
 /// 设置行左侧的图标 + 标题 + 说明。
 ///
-/// 标题和说明都允许纵向换行：长语言下优先让左侧文案换行，
-/// 而不是把右侧当前值挤到下一行。
+/// 标题和说明都允许纵向换行。右侧当前值或附加信息放在标题同一行，
+/// 说明独占下方整行，这样所有条目的说明右边界保持一致，
+/// 不会被不同长度的当前值挤得忽宽忽窄。
 struct SettingsRowLabel: View {
     let title: String
     let subtitle: String?
     var systemImage: String? = nil
     var iconColor: Color = .accentColor
+    /// 标题行右侧的附加内容（当前值、计数等）。
+    var trailing: AnyView? = nil
 
     var body: some View {
         Group {
@@ -30,10 +33,18 @@ struct SettingsRowLabel: View {
 
     private var textStack: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.body)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 4)
+
+                if let trailing {
+                    trailing.layoutPriority(1)
+                }
+            }
 
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
@@ -41,6 +52,7 @@ struct SettingsRowLabel: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -84,25 +96,23 @@ struct SettingsPickerRow<Value: Hashable>: View {
                 }
             }
         } label: {
-            HStack(alignment: .center, spacing: 12) {
-                SettingsRowLabel(
-                    title: title,
-                    subtitle: subtitle,
-                    systemImage: systemImage,
-                    iconColor: iconColor
+            SettingsRowLabel(
+                title: title,
+                subtitle: subtitle,
+                systemImage: systemImage,
+                iconColor: iconColor,
+                trailing: AnyView(
+                    HStack(spacing: 4) {
+                        Text(selectedTitle)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: true, vertical: false)
                 )
-
-                HStack(spacing: 4) {
-                    Text(selectedTitle)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2)
-                }
-                .foregroundStyle(.secondary)
-                .layoutPriority(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
