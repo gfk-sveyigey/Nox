@@ -92,8 +92,8 @@ struct SettingsPickerRow<Value: Hashable>: View {
             )
         }
         .pickerStyle(.menu)
-        // 系统 Picker 的当前值统一用次要文字色，与其它右侧说明保持一致；
+        // 系统 Picker 的当前值使用与标题一致的主文字色；
         // label 内的标题、图标和说明已单独指定颜色，不受影响。
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.primary)
     }
 }
