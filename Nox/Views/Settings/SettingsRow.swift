@@ -28,7 +28,9 @@ struct SettingsRowLabel: View {
                 textStack
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // 普通 Picker 的 label 不能再强制占满整行，否则系统当前值会被挤到下一行。
+        // 只有行尾有覆盖内容（解析来源计数）时才需要撑满，才能把覆盖内容对齐到行尾。
+        .frame(maxWidth: centeredTrailing == nil ? nil : .infinity, alignment: .leading)
         .overlay(alignment: .trailing) {
             if let centeredTrailing {
                 centeredTrailing
@@ -49,10 +51,8 @@ struct SettingsRowLabel: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.trailing, centeredTrailingReserve)
     }
 }
@@ -92,5 +92,8 @@ struct SettingsPickerRow<Value: Hashable>: View {
             )
         }
         .pickerStyle(.menu)
+        // 系统 Picker 的当前值使用与标题一致的主文字色；
+        // label 内的标题、图标和说明已单独指定颜色，不受影响。
+        .foregroundStyle(.primary)
     }
 }
