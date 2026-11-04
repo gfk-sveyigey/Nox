@@ -75,20 +75,19 @@ struct SettingsView: View {
             NavigationLink {
                 SiteSettingsView()
             } label: {
-                HStack(alignment: .center, spacing: 8) {
-                    SettingsRowLabel(
-                        title: L("解析来源"),
-                        subtitle: L("管理站点解析插件和匹配顺序。"),
-                        systemImage: "puzzlepiece.extension",
-                        iconColor: .purple
+                SettingsRowLabel(
+                    title: L("解析来源"),
+                    subtitle: L("管理站点解析插件和匹配顺序。"),
+                    systemImage: "puzzlepiece.extension",
+                    iconColor: .purple,
+                    trailing: AnyView(
+                        Text("\(enabledSiteCount)/\(registry.parsers.count)")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                     )
-                    Text("\(enabledSiteCount)/\(registry.parsers.count)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .layoutPriority(1)
-                }
+                )
             }
 
             settingsLink(
