@@ -53,7 +53,6 @@ struct NotificationSettingsView: View {
                 )
             }
         }
-        .settingsValueColumn()
         .navigationTitle(L("推送通知"))
         .navigationBarTitleDisplayMode(.inline)
     }

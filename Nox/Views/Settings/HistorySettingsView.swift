@@ -58,7 +58,6 @@ struct HistorySettingsView: View {
                 LabeledContent(L("当前记录"), value: String(appState.history.count))
             }
         }
-        .settingsValueColumn()
         .navigationTitle(L("历史记录"))
         .navigationBarTitleDisplayMode(.inline)
     }

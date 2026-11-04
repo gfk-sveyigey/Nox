@@ -3,9 +3,8 @@ import UIKit
 
 /// 设置行左侧的图标 + 标题 + 说明。
 ///
-/// 标题和说明都允许纵向换行。右侧当前值或附加信息放在标题同一行，
-/// 说明独占下方整行，这样所有条目的说明右边界保持一致，
-/// 不会被不同长度的当前值挤得忽宽忽窄。
+/// 标题和说明都允许纵向换行；需要长期显示在右侧的内容可以覆盖在整行
+/// 尾部并相对整行纵向居中，标题和说明则为它预留出所需宽度。
 struct SettingsRowLabel: View {
     let title: String
     let subtitle: String?
@@ -13,6 +12,10 @@ struct SettingsRowLabel: View {
     var iconColor: Color = .accentColor
     /// 标题行右侧的附加内容（当前值、计数等）。
     var trailing: AnyView? = nil
+    /// 覆盖在整行右侧、相对整行纵向居中的内容（picker 当前值）。
+    var centeredTrailing: AnyView? = nil
+    /// 为 `centeredTrailing` 预留的宽度，避免标题和说明被它盖住。
+    var centeredTrailingReserve: CGFloat = 0
 
     var body: some View {
         Group {
@@ -29,6 +32,11 @@ struct SettingsRowLabel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .trailing) {
+            if let centeredTrailing {
+                centeredTrailing
+            }
+        }
     }
 
     private var textStack: some View {
@@ -56,6 +64,7 @@ struct SettingsRowLabel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.trailing, centeredTrailingReserve)
     }
 }
 
@@ -66,52 +75,10 @@ struct SettingsPickerOption<Value: Hashable>: Identifiable {
     var id: Value { value }
 }
 
-/// 同一页所有 picker 候选项的最大显示宽度，用于把右侧值的左边界对齐。
-struct SettingsValueWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-private struct SettingsValueColumnWidthKey: EnvironmentKey {
-    static let defaultValue: CGFloat = 0
-}
-
-extension EnvironmentValues {
-    var settingsValueColumnWidth: CGFloat {
-        get { self[SettingsValueColumnWidthKey.self] }
-        set { self[SettingsValueColumnWidthKey.self] = newValue }
-    }
-}
-
-private struct SettingsValueColumnModifier: ViewModifier {
-    @State private var width: CGFloat = 0
-
-    func body(content: Content) -> some View {
-        content
-            .environment(\.settingsValueColumnWidth, width)
-            .onPreferenceChange(SettingsValueWidthPreferenceKey.self) { newWidth in
-                // 上限避免超长语言把标题挤到无法阅读。
-                let capped = min(max(newWidth, 0), 220)
-                guard abs(capped - width) > 0.5 else { return }
-                width = capped
-            }
-    }
-}
-
-extension View {
-    /// 让同一页各 picker 的当前值在同一个左边界开始。
-    func settingsValueColumn() -> some View {
-        modifier(SettingsValueColumnModifier())
-    }
-}
-
 /// 带右侧当前值的设置行。
 ///
-/// 左侧标题/说明负责换行，右侧值固定单行并优先获得宽度，
-/// 避免长语言下当前值被挤到下一行。
+/// 当前值覆盖在行尾并相对整行垂直居中，不参与标题行的高度计算；
+/// 标题和说明只让出当前值所需的宽度。
 struct SettingsPickerRow<Value: Hashable>: View {
     let title: String
     var subtitle: String? = nil
@@ -120,20 +87,14 @@ struct SettingsPickerRow<Value: Hashable>: View {
     @Binding var selection: Value
     let options: [SettingsPickerOption<Value>]
 
-    @Environment(\.settingsValueColumnWidth) private var valueColumnWidth
-
     private var selectedTitle: String {
         options.first(where: { $0.value == selection })?.title ?? ""
     }
 
-    /// 候选项里最长的一项决定本页值列的宽度，切换选项时列宽不会跳动。
-    private var measuredValueWidth: CGFloat {
+    /// 当前值（含箭头）的宽度，用来只给标题和说明让出必要的右侧空间。
+    private var valueWidth: CGFloat {
         let font = UIFont.preferredFont(forTextStyle: .body)
-        let textWidth = options.reduce(CGFloat.zero) { partial, option in
-            let width = (option.title as NSString).size(withAttributes: [.font: font]).width
-            return max(partial, width)
-        }
-        // 文本 + 4pt 间隔 + 上下箭头 + 少量余量。
+        let textWidth = (selectedTitle as NSString).size(withAttributes: [.font: font]).width
         return ceil(textWidth) + 18
     }
 
@@ -146,23 +107,21 @@ struct SettingsPickerRow<Value: Hashable>: View {
                 .font(.caption2)
         }
         .foregroundStyle(.secondary)
-        .frame(width: valueColumnWidth > 0 ? valueColumnWidth : nil, alignment: .leading)
+        .frame(width: valueWidth, alignment: .leading)
     }
 
     var body: some View {
         Menu {
-            // 所有选项都带同一个图标位，选中项显示对勾、其余透明，
-            // 这样菜单项的文字左端能对齐，菜单也会像以前一样靠右侧弹出。
+            // 用系统菜单开关项：文字由系统排版，所有选项左端对齐，
+            // 且只有当前选中项显示对勾。
             ForEach(options) { option in
-                Button {
-                    selection = option.value
-                } label: {
-                    Label {
-                        Text(option.title)
-                    } icon: {
-                        Image(systemName: "checkmark")
-                            .opacity(option.value == selection ? 1 : 0)
+                Toggle(isOn: Binding(
+                    get: { option.value == selection },
+                    set: { isOn in
+                        if isOn { selection = option.value }
                     }
+                )) {
+                    Text(option.title)
                 }
             }
         } label: {
@@ -171,11 +130,11 @@ struct SettingsPickerRow<Value: Hashable>: View {
                 subtitle: subtitle,
                 systemImage: systemImage,
                 iconColor: iconColor,
-                trailing: AnyView(valueView)
+                centeredTrailing: AnyView(valueView),
+                centeredTrailingReserve: valueWidth + 8
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .preference(key: SettingsValueWidthPreferenceKey.self, value: measuredValueWidth)
     }
 }

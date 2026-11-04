@@ -126,7 +126,6 @@ struct KeepAliveSettingsView: View {
                 }
             }
         }
-        .settingsValueColumn()
         .navigationTitle(L("后台下载"))
         .navigationBarTitleDisplayMode(.inline)
     }

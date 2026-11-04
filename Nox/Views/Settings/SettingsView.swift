@@ -23,7 +23,6 @@ struct SettingsView: View {
             Form {
                 settingsSections
             }
-            .settingsValueColumn()
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
         }
