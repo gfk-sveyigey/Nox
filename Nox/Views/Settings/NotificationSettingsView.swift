@@ -33,16 +33,24 @@ struct NotificationSettingsView: View {
             }
 
             Section {
-                Picker(selection: Binding(
-                    get: { appState.showsTaskNames },
-                    set: { manager.setShowsTaskNames($0) }
+                Toggle(isOn: Binding(
+                    get: { appState.customLiveActivityEnabled },
+                    set: { manager.setCustomLiveActivityEnabled($0) }
                 )) {
-                    Text(L("显示具体任务名")).tag(true)
-                    Text(L("仅提示有任务完成")).tag(false)
-                } label: {
-                    Text(L("显示内容"))
+                    Text(L("自定义灵动岛与实时活动"))
                 }
-                .pickerStyle(.inline)
+
+                SettingsPickerRow(
+                    title: L("显示内容"),
+                    selection: Binding(
+                        get: { appState.showsTaskNames },
+                        set: { manager.setShowsTaskNames($0) }
+                    ),
+                    options: [
+                        SettingsPickerOption(value: true, title: L("显示具体任务名")),
+                        SettingsPickerOption(value: false, title: L("仅提示有任务完成"))
+                    ]
+                )
             }
         }
         .navigationTitle(L("推送通知"))
