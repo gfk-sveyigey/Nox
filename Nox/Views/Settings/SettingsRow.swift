@@ -92,8 +92,8 @@ struct SettingsPickerRow<Value: Hashable>: View {
             )
         }
         .pickerStyle(.menu)
-        // 系统 Picker 的当前值使用与标题一致的主文字色；
-        // label 内的标题、图标和说明已单独指定颜色，不受影响。
-        .foregroundStyle(.primary)
+        // 菜单式 Picker 的当前值由控件 tint 决定，foregroundStyle 改不到它；
+        // 这里把 tint 设为主文字色，使当前值随深浅色显示为黑/白而不是强调蓝。
+        .tint(Color.primary)
     }
 }
