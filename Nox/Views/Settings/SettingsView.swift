@@ -131,6 +131,7 @@ struct SettingsView: View {
                 }
             )
             .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
+            .id(localization.language)
 
             SettingsPickerRow(
                 title: L("语言"),
@@ -142,6 +143,7 @@ struct SettingsView: View {
                     SettingsPickerOption(value: $0, title: $0.title)
                 }
             )
+            .id(localization.language)
         }
 
         Section {
