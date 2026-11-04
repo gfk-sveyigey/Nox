@@ -45,7 +45,7 @@ struct SiteSettingsView: View {
                     )
 
                     if !editMode.isEditing {
-                        Text(L("长按条目可导出或删除插件；删除后不会自动恢复。"))
+                        Text(L("长按条目可导出或删除插件。"))
                     }
                 }
             }

@@ -19,14 +19,16 @@ struct KeepAliveSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker(L("后台方式"), selection: Binding(
-                    get: { appState.keepAliveMode },
-                    set: { manager.setKeepAliveMode($0) }
-                )) {
-                    ForEach(KeepAliveMode.allCases.filter(\.isAvailable)) { mode in
-                        Text(mode.title).tag(mode)
+                SettingsPickerRow(
+                    title: L("后台方式"),
+                    selection: Binding(
+                        get: { appState.keepAliveMode },
+                        set: { manager.setKeepAliveMode($0) }
+                    ),
+                    options: KeepAliveMode.allCases.filter(\.isAvailable).map {
+                        SettingsPickerOption(value: $0, title: $0.title)
                     }
-                }
+                )
 
                 // 只有画中画才有悬浮窗，其它保活方式下这个滑块没有意义。
                 if appState.keepAliveMode == .pictureInPicture {
@@ -63,14 +65,16 @@ struct KeepAliveSettingsView: View {
             if appState.keepAliveMode.startsKeepAlive,
                appState.keepAliveMode != .continuedProcessing {
                 Section {
-                    Picker(L("保活模式"), selection: Binding(
-                        get: { appState.keepAliveLifetime },
-                        set: { manager.setKeepAliveLifetime($0) }
-                    )) {
-                        ForEach(KeepAliveLifetime.allCases) { lifetime in
-                            Text(lifetime.title).tag(lifetime)
+                    SettingsPickerRow(
+                        title: L("保活模式"),
+                        selection: Binding(
+                            get: { appState.keepAliveLifetime },
+                            set: { manager.setKeepAliveLifetime($0) }
+                        ),
+                        options: KeepAliveLifetime.allCases.map {
+                            SettingsPickerOption(value: $0, title: $0.title)
                         }
-                    }
+                    )
                 } footer: {
                     Text(L("跟随下载任务：有下载任务时才保活。启动即常驻：进入前台即拉起并一直保持，直到切换到「系统下载」或「仅前台下载」。"))
                 }
@@ -93,14 +97,16 @@ struct KeepAliveSettingsView: View {
             // 只有画中画需要共存保护；选了其它保活方式时这一组整段隐藏。
             if appState.keepAliveMode == .pictureInPicture {
                 Section {
-                    Picker(L("共存保护不可用时"), selection: Binding(
-                        get: { appState.pipCoexistenceFallback },
-                        set: { manager.setPiPCoexistenceFallback($0) }
-                    )) {
-                        ForEach(PiPCoexistenceFallback.allCases) { fallback in
-                            Text(fallback.title).tag(fallback)
+                    SettingsPickerRow(
+                        title: L("共存保护不可用时"),
+                        selection: Binding(
+                            get: { appState.pipCoexistenceFallback },
+                            set: { manager.setPiPCoexistenceFallback($0) }
+                        ),
+                        options: PiPCoexistenceFallback.allCases.map {
+                            SettingsPickerOption(value: $0, title: $0.title)
                         }
-                    }
+                    )
                 } footer: {
                     Text(L("画中画可能与其他 App 的画中画互相打断。这里选择共存保护不可用时如何处理。"))
                 }

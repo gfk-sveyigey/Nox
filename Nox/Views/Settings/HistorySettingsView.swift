@@ -14,11 +14,13 @@ struct HistorySettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker(L("保留方式"), selection: $appState.historyRetentionMode) {
-                    ForEach(HistoryRetentionMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
+                SettingsPickerRow(
+                    title: L("保留方式"),
+                    selection: $appState.historyRetentionMode,
+                    options: HistoryRetentionMode.allCases.map {
+                        SettingsPickerOption(value: $0, title: $0.title)
                     }
-                }
+                )
                 .onChange(of: appState.historyRetentionMode) { _, _ in
                     appState.applyHistoryRetention()
                     appState.persist()
@@ -26,28 +28,30 @@ struct HistorySettingsView: View {
 
                 switch appState.historyRetentionMode {
                 case .count:
-                    Picker(L("最大条数"), selection: $appState.historyRetentionCount) {
-                        ForEach(AppState.historyCountOptions, id: \.self) { value in
-                            Text(historyCountTitle(value)).tag(value)
+                    SettingsPickerRow(
+                        title: L("最大条数"),
+                        selection: $appState.historyRetentionCount,
+                        options: AppState.historyCountOptions.map {
+                            SettingsPickerOption(value: $0, title: historyCountTitle($0))
                         }
-                    }
+                    )
                     .onChange(of: appState.historyRetentionCount) { _, _ in
                         appState.applyHistoryRetention()
                         appState.persist()
                     }
                 case .days:
-                    Picker(L("最多保留天数"), selection: $appState.historyRetentionDays) {
-                        ForEach(AppState.historyDayOptions, id: \.self) { value in
-                            Text(historyDayTitle(value)).tag(value)
+                    SettingsPickerRow(
+                        title: L("最多保留天数"),
+                        selection: $appState.historyRetentionDays,
+                        options: AppState.historyDayOptions.map {
+                            SettingsPickerOption(value: $0, title: historyDayTitle($0))
                         }
-                    }
+                    )
                     .onChange(of: appState.historyRetentionDays) { _, _ in
                         appState.applyHistoryRetention()
                         appState.persist()
                     }
                 }
-            } footer: {
-                Text(L("超出保留范围的历史记录会被自动删除。"))
             }
 
             Section {

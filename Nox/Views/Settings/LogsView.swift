@@ -22,13 +22,13 @@ struct LogsView: View {
     var body: some View {
         List {
             Section {
-                Picker(L("日志保留"), selection: $store.retentionDays) {
-                    ForEach(LogStore.retentionOptions, id: \.self) { value in
-                        Text(retentionTitle(value)).tag(value)
+                SettingsPickerRow(
+                    title: L("日志保留"),
+                    selection: $store.retentionDays,
+                    options: LogStore.retentionOptions.map {
+                        SettingsPickerOption(value: $0, title: retentionTitle($0))
                     }
-                }
-            } footer: {
-                Text(L("超过保留天数的日志会被自动清理。"))
+                )
             }
 
             Section {
