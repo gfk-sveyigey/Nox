@@ -101,6 +101,7 @@ struct DownloadSettingsView: View {
                 }
             }
         }
+        .settingsValueColumn()
         .navigationTitle(L("下载设置"))
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// 设置行左侧的图标 + 标题 + 说明。
 ///
@@ -66,6 +67,48 @@ struct SettingsPickerOption<Value: Hashable>: Identifiable {
     var id: Value { value }
 }
 
+/// 同一页所有 picker 候选项的最大显示宽度，用于把右侧值的左边界对齐。
+struct SettingsValueWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct SettingsValueColumnWidthKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    var settingsValueColumnWidth: CGFloat {
+        get { self[SettingsValueColumnWidthKey.self] }
+        set { self[SettingsValueColumnWidthKey.self] = newValue }
+    }
+}
+
+private struct SettingsValueColumnModifier: ViewModifier {
+    @State private var width: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.settingsValueColumnWidth, width)
+            .onPreferenceChange(SettingsValueWidthPreferenceKey.self) { newWidth in
+                // 上限避免超长语言把标题挤到无法阅读。
+                let capped = min(max(newWidth, 0), 220)
+                guard abs(capped - width) > 0.5 else { return }
+                width = capped
+            }
+    }
+}
+
+extension View {
+    /// 让同一页各 picker 的当前值在同一个左边界开始。
+    func settingsValueColumn() -> some View {
+        modifier(SettingsValueColumnModifier())
+    }
+}
+
 /// 带右侧当前值的设置行。
 ///
 /// 左侧标题/说明负责换行，右侧值固定单行并优先获得宽度，
@@ -78,43 +121,58 @@ struct SettingsPickerRow<Value: Hashable>: View {
     @Binding var selection: Value
     let options: [SettingsPickerOption<Value>]
 
+    @Environment(\.settingsValueColumnWidth) private var valueColumnWidth
+
     private var selectedTitle: String {
         options.first(where: { $0.value == selection })?.title ?? ""
     }
 
+    /// 候选项里最长的一项决定本页值列的宽度，切换选项时列宽不会跳动。
+    private var measuredValueWidth: CGFloat {
+        let font = UIFont.preferredFont(forTextStyle: .body)
+        let textWidth = options.reduce(CGFloat.zero) { partial, option in
+            let width = (option.title as NSString).size(withAttributes: [.font: font]).width
+            return max(partial, width)
+        }
+        // 文本 + 4pt 间隔 + 上下箭头 + 少量余量。
+        return ceil(textWidth) + 18
+    }
+
+    private var valueView: some View {
+        HStack(spacing: 4) {
+            Text(selectedTitle)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption2)
+        }
+        .foregroundStyle(.secondary)
+        .frame(width: valueColumnWidth > 0 ? valueColumnWidth : nil, alignment: .leading)
+    }
+
     var body: some View {
         Menu {
-            ForEach(options) { option in
-                Button {
-                    selection = option.value
-                } label: {
-                    if option.value == selection {
-                        Label(option.title, systemImage: "checkmark")
-                    } else {
-                        Text(option.title)
-                    }
+            // 用系统 Picker 渲染菜单项：选中项的对勾由系统统一排版，
+            // 所有选项的文字左端保持在同一列。
+            Picker(selection: $selection) {
+                ForEach(options) { option in
+                    Text(option.title).tag(option.value)
                 }
+            } label: {
+                EmptyView()
             }
+            .pickerStyle(.inline)
         } label: {
             SettingsRowLabel(
                 title: title,
                 subtitle: subtitle,
                 systemImage: systemImage,
                 iconColor: iconColor,
-                trailing: AnyView(
-                    HStack(spacing: 4) {
-                        Text(selectedTitle)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2)
-                    }
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: true, vertical: false)
-                )
+                trailing: AnyView(valueView)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .preference(key: SettingsValueWidthPreferenceKey.self, value: measuredValueWidth)
     }
 }
