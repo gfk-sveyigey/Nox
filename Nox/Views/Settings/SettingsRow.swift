@@ -10,9 +10,7 @@ struct SettingsRowLabel: View {
     let subtitle: String?
     var systemImage: String? = nil
     var iconColor: Color = .accentColor
-    /// 标题行右侧的附加内容（当前值、计数等）。
-    var trailing: AnyView? = nil
-    /// 覆盖在整行右侧、相对整行纵向居中的内容（picker 当前值）。
+    /// 覆盖在整行右侧、相对整行纵向居中的内容（当前值、计数等）。
     var centeredTrailing: AnyView? = nil
     /// 为 `centeredTrailing` 预留的宽度，避免标题和说明被它盖住。
     var centeredTrailingReserve: CGFloat = 0
@@ -41,18 +39,10 @@ struct SettingsRowLabel: View {
 
     private var textStack: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .center, spacing: 8) {
-                Text(title)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Spacer(minLength: 4)
-
-                if let trailing {
-                    trailing.layoutPriority(1)
-                }
-            }
+            Text(title)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
 
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)

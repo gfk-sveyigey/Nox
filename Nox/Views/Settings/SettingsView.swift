@@ -80,13 +80,14 @@ struct SettingsView: View {
                     subtitle: L("管理站点解析插件和匹配顺序。"),
                     systemImage: "puzzlepiece.extension",
                     iconColor: .purple,
-                    trailing: AnyView(
-                        Text("\(enabledSiteCount)/\(registry.parsers.count)")
+                    centeredTrailing: AnyView(
+                        Text(siteCountText)
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                             .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
-                    )
+                    ),
+                    centeredTrailingReserve: siteCountWidth
                 )
             }
 
@@ -192,6 +193,18 @@ struct SettingsView: View {
 
     var enabledSiteCount: Int {
         registry.parsers.filter { appState.isSiteEnabled($0.identifier) }.count
+    }
+
+    var siteCountText: String {
+        "\(enabledSiteCount)/\(registry.parsers.count)"
+    }
+
+    /// 计数使用等宽数字，这里按同一字体测量，避免预留宽度不足。
+    var siteCountWidth: CGFloat {
+        let pointSize = UIFont.preferredFont(forTextStyle: .body).pointSize
+        let font = UIFont.monospacedDigitSystemFont(ofSize: pointSize, weight: .regular)
+        let width = (siteCountText as NSString).size(withAttributes: [.font: font]).width
+        return ceil(width) + 10
     }
 
     // MARK: - Bundle 信息
