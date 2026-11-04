@@ -29,12 +29,11 @@ struct SettingsRowLabel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: 40)
     }
 
     private var textStack: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
                 Text(title)
                     .font(.body)
                     .foregroundStyle(.primary)
@@ -152,16 +151,20 @@ struct SettingsPickerRow<Value: Hashable>: View {
 
     var body: some View {
         Menu {
-            // 用系统 Picker 渲染菜单项：选中项的对勾由系统统一排版，
-            // 所有选项的文字左端保持在同一列。
-            Picker(selection: $selection) {
-                ForEach(options) { option in
-                    Text(option.title).tag(option.value)
+            // 所有选项都带同一个图标位，选中项显示对勾、其余透明，
+            // 这样菜单项的文字左端能对齐，菜单也会像以前一样靠右侧弹出。
+            ForEach(options) { option in
+                Button {
+                    selection = option.value
+                } label: {
+                    Label {
+                        Text(option.title)
+                    } icon: {
+                        Image(systemName: "checkmark")
+                            .opacity(option.value == selection ? 1 : 0)
+                    }
                 }
-            } label: {
-                EmptyView()
             }
-            .pickerStyle(.inline)
         } label: {
             SettingsRowLabel(
                 title: title,

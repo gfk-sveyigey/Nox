@@ -1181,6 +1181,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "m3u8 조각 동시성" } }
       }
     },
+    "跟随多线程" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mehrthread folgen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow multi-thread" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suivre le multithread" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "멀티스레드 따르기" } }
+      }
+    },
     "跟随多线程设置" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Mehrthread-Einstellung folgen" } },
@@ -1685,6 +1693,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "무음 오디오" } }
       }
     },
+    "画中画" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bild-in-Bild" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Picture in Picture" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Image dans l'image" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화면 속 화면" } }
+      }
+    },
     "画中画 (PiP)" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Bild-in-Bild (PiP)" } },
@@ -1971,6 +1987,22 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Download Network" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réseau de téléchargement" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 네트워크" } }
+      }
+    },
+    "Wi-Fi 与蜂窝" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "WLAN & Mobilfunk" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi & Cellular" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi et cellulaire" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi 및 셀룰러" } }
+      }
+    },
+    "仅 Wi-Fi" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur WLAN" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi only" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi uniquement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Wi-Fi만" } }
       }
     },
     "无线局域网与蜂窝" : {
@@ -2923,6 +2955,22 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Displayed content" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Contenu affiché" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "표시 내용" } }
+      }
+    },
+    "显示任务名" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabennamen anzeigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show task names" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les noms des tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 이름 표시" } }
+      }
+    },
+    "仅提示完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Abschluss melden" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only indicate completion" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Indiquer seulement la fin" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료만 표시" } }
       }
     },
     "显示具体任务名" : {

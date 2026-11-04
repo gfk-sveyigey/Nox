@@ -47,8 +47,8 @@ struct NotificationSettingsView: View {
                         set: { manager.setShowsTaskNames($0) }
                     ),
                     options: [
-                        SettingsPickerOption(value: true, title: L("显示具体任务名")),
-                        SettingsPickerOption(value: false, title: L("仅提示有任务完成"))
+                        SettingsPickerOption(value: true, title: L("显示任务名")),
+                        SettingsPickerOption(value: false, title: L("仅提示完成"))
                     ]
                 )
             }
