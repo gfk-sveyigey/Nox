@@ -113,6 +113,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "쿠키 없음" } }
       }
     },
+    "浏览网页，下载视频" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Webseiten browsen. Videos laden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Browse the web. Download videos." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Naviguez sur le Web. Téléchargez des vidéos." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "웹을 탐색하고 동영상을 다운로드하세요." } }
+      }
+    },
     "浏览网页并登录后，这里会显示保存的登录状态。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach dem Surfen und Anmelden werden hier die gespeicherten Anmeldungen angezeigt." } },

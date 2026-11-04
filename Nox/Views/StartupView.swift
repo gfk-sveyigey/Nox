@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import NoxCore
 
 /// 启动准备页。
 ///
@@ -36,12 +37,22 @@ struct StartupView: View {
                     }
                     .shadow(color: Color.primary.opacity(0.14), radius: 34)
 
-                Text(verbatim: Self.appName.uppercased())
-                    .font(.custom("AvenirNext-Heavy", size: 46))
-                    .foregroundStyle(Color.primary.opacity(0.92))
-                    .tracking(1.5)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                VStack(spacing: 6) {
+                    Text(verbatim: Self.appName.uppercased())
+                        .font(.custom("Futura-CondensedExtraBold", size: 46))
+                        .foregroundStyle(Color.primary.opacity(0.92))
+                        .tracking(1.5)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+
+                    Text(L("浏览网页，下载视频"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 32)
             }
             .scaleEffect(appeared ? 1 : 0.94)
             .opacity(appeared ? 1 : 0)

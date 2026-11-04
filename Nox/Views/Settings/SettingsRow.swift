@@ -84,7 +84,7 @@ struct SettingsPickerRow<Value: Hashable>: View {
                 }
             }
         } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 SettingsRowLabel(
                     title: title,
                     subtitle: subtitle,

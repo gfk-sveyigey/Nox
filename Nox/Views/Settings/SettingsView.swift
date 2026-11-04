@@ -75,7 +75,7 @@ struct SettingsView: View {
             NavigationLink {
                 SiteSettingsView()
             } label: {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                HStack(alignment: .center, spacing: 8) {
                     SettingsRowLabel(
                         title: L("解析来源"),
                         subtitle: L("管理站点解析插件和匹配顺序。"),
