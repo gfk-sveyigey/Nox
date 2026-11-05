@@ -85,11 +85,9 @@ struct HistoryView: View {
         }
     }
 
-    /// 空页面使用普通窗口底色；有列表时使用分组列表背景。
+    /// 与设置页保持一致，空页面也使用分组列表背景色。
     var pageBackgroundColor: Color {
-        appState.history.isEmpty
-            ? Color(.systemBackground)
-            : Color(.systemGroupedBackground)
+        Color(.systemGroupedBackground)
     }
 
     /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。

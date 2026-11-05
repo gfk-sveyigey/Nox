@@ -59,11 +59,9 @@ extension VideoBrowserView {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// 首页有书签时使用 List 的分组背景色；空首页保持普通页面底色。
+    /// 首页统一使用分组列表背景色，与设置页以及有书签时的列表保持一致。
     var homeBackgroundColor: Color {
-        appState.bookmarks.isEmpty
-            ? Color(.systemBackground)
-            : Color(.systemGroupedBackground)
+        Color(.systemGroupedBackground)
     }
 
     /// 地址栏上方也是页面的一部分。首页显示书签列表时让顶部安全区沿用
