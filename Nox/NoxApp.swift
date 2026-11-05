@@ -124,8 +124,14 @@ struct NoxRootView: View {
     @ObservedObject private var localization = LocalizationManager.shared
 
     var body: some View {
-        ContentView()
-            .environment(\.locale, localization.locale)
+        ZStack {
+            ContentView()
+
+            // 纯装饰层：内容落在灵动岛硬件下方，正常不可见，
+            // 只在截图 / 多任务缩放时露出。放在根视图上以覆盖所有页面。
+            UnderIslandBrand()
+        }
+        .environment(\.locale, localization.locale)
     }
 }
 
