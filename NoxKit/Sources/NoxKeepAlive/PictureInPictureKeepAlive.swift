@@ -260,9 +260,9 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
     /// 上游做法：去掉 0.1pt 隐藏时仍会浮在屏幕上的画中画控制点。
     ///
     /// - `requiresLinearPlayback` 是公开属性，可隐藏快进 / 跳过等控件；
-    /// - `controlsStyle = 2` 是 AVKit 内部属性，上游在 iOS 16+ 上直接设置，
-    ///   用来避免「两个白点」。这里先确认类里确实存在对应 ivar 再写，
-    ///   系统改版后找不到就静默跳过。
+    /// - `controlsStyle = 2` 是 AVKit 内部属性。上游直接 KVC 写入，不依赖实例变量
+    ///   检查：新版系统把真正的存储转给了内部适配对象，按 ivar 判断会误判为不支持，
+    ///   结果控件没被隐藏。这里同样直接写入，与上游保持一致。
     private func configureHiddenControls(for controller: AVPictureInPictureController) {
         controller.requiresLinearPlayback = true
         // 上游：iOS 16+ 用 2（彻底去掉两个控制点），iOS 15 用 1（仅隐藏播放控制）。
@@ -272,17 +272,8 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         } else {
             style = 1
         }
-        var type: AnyClass? = object_getClass(controller)
-        while let current = type {
-            if class_getInstanceVariable(current, "_controlsStyle") != nil
-                || class_getInstanceVariable(current, "controlsStyle") != nil {
-                controller.setValue(style, forKey: "controlsStyle")
-                verboseLog("已设置画中画控件样式 \(style)")
-                return
-            }
-            type = class_getSuperclass(current)
-        }
-        verboseLog("未找到 controlsStyle，跳过控件样式设置")
+        controller.setValue(style, forKey: "controlsStyle")
+        verboseLog("已设置画中画控件样式 \(style)")
     }
 
     /// 建立画中画基础设施（宿主视图 + controller + 共存保护）。
@@ -293,8 +284,15 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         content.preferredContentSize = pipSize
         // 与上游的隐藏宿主一致：内容层用不透明黑色。0.1pt 时整块高度不足一个像素，
         // 不会出现透明层被系统补成浅色胶囊、反而更显眼的问题。
+        // 上游把背景同时写到 view 与 layer，并显式设置 alpha / clipsToBounds；
+        // 只设置 view.backgroundColor 在部分系统上仍会被合成出可见边缘。
+        content.view.frame = CGRect(origin: .zero, size: pipSize)
         content.view.backgroundColor = .black
+        content.view.layer.backgroundColor = UIColor.black.cgColor
         content.view.isOpaque = true
+        content.view.layer.isOpaque = true
+        content.view.alpha = 1
+        content.view.clipsToBounds = true
         // 铺满一个透明子视图，保证内容宿主有稳定的内容与布局，而不是空壳。
         // 用约束铺满而非 autoresizing：content.view 初始 bounds 为 .zero，
         // 交给约束跟随其后的尺寸变化更可靠。
@@ -315,17 +313,22 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
             activeVideoCallSourceView: host,
             contentViewController: content
         )
-        let pipController = AVPictureInPictureController(contentSource: source)
+        // 上游在构造阶段把 `_proxyControlsStyle` 临时改成 5，这是 0.1pt 下完全隐藏
+        // 系统控件/装饰的关键；构造结束后策略立即释放。失败时回退到普通构造。
+        let pipController = PiPHiddenReferenceControls.makeController(source: source) { [weak self] message in
+            self?.onLog?("画中画诊断：\(message)")
+        } ?? AVPictureInPictureController(contentSource: source)
         pipController.delegate = self
-        configureHiddenControls(for: pipController)
         controller = pipController
         verboseLog("controller 已创建 · \(stateSummary) hostFrame=\(host.frame)")
 
         let protection = PiPCoexistenceProtection(controller: pipController)
         protection.verboseLogging = verboseLogging
         coexistence = protection
+        // 与上游顺序一致：先准备共存 provider，再写控件样式。
         protection.prepare()
         verboseLog("共存保护准备完成 · installed=\(protection.isSupported) \(stateSummary)")
+        configureHiddenControls(for: pipController)
 
         // 共存保护装不上：按用户选的兜底方案处理。
         // `.keepAlive` 时继续启动（可能挤掉其它 App 的 PiP），其余情况报错交给协调器。
@@ -631,6 +634,9 @@ final class PictureInPictureKeepAlive: NSObject, KeepAliveStrategy {
         let host = UIView()
         host.backgroundColor = .clear
         host.isOpaque = false
+        host.layer.cornerRadius = 18
+        host.layer.cornerCurve = .continuous
+        host.clipsToBounds = true
         // 这个视图只是一块透明的几何来源，但会长期留在窗口里（会话复用），
         // 必须关掉触摸，否则它会挡住中间那片区域的手势。
         host.isUserInteractionEnabled = false
