@@ -13,6 +13,11 @@ final class UnderIslandBrandView: UIView {
     private static let markHeight: CGFloat = 24
     private static let dynamicIslandMinimumInset: CGFloat = 55
 
+    /// 与灵动岛硬件尺寸一致的外框（约 126×37pt，顶部距屏幕边缘约 11pt）。
+    private static let islandSize = CGSize(width: 126, height: 37)
+    private static let islandCenterY: CGFloat = 11 + 37 / 2
+
+    private let outlineView = UIView()
     private let iconView = UIImageView()
     private let nameLabel = UILabel()
     private let stack = UIStackView()
@@ -23,6 +28,13 @@ final class UnderIslandBrandView: UIView {
         isUserInteractionEnabled = false
         isAccessibilityElement = false
         backgroundColor = .clear
+
+        outlineView.backgroundColor = .clear
+        outlineView.layer.cornerRadius = Self.islandSize.height / 2
+        outlineView.layer.cornerCurve = .continuous
+        outlineView.layer.borderWidth = 0.75
+        outlineView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(outlineView)
 
         iconView.image = UIImage(named: "AppIconPreview")
         iconView.contentMode = .scaleAspectFill
@@ -35,14 +47,16 @@ final class UnderIslandBrandView: UIView {
 
         let font = UIFont(name: "AvenirNext-DemiBold", size: 11)
             ?? UIFont.systemFont(ofSize: 11, weight: .semibold)
+        // 前景色交给 UILabel.textColor（动态颜色会跟随深浅色），
+        // attributedText 只负责字体与字距。
         nameLabel.attributedText = NSAttributedString(
             string: "NOX",
             attributes: [
                 .font: font,
-                .foregroundColor: UIColor.label.withAlphaComponent(0.86),
                 .kern: 1.2
             ]
         )
+        nameLabel.textColor = UIColor.label.withAlphaComponent(0.86)
 
         stack.axis = .horizontal
         stack.alignment = .center
@@ -55,9 +69,22 @@ final class UnderIslandBrandView: UIView {
         NSLayoutConstraint.activate([
             iconView.widthAnchor.constraint(equalToConstant: Self.markHeight),
             iconView.heightAnchor.constraint(equalToConstant: Self.markHeight),
+            outlineView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            outlineView.centerYAnchor.constraint(equalTo: topAnchor, constant: Self.islandCenterY),
+            outlineView.widthAnchor.constraint(equalToConstant: Self.islandSize.width),
+            outlineView.heightAnchor.constraint(equalToConstant: Self.islandSize.height),
             stack.centerXAnchor.constraint(equalTo: centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: centerYAnchor)
+            stack.centerYAnchor.constraint(equalTo: outlineView.centerYAnchor)
         ])
+
+        applyBorderColor()
+        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: UnderIslandBrandView, _) in
+            view.applyBorderColor()
+        }
+    }
+
+    private func applyBorderColor() {
+        outlineView.layer.borderColor = UIColor.label.withAlphaComponent(0.18).cgColor
     }
 
     required init?(coder: NSCoder) {
