@@ -100,6 +100,18 @@ final class NoxSceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = hosting
         window.makeKeyAndVisible()
         self.window = window
+
+        // 品牌标记直接挂在窗口最上层：铺满顶部安全区，内容垂直居中，
+        // 正好落在灵动岛硬件下方，正常不可见，只在截图 / 多任务缩放时露出。
+        let brand = UnderIslandBrandView()
+        brand.translatesAutoresizingMaskIntoConstraints = false
+        window.addSubview(brand)
+        NSLayoutConstraint.activate([
+            brand.topAnchor.constraint(equalTo: window.topAnchor),
+            brand.leadingAnchor.constraint(equalTo: window.leadingAnchor),
+            brand.trailingAnchor.constraint(equalTo: window.trailingAnchor),
+            brand.bottomAnchor.constraint(equalTo: window.safeAreaLayoutGuide.topAnchor)
+        ])
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
@@ -124,14 +136,8 @@ struct NoxRootView: View {
     @ObservedObject private var localization = LocalizationManager.shared
 
     var body: some View {
-        ZStack {
-            ContentView()
-
-            // 纯装饰层：内容落在灵动岛硬件下方，正常不可见，
-            // 只在截图 / 多任务缩放时露出。放在根视图上以覆盖所有页面。
-            UnderIslandBrand()
-        }
-        .environment(\.locale, localization.locale)
+        ContentView()
+            .environment(\.locale, localization.locale)
     }
 }
 
