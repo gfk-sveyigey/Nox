@@ -22,12 +22,13 @@ enum StorageCategory: String, CaseIterable, Identifiable {
 
     /// 「可清理」分组，顺序即界面展示顺序。
     static let clearableCategories: [StorageCategory] = [
-        .videos, .trash, .downloadTemporary, .caches, .logs, .websiteData
+        .videos, .trash, .downloadTemporary, .caches, .logs
     ]
 
-    /// 「不可清理」分组。插件、偏好设置与用户文件不参与批量删除。
+    /// 「不可清理」分组。网站数据（含 Cookie 登录态）、插件、偏好设置与用户文件
+    /// 都不参与批量删除。
     static let protectedCategories: [StorageCategory] = [
-        .plugins, .preferences, .otherData
+        .websiteData, .plugins, .preferences, .otherData
     ]
 
     var title: String {
@@ -85,9 +86,9 @@ enum StorageCategory: String, CaseIterable, Identifiable {
     /// 只有用户预期可以清理的数据才参与多选，避免误删插件、偏好设置或用户文件。
     var canClear: Bool {
         switch self {
-        case .videos, .trash, .downloadTemporary, .caches, .logs, .websiteData:
+        case .videos, .trash, .downloadTemporary, .caches, .logs:
             return true
-        case .plugins, .preferences, .otherData:
+        case .websiteData, .plugins, .preferences, .otherData:
             return false
         }
     }

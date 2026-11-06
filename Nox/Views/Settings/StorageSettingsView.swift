@@ -261,7 +261,6 @@ struct StorageSettingsView: View {
                 await manager.clearWebsiteCache()
             }
             if categories.contains(.logs) { LogStore.shared.clear() }
-            if categories.contains(.websiteData) { await manager.clearWebsiteData() }
 
             LogStore.shared.info(
                 "storage cleared: " + categories.map(\.rawValue).sorted().joined(separator: ",")
