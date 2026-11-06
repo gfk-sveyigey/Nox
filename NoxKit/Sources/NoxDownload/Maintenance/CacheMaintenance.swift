@@ -47,6 +47,16 @@ extension DownloadManager {
         Self.directorySize(DownloadStorage.temporaryDirectory)
     }
 
+    /// 系统托管资源的暂存占用。
+    ///
+    /// 这些目录由 iOS 在处理用户选择的文件时创建在 `Library` 根目录下，
+    /// 不在 `Library/Caches` 里，所以需要单独统计和清理。
+    public func userManagedAssetsSize() -> Int64 {
+        DownloadStorage.userManagedAssetDirectories.reduce(Int64(0)) { total, directory in
+            total + Self.directorySize(directory)
+        }
+    }
+
     /// 文件 App 的「最近删除」占用。目录不存在时为 0。
     public func trashSize() -> Int64 {
         DownloadStorage.trashDirectories.reduce(Int64(0)) { total, directory in
@@ -183,10 +193,16 @@ extension DownloadManager {
         )
     }
 
-    /// 清理网络缓存：内存中的 URLCache + 沙盒 `Library/Caches` 目录。
+    /// 清理网络缓存：内存中的 URLCache、沙盒 `Library/Caches` 目录，
+    /// 以及系统托管资源的暂存目录（`Library/com.apple.UserManagedAssets.*`）。
     public func clearNetworkCache() {
         URLCache.shared.removeAllCachedResponses()
         Self.removeContents(of: DownloadStorage.cachesDirectory)
+
+        // 这些目录是系统复制的用户文件暂存副本，删除后系统需要时会重建。
+        for directory in DownloadStorage.userManagedAssetDirectories {
+            try? FileManager.default.removeItem(at: directory)
+        }
     }
 
     /// 清理网站数据（Cookie / 本地存储 / 网页缓存）。
