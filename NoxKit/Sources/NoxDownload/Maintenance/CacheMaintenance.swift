@@ -197,11 +197,36 @@ extension DownloadManager {
     /// 以及系统托管资源的暂存目录（`Library/com.apple.UserManagedAssets.*`）。
     public func clearNetworkCache() {
         URLCache.shared.removeAllCachedResponses()
-        Self.removeContents(of: DownloadStorage.cachesDirectory)
+
+        // WebKit 的数据（含 Cookie）走自己的目录与 API，绝不在这里直接删文件。
+        // 网页缓存由 `clearWebsiteCache()` 显式清理，Cookie 永不由缓存清理触碰。
+        Self.removeContents(of: DownloadStorage.cachesDirectory) { name in
+            let lowered = name.lowercased()
+            return lowered.hasPrefix("webkit") || lowered.contains("com.apple.webkit")
+        }
 
         // 这些目录是系统复制的用户文件暂存副本，删除后系统需要时会重建。
         for directory in DownloadStorage.userManagedAssetDirectories {
             try? FileManager.default.removeItem(at: directory)
+        }
+    }
+
+    /// 清理网站缓存（不含 Cookie / 本地存储，保留登录态）。
+    ///
+    /// 只清磁盘缓存和内存缓存；登录信息、localStorage、IndexedDB
+    /// 等属于网站数据，不会随储存空间清理删除，需在「Cookie 管理」里操作。
+    public func clearWebsiteCache() async {
+        let store = WKWebsiteDataStore.default()
+        let types: Set<String> = [
+            WKWebsiteDataTypeDiskCache,
+            WKWebsiteDataTypeMemoryCache,
+            WKWebsiteDataTypeOfflineWebApplicationCache
+        ]
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            store.removeData(ofTypes: types, modifiedSince: .distantPast) {
+                continuation.resume()
+            }
         }
     }
 
@@ -240,7 +265,12 @@ extension DownloadManager {
     }
 
     /// 删除目录下的所有内容（保留目录本身）
-    static func removeContents(of directory: URL) {
+    ///
+    /// `excluding` 命中的一级条目会被跳过，用于保护不该被清掉的目录。
+    static func removeContents(
+        of directory: URL,
+        excluding shouldSkip: (String) -> Bool = { _ in false }
+    ) {
         let fileManager = FileManager.default
 
         guard let entries = try? fileManager.contentsOfDirectory(
@@ -250,7 +280,7 @@ extension DownloadManager {
             return
         }
 
-        for entry in entries {
+        for entry in entries where !shouldSkip(entry.lastPathComponent) {
             try? fileManager.removeItem(at: entry)
         }
     }
