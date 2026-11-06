@@ -89,6 +89,22 @@ public enum DownloadStorage {
         libraryDirectory.appendingPathComponent("WebKit", isDirectory: true)
     }
 
+    /// 系统在 `Library` 根目录下创建的「用户托管资源」暂存目录。
+    ///
+    /// 通过系统文件选择器、分享扩展等方式把用户选中的文件交给 App 时，
+    /// iOS 可能先把文件复制到 `Library/com.apple.UserManagedAssets.<随机后缀>`，
+    /// 再把副本交给 App。它们本质上是缓存，但因为不在 `Library/Caches` 下，
+    /// 系统不保证会自动清理，可能长期占用空间。
+    public static var userManagedAssetDirectories: [URL] {
+        let names = (try? FileManager.default.contentsOfDirectory(
+            atPath: libraryDirectory.path
+        )) ?? []
+
+        return names
+            .filter { $0.hasPrefix("com.apple.UserManagedAssets.") }
+            .map { libraryDirectory.appendingPathComponent($0, isDirectory: true) }
+    }
+
     public static func partsDirectory(for id: UUID) -> URL {
         partsRoot.appendingPathComponent(id.uuidString, isDirectory: true)
     }

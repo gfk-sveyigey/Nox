@@ -120,6 +120,7 @@ enum StorageUsage {
         let plugins = DeviceStorage.directorySize(at: DownloadStorage.pluginsDirectory)
         let logs = DownloadStorage.fileSize(at: DownloadStorage.logFileURL)
         let caches = manager.networkCacheSize()
+        let userManagedAssets = manager.userManagedAssetsSize()
         let websiteData = manager.websiteDataSize()
         let temporary = manager.temporarySize()
         let preferences = DeviceStorage.directorySize(at: DownloadStorage.preferencesDirectory)
@@ -137,7 +138,8 @@ enum StorageUsage {
         let applicationOther = max(noxApplicationSupport - parts - staging - plugins - logs, 0)
         let applicationSupportOther = max(applicationSupport - noxApplicationSupport, 0)
         let libraryOther = max(
-            library - applicationSupport - caches - websiteData - preferences,
+            library - applicationSupport - caches - userManagedAssets
+                - websiteData - preferences,
             0
         )
         let documentsOther = max(documents - videos - trash, 0)
@@ -151,7 +153,7 @@ enum StorageUsage {
             .videos: videos,
             .trash: trash,
             .downloadTemporary: parts + staging,
-            .caches: caches + temporary,
+            .caches: caches + temporary + userManagedAssets,
             .logs: logs,
             .websiteData: websiteData,
             .plugins: plugins,
@@ -195,9 +197,19 @@ enum StorageUsage {
             ])
 
         case .caches:
+            // 系统托管的用户资源暂存目录不在 Caches 下，但性质相同，
+            // 单独作为文件夹条目展示，并随缓存一起清理。
+            let userManagedAssets = DownloadStorage.userManagedAssetDirectories.map { url in
+                StorageEntry(
+                    url: url,
+                    isDirectory: true,
+                    bytes: DeviceStorage.directorySize(at: url)
+                )
+            }
             return combined([
                 entries(in: DownloadStorage.cachesDirectory),
-                entries(in: DownloadStorage.temporaryDirectory)
+                entries(in: DownloadStorage.temporaryDirectory),
+                userManagedAssets
             ])
 
         case .logs:
@@ -227,6 +239,14 @@ enum StorageUsage {
                     .compactMap { manager.shareableFileURL(for: $0)?.lastPathComponent }
             )
             let trashNames = Set(DownloadStorage.trashDirectories.map(\.lastPathComponent))
+            // 系统托管资源已经归入缓存，不再出现在「其他数据」里。
+            var libraryExcluded: Set<String> = [
+                "Application Support", "Caches", "WebKit", "Preferences"
+            ]
+            libraryExcluded.formUnion(
+                DownloadStorage.userManagedAssetDirectories.map(\.lastPathComponent)
+            )
+
             var groups: [[StorageEntry]] = [
                 entries(
                     in: DownloadStorage.documentsDirectory,
@@ -242,7 +262,7 @@ enum StorageUsage {
                 ),
                 entries(
                     in: DownloadStorage.libraryDirectory,
-                    excluding: ["Application Support", "Caches", "WebKit", "Preferences"]
+                    excluding: libraryExcluded
                 )
             ]
             if let directory = DownloadStorage.sharedContainerDirectory {
