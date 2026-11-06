@@ -13,10 +13,9 @@ final class UnderIslandBrandView: UIView {
     private static let markHeight: CGFloat = 18
     private static let dynamicIslandMinimumInset: CGFloat = 55
 
-    /// 灵动岛中心距屏幕顶部约 29.5pt。
-    private static let islandCenterY: CGFloat = 11 + 37 / 2
     /// 紧贴图标和文字的边框内边距。
-    private static let outlinePadding = UIEdgeInsets(top: 3, left: 12, bottom: 3, right: 12)
+    /// 左右决定宽度，上下决定高度；高度加高时只调整上下，宽度保持不变。
+    private static let outlinePadding = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
 
     private let outlineView = UIView()
     private let iconView = UIImageView()
@@ -71,7 +70,9 @@ final class UnderIslandBrandView: UIView {
             iconView.widthAnchor.constraint(equalToConstant: Self.markHeight),
             iconView.heightAnchor.constraint(equalToConstant: Self.markHeight),
             outlineView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            outlineView.centerYAnchor.constraint(equalTo: topAnchor, constant: Self.islandCenterY),
+            // 本视图的高度就是顶部安全区高度，因此其中心就是状态栏
+            // 时间、信号、电量的水平中心线，按它对齐才不会上下偏移。
+            outlineView.centerYAnchor.constraint(equalTo: centerYAnchor),
             stack.leadingAnchor.constraint(equalTo: outlineView.leadingAnchor, constant: Self.outlinePadding.left),
             stack.trailingAnchor.constraint(equalTo: outlineView.trailingAnchor, constant: -Self.outlinePadding.right),
             stack.topAnchor.constraint(equalTo: outlineView.topAnchor, constant: Self.outlinePadding.top),
