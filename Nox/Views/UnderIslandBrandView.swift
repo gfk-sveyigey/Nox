@@ -10,13 +10,13 @@ import UIKit
 /// 只在灵动岛机型显示：灵动岛机型顶部安全区约 59–62pt，
 /// 刘海机最大约 50pt，用 55pt 作为分界。
 final class UnderIslandBrandView: UIView {
-    private static let markHeight: CGFloat = 24
+    private static let markHeight: CGFloat = 18
     private static let dynamicIslandMinimumInset: CGFloat = 55
 
     /// 灵动岛中心距屏幕顶部约 29.5pt。
     private static let islandCenterY: CGFloat = 11 + 37 / 2
     /// 紧贴图标和文字的边框内边距。
-    private static let outlinePadding = UIEdgeInsets(top: 5, left: 8, bottom: 5, right: 8)
+    private static let outlinePadding = UIEdgeInsets(top: 3, left: 12, bottom: 3, right: 12)
 
     private let outlineView = UIView()
     private let iconView = UIImageView()
@@ -46,22 +46,22 @@ final class UnderIslandBrandView: UIView {
         iconView.layer.borderColor = UIColor.white.withAlphaComponent(0.14).cgColor
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
-        let font = UIFont(name: "AvenirNext-DemiBold", size: 11)
-            ?? UIFont.systemFont(ofSize: 11, weight: .semibold)
+        let font = UIFont(name: "AvenirNext-DemiBold", size: 13)
+            ?? UIFont.systemFont(ofSize: 13, weight: .semibold)
         // 前景色交给 UILabel.textColor（动态颜色会跟随深浅色），
         // attributedText 只负责字体与字距。
         nameLabel.attributedText = NSAttributedString(
             string: "NOX",
             attributes: [
                 .font: font,
-                .kern: 1.2
+                .kern: 1.4
             ]
         )
         nameLabel.textColor = UIColor.label.withAlphaComponent(0.86)
 
         stack.axis = .horizontal
         stack.alignment = .center
-        stack.spacing = 6
+        stack.spacing = 7
         stack.addArrangedSubview(iconView)
         stack.addArrangedSubview(nameLabel)
         stack.translatesAutoresizingMaskIntoConstraints = false

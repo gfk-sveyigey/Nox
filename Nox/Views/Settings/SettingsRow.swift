@@ -64,11 +64,20 @@ struct SettingsPickerOption<Value: Hashable>: Identifiable {
     var id: Value { value }
 }
 
+/// 行尾 Picker 宽度的测量结果，用来给标题预留空间。
+private struct SettingsPickerWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 /// 原生菜单式 Picker 行。
 ///
-/// 标题、说明和图标放在左侧，原生菜单 Picker 只负责右侧当前值与选项弹窗：
-/// - 标题过长时在左侧换行，不会把当前值挤到下一行；
-/// - 菜单仍由系统 `Picker` 弹出，锚定在行尾，选项对齐与选中标记保持原生行为。
+/// 标题、说明和图标决定行高；原生菜单 Picker 作为行尾 overlay 显示，
+/// 不参与行布局，因此行高与其它设置行一致。标题过长时在左侧换行，
+/// 不会把当前值挤到下一行；菜单仍由系统 `Picker` 弹出并锚定在行尾。
 struct SettingsPickerRow<Value: Hashable>: View {
     let title: String
     var subtitle: String? = nil
@@ -77,16 +86,19 @@ struct SettingsPickerRow<Value: Hashable>: View {
     @Binding var selection: Value
     let options: [SettingsPickerOption<Value>]
 
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            SettingsRowLabel(
-                title: title,
-                subtitle: subtitle,
-                systemImage: systemImage,
-                iconColor: iconColor
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
+    @State private var pickerWidth: CGFloat = 0
 
+    var body: some View {
+        SettingsRowLabel(
+            title: title,
+            subtitle: subtitle,
+            systemImage: systemImage,
+            iconColor: iconColor
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // 给行尾的原生 Picker 预留位置，长标题只在自己的区域内换行。
+        .padding(.trailing, pickerWidth > 0 ? pickerWidth + 12 : 0)
+        .overlay(alignment: .trailing) {
             Picker(selection: $selection) {
                 ForEach(options) { option in
                     Text(option.title).tag(option.value)
@@ -99,10 +111,22 @@ struct SettingsPickerRow<Value: Hashable>: View {
             // 菜单式 Picker 的当前值由控件 tint 决定，foregroundStyle 改不到它；
             // 这里把 tint 设为主文字色，使当前值随深浅色显示为黑/白而不是强调蓝。
             .tint(Color.primary)
-            // 先让系统 Picker 拿到它的理想宽度，剩余空间全部给左侧标题；
-            // 这样超长标题只会自己换行，不会把当前值推到下一行。
+            // 只取理想宽度，不让系统控件的 44pt 最小高度参与行高。
             .fixedSize()
-            .layoutPriority(1)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: SettingsPickerWidthKey.self,
+                        value: proxy.size.width
+                    )
+                }
+            }
+            .onPreferenceChange(SettingsPickerWidthKey.self) { width in
+                pickerWidth = width
+            }
+            // 首次测量完成前先不显示，避免当前值短暂压在标题上。
+            .opacity(pickerWidth > 0 ? 1 : 0)
+            .allowsHitTesting(pickerWidth > 0)
             .accessibilityLabel(Text(title))
         }
     }
