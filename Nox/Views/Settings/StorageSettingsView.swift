@@ -257,6 +257,8 @@ struct StorageSettingsView: View {
             if categories.contains(.caches) {
                 manager.clearNetworkCache()
                 manager.clearTemporaryFiles()
+                // 只清网页缓存，保留 Cookie 与登录态。
+                await manager.clearWebsiteCache()
             }
             if categories.contains(.logs) { LogStore.shared.clear() }
             if categories.contains(.websiteData) { await manager.clearWebsiteData() }

@@ -205,6 +205,25 @@ extension DownloadManager {
         }
     }
 
+    /// 清理网站缓存（不含 Cookie / 本地存储，保留登录态）。
+    ///
+    /// 只清磁盘缓存和内存缓存；登录信息、localStorage、IndexedDB
+    /// 等属于网站数据，由用户单独在「网站数据」里清理。
+    public func clearWebsiteCache() async {
+        let store = WKWebsiteDataStore.default()
+        let types: Set<String> = [
+            WKWebsiteDataTypeDiskCache,
+            WKWebsiteDataTypeMemoryCache,
+            WKWebsiteDataTypeOfflineWebApplicationCache
+        ]
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            store.removeData(ofTypes: types, modifiedSince: .distantPast) {
+                continuation.resume()
+            }
+        }
+    }
+
     /// 清理网站数据（Cookie / 本地存储 / 网页缓存）。
     ///
     /// - Warning: 会一并清掉登录态，用户需要重新登录相关网站。
