@@ -142,19 +142,21 @@ extension DownloadManager {
             store.updateDownload(updated, persist: false)
         }
 
-        // 持续处理任务在系统界面里显示整体进度；把它同步给后台任务。
-        if !activeIDs.isEmpty {
-            let records = store.downloads.filter { activeIDs.contains($0.id) }
-            if !records.isEmpty {
-                let fraction = records.reduce(0.0) { $0 + $1.progress } / Double(records.count)
-                keepAlive.updateProgress(fraction)
-            }
+        // 系统持续处理代表整个队列，进度统计需包含尚未占用并发槽位的排队任务。
+        let processingRecords = store.downloads.filter {
+            $0.status == .queued || $0.status == .downloading
+        }
+        if !processingRecords.isEmpty {
+            let fraction = processingRecords.reduce(0.0) { partial, record in
+                partial + min(max(record.progress, 0), 1)
+            } / Double(processingRecords.count)
+            keepAlive.updateProgress(fraction)
         }
     }
 
     /// 网络回调刚推进了进度时主动刷新一次。
     ///
-    /// 后台 URLSession / AVAsset 的回调在自己被系统唤醒的窗口内执行，
+    /// 后台 URLSession 的回调在 App 被系统唤醒的窗口内执行，
     /// 不能只依赖 RunLoop 定时器；否则 App 再次挂起前，下载记录和
     /// Live Activity 都会停在上一帧。与定时器共用 1 秒限频。
     func publishProgressIfNeeded() {

@@ -113,6 +113,14 @@ private struct DownloadLiveActivityLockScreenView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                    if isStale {
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock")
+                            Text(state.updatedAt, style: .relative)
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                    }
                 }
 
                 Spacer(minLength: 8)

@@ -15,8 +15,8 @@ extension DownloadManager {
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
-        // HLS 分片的 taskDescription 带 "hls:" 前缀；它不是普通字节分片，
-        // 直接把数据交回 HLSDownloader，由其解密并写入 part 文件。
+        // HLS 分片先持久化原始响应。进程重启后没有 continuation 时，
+        // HLSDownloader 会按任务 / 分片编号取回它并完成解密、落盘。
         if downloadTask.taskDescription?.hasPrefix("hls:") == true {
             handleHLSSegment(task: downloadTask, location: location)
             return
@@ -105,6 +105,11 @@ extension DownloadManager {
         location: URL
     ) {
         let identifier = task.taskIdentifier
+        guard let (recordID, segmentIndex, manifestSignature) = Self.hlsIdentity(
+            from: task.taskDescription
+        ) else {
+            return
+        }
 
         if let http = task.response as? HTTPURLResponse,
            !(200..<300).contains(http.statusCode) {
@@ -114,17 +119,47 @@ extension DownloadManager {
             return
         }
 
+        let responseURL = DownloadStorage.hlsResponseURL(
+            recordID: recordID,
+            segmentIndex: segmentIndex,
+            manifestSignature: manifestSignature
+        )
+        let temporaryURL = responseURL.appendingPathExtension("tmp")
+
         do {
-            // 系统临时文件只在回调期间有效，先读成 Data 再回主线程。
-            let data = try Data(contentsOf: location)
+            try FileManager.default.createDirectory(
+                at: responseURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try? FileManager.default.removeItem(at: temporaryURL)
+            try FileManager.default.copyItem(at: location, to: temporaryURL)
+            try? FileManager.default.removeItem(at: responseURL)
+            try FileManager.default.moveItem(at: temporaryURL, to: responseURL)
+
+            // App 被系统重启后，task 的后台回调仍然能把原始响应保存下来；
+            // 没有活着的 HLS 调度器时留给下一次队列恢复处理。
+            let data = try Data(contentsOf: responseURL)
             Task { @MainActor in
                 self.completeHLSSegment(identifier: identifier, data: data)
             }
         } catch {
+            try? FileManager.default.removeItem(at: temporaryURL)
+            try? FileManager.default.removeItem(at: responseURL)
             Task { @MainActor in
                 self.failHLSSegment(identifier: identifier, error: error)
             }
         }
+    }
+
+    private nonisolated static func hlsIdentity(from description: String?) -> (UUID, Int, String)? {
+        guard let description else { return nil }
+        let parts = description.split(separator: ":")
+        guard parts.count == 4,
+              parts[0] == "hls",
+              let recordID = UUID(uuidString: String(parts[1])),
+              let segmentIndex = Int(parts[2]),
+              parts[3].count == 64 else { return nil }
+        return (recordID, segmentIndex, String(parts[3]))
     }
 
     @MainActor

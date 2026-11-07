@@ -22,12 +22,6 @@ public final class BackgroundSessionEvents {
         previous?()
     }
 
-    public func hasPending(identifier: String) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return handlers[identifier] != nil
-    }
-
     public func complete(identifier: String) {
         lock.lock()
         let handler = handlers.removeValue(forKey: identifier)

@@ -48,9 +48,14 @@ extension DownloadManager {
         let segmentLoader: HLSDownloader.SegmentLoader?
 
         if store.keepAliveMode.usesBackgroundHLSSegments {
-            segmentLoader = { [weak self] request, recordID in
+            segmentLoader = { [weak self] request, recordID, segmentIndex, manifestSignature in
                 guard let self else { throw CancellationError() }
-                return try await self.fetchHLSSegment(request, recordID: recordID)
+                return try await self.fetchHLSSegment(
+                    request,
+                    recordID: recordID,
+                    segmentIndex: segmentIndex,
+                    manifestSignature: manifestSignature
+                )
             }
         } else {
             segmentLoader = nil
@@ -98,9 +103,14 @@ extension DownloadManager {
     ///
     /// 后台会话会在 App 挂起时继续传输；完成回调把数据交给 HLSDownloader
     /// 解密并写入 part 文件，因此重启后可以直接从磁盘续传。
-    func fetchHLSSegment(_ request: URLRequest, recordID: UUID) async throws -> Data {
+    func fetchHLSSegment(
+        _ request: URLRequest,
+        recordID: UUID,
+        segmentIndex: Int,
+        manifestSignature: String
+    ) async throws -> Data {
         let task = session.downloadTask(with: request)
-        task.taskDescription = "hls:\(recordID.uuidString)"
+        task.taskDescription = "hls:\(recordID.uuidString):\(segmentIndex):\(manifestSignature)"
 
         return try await withCheckedThrowingContinuation { continuation in
             hlsSegmentContexts[task.taskIdentifier] = HLSSegmentContext(
@@ -109,53 +119,6 @@ extension DownloadManager {
                 continuation: continuation
             )
             task.resume()
-        }
-    }
-
-    func beginAVAssetHLS(_ record: DownloadRecord, token: UUID) async {
-        let id = record.id
-
-        var updated = record
-        updated.status = .downloading
-        updated.errorMessage = nil
-        updated.threadCount = 1
-
-        store.updateDownload(updated)
-        transfers[id] = TransferStats()
-        speedMeters[id] = nil
-        hlsProgress.removeValue(forKey: id)
-        startProgressTimerIfNeeded()
-
-        do {
-            let merged = try await avAssetDownloader.download(
-                recordID: id,
-                playlistURL: record.sourceURL,
-                referer: record.refererURL,
-                cookieHeader: record.cookieHeader,
-                title: record.displayTitle,
-                allowsCellularAccess: allowsCellularDownloads
-            ) { [weak self] fraction, bytes, estimatedTotal in
-                guard let self, self.isCurrentRun(id, token: token) else { return }
-                self.hlsProgress[id] = HLSDownloader.Progress(
-                    completed: Int((fraction * 1000).rounded()),
-                    total: 1000,
-                    bytes: bytes,
-                    estimatedTotalBytes: estimatedTotal
-                )
-                self.publishProgressIfNeeded()
-            }
-
-            guard isCurrentRun(id, token: token) else {
-                try? FileManager.default.removeItem(at: merged)
-                return
-            }
-
-            finishHLS(recordID: id, token: token, mergedFile: merged)
-        } catch is CancellationError {
-            return
-        } catch {
-            guard isCurrentRun(id, token: token) else { return }
-            abort(id: id, token: token, message: downloadErrorMessage(for: error))
         }
     }
 

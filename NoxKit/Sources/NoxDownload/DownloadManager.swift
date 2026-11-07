@@ -51,8 +51,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
     /// 后台保活：有活跃下载时启动，全部结束 / 取消时停止。
     let keepAlive: KeepAliveCoordinator
-    /// HLS 的系统 AVAsset 引擎。只有用户选择该引擎时才会创建后台会话。
-    lazy var avAssetDownloader = AVAssetHLSDownloader()
     var keepAliveObservation: AnyCancellable?
     /// 下载记录状态变化的兜底观察：任何状态迁移都会触发一次队列对齐。
     var recordObservation: AnyCancellable?
@@ -213,20 +211,13 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         )
         _ = session
 
-        // 如果本次启动是 AVAsset 后台下载事件唤醒的，先建立它的后台会话，
-        // 否则系统找不到代理，完成回调会一直悬着。
-        if BackgroundSessionEvents.shared.hasPending(
-            identifier: AVAssetHLSDownloader.sessionIdentifier
-        ) {
-            avAssetDownloader.prepareForBackgroundEvents(
-                allowsCellularAccess: allowsCellularDownloads
-            )
-        }
-
         // 启动时扫一遍：上次运行留下的「已完成」记录，文件可能已被系统清理或用户删除。
         refreshMissingFiles()
 
         keepAlive.onLog = { message in LogStore.shared.info(message) }
+        keepAlive.onInterruption = { [weak self] in
+            self?.pauseForKeepAliveInterruption()
+        }
         keepAlive.piPVerboseLogging = store.pipVerboseLogging
         keepAlive.preferredMode = store.keepAliveMode
         keepAlive.piPCoexistenceFallback = store.pipCoexistenceFallback

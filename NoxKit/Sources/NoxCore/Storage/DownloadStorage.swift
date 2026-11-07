@@ -121,6 +121,17 @@ public enum DownloadStorage {
         directory.appendingPathComponent(partName(index))
     }
 
+    public static func hlsResponseURL(
+        recordID: UUID,
+        segmentIndex: Int,
+        manifestSignature: String
+    ) -> URL {
+        partsDirectory(for: recordID)
+            .appendingPathComponent(
+                "response-\(manifestSignature)-\(String(format: "%06d", segmentIndex)).raw"
+            )
+    }
+
     public static func fileSize(at url: URL) -> Int64 {
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         return (attributes?[.size] as? NSNumber)?.int64Value ?? 0
