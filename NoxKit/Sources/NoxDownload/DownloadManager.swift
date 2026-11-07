@@ -186,11 +186,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         )
     }()
 
-    /// 分片请求使用的会话：由当前后台方式决定。
+    /// 分片请求使用的会话：系统下载由后台 URLSession 接管；保活下载模式
+    /// 使用普通 URLSession，让 App 持续处理并发布进度。
     ///
-    /// 只有「仅前台下载」使用普通 URLSession。其余方式都使用 Background
-    /// URLSession：保活策略负责让 App 保持运行、平滑刷新进度；即使进程被
-    /// 系统挂起，后台会话仍能把传输交给系统继续完成。
+    /// 仅前台下载使用普通会话并在后台暂停；PiP、静音音频和持续处理也使用
+    /// 普通会话，由各自的保活策略维持运行。
     var downloadSession: URLSession {
         store.keepAliveMode.usesBackgroundDownloadSession ? session : foregroundSession
     }
