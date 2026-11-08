@@ -274,7 +274,7 @@ struct DownloadsView: View {
         private var statusGroups: [[StatusMetric]] {
             let metrics = statusMetrics
             guard metrics.count >= 3 else { return metrics.isEmpty ? [] : [metrics] }
-            let splitIndex = (metrics.count + 1) / 2
+            let splitIndex = min(metrics.count, 3)
             return [Array(metrics[..<splitIndex]), Array(metrics[splitIndex...])]
         }
 
@@ -299,24 +299,30 @@ struct DownloadsView: View {
         }
 
         var body: some View {
-            HStack(alignment: .top, spacing: 8) {
-                metricsCard
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 104, alignment: .topLeading)
-                ForEach(Array(statusGroups.enumerated()), id: \.offset) { _, group in
-                    statusCard(group)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 104, alignment: .topLeading)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+            GeometryReader { geometry in
+                let spacing: CGFloat = 8
+                let groups = statusGroups
+                let unitWidth = (geometry.size.width - spacing * CGFloat(groups.count))
+                    / (1.5 + CGFloat(groups.count))
+
+                HStack(alignment: .top, spacing: spacing) {
+                    metricsCard
+                        .frame(width: unitWidth * 1.5, height: 96, alignment: .leading)
+                    ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+                        statusCard(group)
+                            .frame(width: unitWidth, height: 96, alignment: .topLeading)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
             }
+            .frame(height: 96)
             .animation(.easeInOut(duration: 0.28), value: animationKey)
             .animation(.easeInOut(duration: 0.26), value: storageBlocked)
         }
 
         private var metricsCard: some View {
             VStack(alignment: .leading, spacing: 8) {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
                     metricValue(title: L("总速度"), value: totalSpeed)
                     metricValue(
                         title: L("总进度"),
@@ -337,32 +343,33 @@ struct DownloadsView: View {
                     .transition(.opacity)
                 }
             }
-            .padding(10)
-            .frame(maxWidth: .infinity)
-            .frame(height: 104, alignment: .leading)
+            .padding(.vertical, 8)
+            .padding(.leading, 18)
+            .padding(.trailing, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
         private func statusCard(_ metrics: [StatusMetric]) -> some View {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 10) {
                 ForEach(metrics) { item in
                     countMetric(item.title, count: item.count, color: item.color)
                         .transition(.scale(scale: 0.86).combined(with: .opacity))
                 }
             }
-            .padding(10)
-            .frame(maxWidth: .infinity)
-            .frame(height: 104, alignment: .center)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
         private func metricValue(title: String, value: String) -> some View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
-                    .font(.subheadline.weight(.medium))
+                    .font(.body)
                     .foregroundStyle(.secondary)
                 Text(value)
-                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .font(.body.monospacedDigit().weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -372,10 +379,10 @@ struct DownloadsView: View {
         private func countMetric(_ title: String, count: Int, color: Color) -> some View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(count)")
-                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .font(.body.monospacedDigit().weight(.semibold))
                     .foregroundStyle(color)
                 Text(title)
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
