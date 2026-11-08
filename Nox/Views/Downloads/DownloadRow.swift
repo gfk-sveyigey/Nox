@@ -11,6 +11,8 @@ struct DownloadRow: View {
     let isMissingFile: Bool
     let onShare: (DownloadRecord) -> Void
     let onRetry: (DownloadRecord) -> Void
+    let onPause: (DownloadRecord) -> Void
+    let onDelete: (DownloadRecord) -> Void
     let onCancel: (DownloadRecord) -> Void
 
     /// 编辑态下行内的按钮要收起来，否则点击会被按钮吃掉、选不中行
@@ -24,6 +26,8 @@ struct DownloadRow: View {
         isMissingFile: Bool,
         onShare: @escaping (DownloadRecord) -> Void,
         onRetry: @escaping (DownloadRecord) -> Void,
+        onPause: @escaping (DownloadRecord) -> Void,
+        onDelete: @escaping (DownloadRecord) -> Void,
         onCancel: @escaping (DownloadRecord) -> Void
     ) {
         self.record = record
@@ -31,6 +35,8 @@ struct DownloadRow: View {
         self.isMissingFile = isMissingFile
         self.onShare = onShare
         self.onRetry = onRetry
+        self.onPause = onPause
+        self.onDelete = onDelete
         self.onCancel = onCancel
     }
 
@@ -68,17 +74,7 @@ struct DownloadRow: View {
 
                 Spacer()
 
-                if !isEditing,
-                   record.status == .queued || record.status == .downloading {
-                    Button {
-                        onCancel(record)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L("取消下载"))
-                }
+
             }
 
             ProgressView(value: displayProgress)
@@ -97,12 +93,20 @@ struct DownloadRow: View {
 
             Divider()
 
-            if record.status == .failed || record.status == .cancelled {
-                Button {
-                    onRetry(record)
-                } label: {
-                    Label(retryTitle, systemImage: "arrow.clockwise")
-                }
+            Button {
+                if record.status == .queued || record.status == .downloading {
+                    onPause(record)
+                } else { onRetry(record) }
+            } label: {
+                Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续下载"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
+            }
+            .disabled(record.status == .finished)
+            Button { onCancel(record) } label: {
+                Label(L("取消下载"), systemImage: "xmark.circle")
+            }
+            .disabled(record.status == .finished)
+            Button(role: .destructive) { onDelete(record) } label: {
+                Label(L("删除"), systemImage: "trash")
             }
 
             if record.status == .finished, record.hasLocalFile, !isMissingFile {

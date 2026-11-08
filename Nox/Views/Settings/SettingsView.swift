@@ -26,6 +26,7 @@ struct SettingsView: View {
                 Form {
                     settingsSections
                 }
+                .contentMargins(.top, 20, for: .scrollContent)
                 .onChange(of: scrollToTopToken) { _, _ in
                     withAnimation(.easeInOut(duration: 0.3)) {
                         proxy.scrollTo("settings-first-row", anchor: .top)
