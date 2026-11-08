@@ -23,29 +23,18 @@ struct DownloadsView: View {
     /// 非多选态点按行时只闪一下，不留下持久选中。
     @State var tapFlashSelection = Set<UUID>()
     @State var tapFlashToken = UUID()
+    let scrollToTopToken: Int
 
-    init(appState: AppState, manager: DownloadManager) {
+    init(appState: AppState, manager: DownloadManager, scrollToTopToken: Int = 0) {
         self.appState = appState
         _manager = ObservedObject(wrappedValue: manager)
+        self.scrollToTopToken = scrollToTopToken
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if appState.downloads.isEmpty {
-                    ContentUnavailableView {
-                        Label {
-                            Text(L("暂无下载"))
-                                .font(.title2.weight(.regular))
-                        } icon: {
-                            Image(systemName: "arrow.down.circle")
-                        }
-                    } description: {
-                        EmptyView()
-                    }
-                } else {
-                    list
-                }
+                list
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if editMode.isEditing {
@@ -138,10 +127,17 @@ struct DownloadsView: View {
     }
 
     var list: some View {
-        List(selection: listSelection) { rows }
-            .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
-            // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
-            .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
+        ScrollViewReader { proxy in
+            List(selection: listSelection) { rows }
+                .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
+                // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
+                .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
+                .onChange(of: scrollToTopToken) { _, _ in
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        proxy.scrollTo("downloads-overview", anchor: .top)
+                    }
+                }
+        }
     }
 
     /// 非多选态把行选中转成一次短暂高亮，随后自动清空；
@@ -173,24 +169,30 @@ struct DownloadsView: View {
 
     @ViewBuilder
     var rows: some View {
-        if manager.storageBlocked {
-            Section {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "externaldrive.fill.badge.exclamationmark")
-                        .foregroundStyle(.orange)
-                        .font(.title3)
+        Section {
+            DownloadOverviewCard(
+                records: appState.downloads,
+                transfers: manager.transfers,
+                storageBlocked: manager.storageBlocked
+            )
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+            .id("downloads-overview")
+        }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L("储存空间不足"))
-                            .font(.subheadline.weight(.semibold))
-                        Text(L("可用空间已低于设置的最低保留值，下载已暂停。释放空间后，排队任务会自动继续。"))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
+        if appState.downloads.isEmpty {
+            ContentUnavailableView {
+                Label {
+                    Text(L("暂无下载"))
+                        .font(.title2.weight(.regular))
+                } icon: {
+                    Image(systemName: "arrow.down.circle")
                 }
-                .padding(.vertical, 4)
+            } description: {
+                EmptyView()
             }
-            .transition(.opacity)
+            .frame(maxWidth: .infinity, minHeight: 280)
+            .listRowBackground(Color.clear)
         }
 
         ForEach(appState.downloads) { record in
@@ -231,6 +233,119 @@ struct DownloadsView: View {
                     Label(L("删除"), systemImage: "trash")
                 }
             }
+        }
+    }
+
+    struct DownloadOverviewCard: View {
+        let records: [DownloadRecord]
+        let transfers: [UUID: TransferStats]
+        let storageBlocked: Bool
+
+        private var activeCount: Int { records.filter { $0.status == .downloading }.count }
+        private var queuedCount: Int { records.filter { $0.status == .queued }.count }
+        private var pausedCount: Int {
+            records.filter { $0.status == .cancelled && ($0.receivedBytes ?? 0) > 0 }.count
+        }
+        private var cancelledCount: Int {
+            records.filter { $0.status == .cancelled && ($0.receivedBytes ?? 0) == 0 }.count
+        }
+        private var finishedCount: Int { records.filter { $0.status == .finished }.count }
+        private var failedCount: Int { records.filter { $0.status == .failed }.count }
+
+        private var totalSpeed: String {
+            let bytesPerSecond = records
+                .filter { $0.status == .downloading }
+                .reduce(0.0) { $0 + (transfers[$1.id]?.bytesPerSecond ?? 0) }
+            return TransferStats(bytesPerSecond: bytesPerSecond).speedText
+        }
+
+        private var totalProgress: Double {
+            guard !records.isEmpty else { return 0 }
+            return records.reduce(0.0) { sum, record in
+                sum + (record.status == .finished ? 1 : min(max(record.progress, 0), 1))
+            } / Double(records.count)
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(L("任务总览"))
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    HStack(spacing: 5) {
+                        Image(systemName: "speedometer")
+                        Text(L("总速度"))
+                            .foregroundStyle(.secondary)
+                        Text(totalSpeed)
+                            .foregroundStyle(.primary)
+                    }
+                    .font(.footnote.monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                }
+
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 3),
+                    alignment: .leading,
+                    spacing: 10
+                ) {
+                    countMetric(L("进行中"), count: activeCount, color: .blue)
+                    countMetric(L("等待中"), count: queuedCount, color: .secondary)
+                    countMetric(L("已暂停"), count: pausedCount, color: .orange)
+                    countMetric(L("已完成"), count: finishedCount, color: .green)
+                    countMetric(L("失败"), count: failedCount, color: .red)
+                    countMetric(L("已取消"), count: cancelledCount, color: .secondary)
+                }
+
+                VStack(spacing: 5) {
+                    HStack {
+                        Text(L("总进度"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(Int((totalProgress * 100).rounded()))%")
+                            .font(.caption.monospacedDigit().weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    ProgressView(value: totalProgress)
+                        .tint(.accentColor)
+                }
+
+                if storageBlocked {
+                    Divider()
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "externaldrive.fill.badge.exclamationmark")
+                            .foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(L("储存空间不足"))
+                                .font(.footnote.weight(.semibold))
+                            Text(L("可用空间已低于设置的最低保留值，下载已暂停。释放空间后，排队任务会自动继续。"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .transition(.opacity)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
+            .animation(.easeInOut(duration: 0.26), value: storageBlocked)
+        }
+
+        private func countMetric(_ title: String, count: Int, color: Color) -> some View {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(count)")
+                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(color)
+                Text(title)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

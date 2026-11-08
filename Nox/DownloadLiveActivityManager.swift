@@ -10,8 +10,7 @@ import NoxState
 /// 把下载状态投射到锁屏 / 灵动岛的 Live Activity。
 ///
 /// 与保活方式解耦：系统下载、仅前台、静音音频、画中画都使用这里创建的活动；
-/// 持续处理则由系统自动展示它自己的活动，本类会主动结束自定义活动，
-/// 避免出现两个进度界面。
+/// 持续处理默认由系统展示自己的活动；用户可在通知设置中允许同时显示自定义活动。
 @MainActor
 final class DownloadLiveActivityManager {
     private let appState: AppState
@@ -92,6 +91,13 @@ final class DownloadLiveActivityManager {
                 Task { @MainActor in self?.refresh(force: true) }
             }
             .store(in: &cancellables)
+
+        appState.$customLiveActivityDuringContinuedProcessing
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.refresh(force: true) }
+            }
+            .store(in: &cancellables)
     }
 
     private func refresh(force: Bool) {
@@ -107,10 +113,10 @@ final class DownloadLiveActivityManager {
             return
         }
 
-        // iOS 26 持续处理会由系统展示自己的 Live Activity，不能再叠一个。
-        // 只有系统任务确实成为当前策略时才让位；如果它启动失败（activeMode
-        // 仍是 .off），继续使用自定义活动，至少进度和速度不会整个消失。
-        guard downloadManager.activeKeepAliveMode != .continuedProcessing else {
+        // 持续处理时默认让位给系统活动；只有用户开启低优先级的并显开关才叠加。
+        // 如果系统任务启动失败（activeMode 仍是 .off），仍显示自定义活动。
+        guard downloadManager.activeKeepAliveMode != .continuedProcessing
+                || appState.customLiveActivityDuringContinuedProcessing else {
             endActivity(using: state)
             return
         }
