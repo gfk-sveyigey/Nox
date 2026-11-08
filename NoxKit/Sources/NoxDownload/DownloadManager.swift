@@ -517,6 +517,14 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         }
 
         performCancel(live)
+        discardPartialArtifacts(for: live.id)
+        if var cancelled = store.downloads.first(where: { $0.id == live.id }) {
+            cancelled.receivedBytes = 0
+            cancelled.progress = 0
+            cancelled.totalBytes = nil
+            cancelled.segmentCount = nil
+            store.updateDownload(cancelled)
+        }
         reconcileTaskQueue(reason: "cancel")
         LogStore.shared.info("cancel \(live.displayFilename)")
 
@@ -639,5 +647,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         clearTransferStats(for: record.id)
         removeFromQueue(record.id)
         releaseSlotWithoutPump(record.id)
+    }
+
+    /// 取消会保留任务记录，但丢弃断点续传数据；暂停则只调用 `performCancel` 并保留这些文件。
+    private func discardPartialArtifacts(for id: UUID) {
+        try? FileManager.default.removeItem(at: DownloadStorage.partsDirectory(for: id))
+        try? FileManager.default.removeItem(at: DownloadStorage.stagingDirectory(for: id))
     }
 }
