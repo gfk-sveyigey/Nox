@@ -129,6 +129,7 @@ struct DownloadsView: View {
     var list: some View {
         ScrollViewReader { proxy in
             List(selection: listSelection) { rows }
+                .listStyle(.insetGrouped)
                 .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
                 // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
                 .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
@@ -175,8 +176,8 @@ struct DownloadsView: View {
                 transfers: manager.transfers,
                 storageBlocked: manager.storageBlocked
             )
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
+            .listRowSeparator(.hidden)
             .id("downloads-overview")
         }
 
@@ -340,7 +341,7 @@ struct DownloadsView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
         private func statusCard(_ metrics: [StatusMetric]) -> some View {
@@ -355,7 +356,7 @@ struct DownloadsView: View {
             .padding(.vertical, 14)
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
         private func metricValue(title: String, value: String, systemImage: String, color: Color) -> some View {
@@ -368,7 +369,7 @@ struct DownloadsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text(value)
-                        .font(.callout.monospacedDigit().weight(.semibold))
+                        .font(.headline.monospacedDigit())
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
