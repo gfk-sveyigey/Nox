@@ -130,6 +130,8 @@ struct DownloadsView: View {
         ScrollViewReader { proxy in
             List(selection: listSelection) { rows }
                 .listStyle(.insetGrouped)
+                .contentMargins(.top, 20, for: .scrollContent)
+                .listSectionSpacing(12)
                 .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
                 // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
                 .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
@@ -209,6 +211,8 @@ struct DownloadsView: View {
                     manager.retry(record)
                     finishSelection()
                 },
+                onPause: { record in manager.pause(record); finishSelection() },
+                onDelete: { record in manager.deleteFile(for: record); finishSelection() },
                 onCancel: { record in
                     manager.cancel(record)
                     finishSelection()
@@ -226,18 +230,34 @@ struct DownloadsView: View {
             // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
             // 左侧红色减号按钮，与悬浮删除按钮重复。
             // swipeActions 在编辑态自动失效，不影响多选。
-            .swipeActions(edge: .trailing) {
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button(role: .destructive) {
                     manager.deleteFile(for: record)
                     finishSelection()
                 } label: {
                     Label(L("删除"), systemImage: "trash")
                 }
+                Button { manager.cancel(record) } label: {
+                    Label(L("取消下载"), systemImage: "xmark.circle")
+                }
+                .tint(.orange)
+                .disabled(record.status == .finished)
+                Button {
+                    if record.status == .queued || record.status == .downloading {
+                        manager.pause(record)
+                    } else { manager.retry(record) }
+                } label: {
+                    Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续下载"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
+                }
+                .tint(.blue)
+                .disabled(record.status == .finished)
             }
         }
     }
 
     struct DownloadOverviewCard: View {
+        @Namespace private var statusAnimation
+
         private struct StatusMetric: Identifiable {
             let title: String
             let count: Int
@@ -311,7 +331,7 @@ struct DownloadsView: View {
                     ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
                         statusCard(group)
                             .frame(width: unitWidth, height: 96, alignment: .topLeading)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .transition(.opacity)
                     }
                 }
             }
@@ -354,7 +374,8 @@ struct DownloadsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(metrics) { item in
                     countMetric(item.title, count: item.count, color: item.color)
-                        .transition(.scale(scale: 0.86).combined(with: .opacity))
+                        .matchedGeometryEffect(id: item.id, in: statusAnimation)
+                        .transition(.opacity)
                 }
             }
             .padding(.vertical, 8)
@@ -469,13 +490,21 @@ struct DownloadsView: View {
             }
 
             Divider()
-
-            Button(role: .destructive) {
-                showingClearConfirmation = true
+            Button {
+                let targets = editMode.isEditing ? selectedRecords : appState.downloads
+                manager.discardAll(ids: Set(targets.map(\.id)))
+                finishSelection()
             } label: {
-                Label(L("清空"), systemImage: "trash")
+                Label(L("取消下载"), systemImage: "xmark.circle")
             }
-            .disabled(!hasClearableDownloads)
+            .disabled((editMode.isEditing ? selectedRecords : appState.downloads).allSatisfy { $0.status == .finished })
+            Button(role: .destructive) {
+                if !editMode.isEditing { selection = Set(appState.downloads.map(\.id)) }
+                showingDeleteConfirmation = true
+            } label: {
+                Label(L("删除"), systemImage: "trash")
+            }
+            .disabled(editMode.isEditing ? selection.isEmpty : appState.downloads.isEmpty)
         } label: {
             Image(systemName: "ellipsis.circle")
         }

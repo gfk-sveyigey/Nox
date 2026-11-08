@@ -512,7 +512,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     public func cancel(_ record: DownloadRecord) {
         // 完成 / 失败的任务可能刚好在用户点按前结束，不能把终态又改成已取消。
         guard let live = store.downloads.first(where: { $0.id == record.id }),
-              live.status == .queued || live.status == .downloading else {
+              live.status != .finished else {
             return
         }
 
@@ -558,6 +558,15 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         clearTransferStats(for: record.id)
         store.updateDownload(updated)
         releaseSlotWithoutPump(record.id)
+    }
+
+    public func pause(_ record: DownloadRecord) {
+        cancelAll(ids: [record.id])
+    }
+
+    public func discardAll(ids: Set<UUID>) {
+        let targets = store.downloads.filter { ids.contains($0.id) && $0.status != .finished }
+        for record in targets { cancel(record) }
     }
 
     /// 批量暂停（多选时用）。只处理排队中 / 下载中的任务。
