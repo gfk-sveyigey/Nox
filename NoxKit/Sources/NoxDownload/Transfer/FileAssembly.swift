@@ -34,7 +34,7 @@ extension DownloadManager {
 
         guard var record = store.downloads.first(where: { $0.id == recordID }) else { return }
         // 已取消 / 已完成都不该再合并
-        guard record.status != .cancelled, record.status != .finished else { return }
+        guard record.status != .paused, record.status != .notStarted, record.status != .finished else { return }
 
         let documentsDirectory = DownloadStorage.documentsDirectory
         let stagingDirectory = DownloadStorage.stagingDirectory(for: recordID)

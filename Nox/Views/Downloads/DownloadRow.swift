@@ -129,8 +129,10 @@ struct DownloadRow: View {
                 .foregroundStyle(.red)
                 .lineLimit(1)
         } else if record.status == .queued {
-            Text(L("未开始"))
+            let size = TransferStats(bytesReceived: record.receivedBytes ?? 0, totalBytes: record.totalBytes ?? 0).sizeText
+            Text(String(format: L("排队中 · %@"), size))
                 .font(.subheadline)
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if record.status == .downloading {
@@ -151,14 +153,15 @@ struct DownloadRow: View {
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-        } else if record.status == .cancelled, let received = record.receivedBytes, received > 0 {
+        } else if record.status == .paused {
+            let received = record.receivedBytes ?? 0
             let size = TransferStats(bytesReceived: received, totalBytes: record.totalBytes ?? 0).sizeText
             Text(String(format: L("已暂停 · %@"), size))
                 .font(.subheadline)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-        } else if record.status == .cancelled {
+        } else if record.status == .notStarted || record.status == .legacyCancelled {
             Text(L("未开始"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -186,9 +189,9 @@ struct DownloadRow: View {
             return 1
         case .failed:
             return max(record.progress, 0.05)
-        case .cancelled:
+        case .paused:
             return max(record.progress, 0)
-        case .queued, .downloading:
+        case .queued, .downloading, .notStarted, .legacyCancelled:
             return record.progress
         }
     }
@@ -197,8 +200,8 @@ struct DownloadRow: View {
         switch record.status {
         case .finished: return .green
         case .failed: return .red
-        case .cancelled: return .gray
-        case .queued: return .secondary
+        case .paused: return .gray
+        case .queued, .notStarted, .legacyCancelled: return .secondary
         case .downloading: return .accentColor
         }
     }
@@ -207,8 +210,8 @@ struct DownloadRow: View {
         switch record.status {
         case .finished: return .green
         case .failed: return .red
-        case .cancelled: return .secondary
-        case .queued: return .secondary
+        case .paused: return .secondary
+        case .queued, .notStarted, .legacyCancelled: return .secondary
         case .downloading: return .accentColor
         }
     }
@@ -217,7 +220,8 @@ struct DownloadRow: View {
         switch record.status {
         case .finished: return "checkmark.circle.fill"
         case .failed: return "xmark.octagon.fill"
-        case .cancelled: return (record.receivedBytes ?? 0) > 0 ? "pause.circle.fill" : "xmark.circle.fill"
+        case .paused: return "pause.circle.fill"
+        case .notStarted, .legacyCancelled: return "circle.dashed"
         case .queued: return "clock.badge"
         case .downloading: return "arrow.down.circle.fill"
         }

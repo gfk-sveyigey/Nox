@@ -136,7 +136,7 @@ extension DownloadManager {
         }
 
         guard var record = store.downloads.first(where: { $0.id == recordID }) else { return }
-        guard record.status != .cancelled, record.status != .finished else {
+        guard record.status != .paused, record.status != .notStarted, record.status != .finished else {
             // 已经完成（另一路 run 先收尾）：合并结果不再需要，清掉暂存。
             if record.status == .finished {
                 try? FileManager.default.removeItem(

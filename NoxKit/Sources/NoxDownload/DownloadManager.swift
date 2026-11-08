@@ -467,7 +467,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 重试即「继续」：已下载的分片会保留，从断点开始。
     public func retry(_ record: DownloadRecord) {
         guard let live = store.downloads.first(where: { $0.id == record.id }),
-              live.status == .failed || live.status == .cancelled else {
+              live.status == .failed || live.status == .paused || live.status == .notStarted else {
             return
         }
 
@@ -516,9 +516,14 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
             return
         }
 
-        performCancel(live)
+        performPause(live)
         discardPartialArtifacts(for: live.id)
         if var cancelled = store.downloads.first(where: { $0.id == live.id }) {
+            cancelled.status = .notStarted
+            cancelled.errorMessage = nil
+            cancelled.threadCount = nil
+            cancelled.fileName = nil
+            cancelled.fileURL = nil
             cancelled.receivedBytes = 0
             cancelled.progress = 0
             cancelled.totalBytes = nil
@@ -534,7 +539,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
     /// 只修改单个任务的状态并释放槽位；多个任务批量暂停时由调用方统一
     /// `reconcileTaskQueue`，避免每暂停一个就把后面的排队任务拉起来一次。
-    func performCancel(_ record: DownloadRecord, errorMessage: String? = nil) {
+    func performPause(_ record: DownloadRecord, errorMessage: String? = nil) {
         // 先让当前 run 失效：之后的探测结果、分片回调、合并结果都不会再写状态。
         invalidateRun(for: record.id)
 
@@ -544,7 +549,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         let stats = transfers[record.id]
 
         var updated = record
-        updated.status = .cancelled
+        updated.status = .paused
         updated.errorMessage = errorMessage
 
         if let stats, stats.bytesReceived > 0 {
@@ -561,7 +566,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     }
 
     public func pause(_ record: DownloadRecord) {
-        cancelAll(ids: [record.id])
+        pauseAll(ids: [record.id])
     }
 
     public func discardAll(ids: Set<UUID>) {
@@ -571,15 +576,15 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
     /// 批量暂停（多选时用）。只处理排队中 / 下载中的任务。
     ///
-    /// 暂停复用 `cancel`：已下载分片留在磁盘上，状态记为 `.cancelled`，
-    /// 之后可以「继续下载」。先快照再处理，避免边遍历边修改 downloads。
-    public func cancelAll(ids: Set<UUID>) {
+    /// 已下载分片留在磁盘上，状态记为 `.paused`，之后可以继续。
+    /// 先快照再处理，避免边遍历边修改 downloads。
+    public func pauseAll(ids: Set<UUID>) {
         let targets = store.downloads.filter {
             ids.contains($0.id) && ($0.status == .queued || $0.status == .downloading)
         }
 
         for record in targets {
-            performCancel(record)
+            performPause(record)
         }
         reconcileTaskQueue(reason: "cancel batch")
     }
@@ -589,7 +594,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         let removable = store.downloads.filter {
             $0.status == .finished ||
             $0.status == .failed ||
-            $0.status == .cancelled
+            $0.status == .paused || $0.status == .notStarted
         }
 
         for record in removable {
@@ -658,7 +663,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         releaseSlotWithoutPump(record.id)
     }
 
-    /// 取消会保留任务记录，但丢弃断点续传数据；暂停则只调用 `performCancel` 并保留这些文件。
+    /// 取消会保留任务记录，但丢弃断点续传数据；暂停则只调用 `performPause` 并保留这些文件。
     private func discardPartialArtifacts(for id: UUID) {
         try? FileManager.default.removeItem(at: DownloadStorage.partsDirectory(for: id))
         try? FileManager.default.removeItem(at: DownloadStorage.stagingDirectory(for: id))

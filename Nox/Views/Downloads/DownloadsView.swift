@@ -272,11 +272,12 @@ struct DownloadsView: View {
         private var activeCount: Int { records.filter { $0.status == .downloading }.count }
         private var notStartedCount: Int {
             records.filter {
-                $0.status == .queued || ($0.status == .cancelled && ($0.receivedBytes ?? 0) == 0)
+                $0.status == .notStarted
             }.count
         }
+        private var queuedCount: Int { records.filter { $0.status == .queued }.count }
         private var pausedCount: Int {
-            records.filter { $0.status == .cancelled && ($0.receivedBytes ?? 0) > 0 }.count
+            records.filter { $0.status == .paused }.count
         }
         private var finishedCount: Int { records.filter { $0.status == .finished }.count }
         private var failedCount: Int { records.filter { $0.status == .failed }.count }
@@ -285,6 +286,7 @@ struct DownloadsView: View {
             [
                 StatusMetric(title: L("下载中"), count: activeCount, color: .accentColor),
                 StatusMetric(title: L("未开始"), count: notStartedCount, color: .secondary),
+                StatusMetric(title: L("排队中"), count: queuedCount, color: .secondary),
                 StatusMetric(title: L("已暂停"), count: pausedCount, color: .orange),
                 StatusMetric(title: L("已完成"), count: finishedCount, color: .green),
                 StatusMetric(title: L("失败"), count: failedCount, color: .red)
@@ -299,7 +301,7 @@ struct DownloadsView: View {
         }
 
         private var animationKey: String {
-            [activeCount, notStartedCount, pausedCount, finishedCount, failedCount]
+            [activeCount, notStartedCount, queuedCount, pausedCount, finishedCount, failedCount]
                 .map(String.init)
                 .joined(separator: ":")
         }
@@ -459,7 +461,7 @@ struct DownloadsView: View {
                 .disabled(retryableRecords.isEmpty)
 
                 Button {
-                    manager.cancelAll(ids: Set(pausableRecords.map(\.id)))
+                    manager.pauseAll(ids: Set(pausableRecords.map(\.id)))
                     finishSelection()
                 } label: {
                     Label(L("暂停"), systemImage: "pause.circle")
@@ -491,7 +493,7 @@ struct DownloadsView: View {
                 .disabled(globalRetryableRecords.isEmpty)
 
                 Button {
-                    manager.cancelAll(ids: Set(globalPausableRecords.map(\.id)))
+                    manager.pauseAll(ids: Set(globalPausableRecords.map(\.id)))
                 } label: {
                     Label(L("暂停"), systemImage: "pause.circle")
                 }
@@ -523,7 +525,7 @@ struct DownloadsView: View {
 
     /// 失败 / 已暂停的全部任务，可一键继续。
     var globalRetryableRecords: [DownloadRecord] {
-        appState.downloads.filter { $0.status == .failed || $0.status == .cancelled }
+        appState.downloads.filter { $0.status == .failed || $0.status == .paused || $0.status == .notStarted }
     }
 
     /// 排队中 / 下载中的全部任务，可一键暂停。
@@ -539,7 +541,7 @@ struct DownloadsView: View {
 
     /// 失败 / 已暂停的任务可以重试或继续。
     var retryableRecords: [DownloadRecord] {
-        selectedRecords.filter { $0.status == .failed || $0.status == .cancelled }
+        selectedRecords.filter { $0.status == .failed || $0.status == .paused || $0.status == .notStarted }
     }
 
     /// 排队中 / 下载中的任务可以暂停；分片已落盘，之后可继续。
@@ -564,7 +566,7 @@ struct DownloadsView: View {
         appState.downloads.contains {
             $0.status == .finished ||
             $0.status == .failed ||
-            $0.status == .cancelled
+            $0.status == .paused || $0.status == .notStarted
         }
     }
 

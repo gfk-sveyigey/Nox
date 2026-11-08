@@ -5,12 +5,15 @@ public enum DownloadStatus: String, Codable {
     case downloading
     case finished
     case failed
-    case cancelled
+    case notStarted
+    case paused
+    // Decode-only compatibility for records saved before separate pause/cancel semantics.
+    case legacyCancelled = "cancelled"
 
     /// 任务已经结束，不再占用下载槽位。
     public var isTerminal: Bool {
         switch self {
-        case .finished, .failed, .cancelled:
+        case .finished, .failed, .paused, .notStarted, .legacyCancelled:
             return true
         case .queued, .downloading:
             return false

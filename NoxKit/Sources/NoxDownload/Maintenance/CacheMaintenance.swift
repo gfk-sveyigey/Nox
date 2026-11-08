@@ -151,7 +151,7 @@ extension DownloadManager {
             guard let live = store.downloads.first(where: { $0.id == record.id }),
                   live.status == .queued || live.status == .downloading else { continue }
             foregroundPausedIDs.insert(live.id)
-            performCancel(live)
+            performPause(live)
         }
         reconcileTaskQueue(reason: "foreground only")
     }
@@ -165,7 +165,7 @@ extension DownloadManager {
 
         for id in ids {
             guard let record = store.downloads.first(where: { $0.id == id }),
-                  record.status == .cancelled else { continue }
+                  record.status == .paused else { continue }
             retry(record)
         }
     }

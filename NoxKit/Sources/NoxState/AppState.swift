@@ -276,7 +276,7 @@ public final class AppState: ObservableObject {
         downloads.removeAll {
             $0.status == .finished ||
             $0.status == .failed ||
-            $0.status == .cancelled
+            $0.status == .paused || $0.status == .notStarted
         }
         persist()
     }
@@ -356,14 +356,23 @@ public final class AppState: ObservableObject {
            let value = try? JSONDecoder().decode([DownloadRecord].self, from: data) {
             // 进程被系统回收时任务不会回调，残留的 .downloading 需要归位，
             // 否则会永远显示「下载中」且无法重试。这里重新排队而不是标成取消：
-            // 用户在 App 内主动暂停时会明确写入 .cancelled，磁盘上的 .downloading
+            // 用户在 App 内主动暂停时会明确写入 .paused，磁盘上的 .downloading
             // 只可能来自异常终止，下次启动（包括 BGTask 后台唤醒）应自动续传。
             downloads = value.map { record in
+                if record.status == .legacyCancelled {
+                    var migrated = record
+                    migrated.status = (record.receivedBytes ?? 0) > 0 ? .paused : .notStarted
+                    migrated.errorMessage = nil
+                    return migrated
+                }
                 guard record.status == .downloading else { return record }
                 var updated = record
                 updated.status = .queued
                 updated.errorMessage = nil
                 return updated
+            }
+            if let migrated = try? JSONEncoder().encode(downloads) {
+                defaults.set(migrated, forKey: downloadsKey)
             }
         }
 
