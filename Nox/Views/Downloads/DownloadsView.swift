@@ -237,6 +237,13 @@ struct DownloadsView: View {
     }
 
     struct DownloadOverviewCard: View {
+        private struct StatusMetric: Identifiable {
+            let title: String
+            let count: Int
+            let color: Color
+            var id: String { title }
+        }
+
         let records: [DownloadRecord]
         let transfers: [UUID: TransferStats]
         let storageBlocked: Bool
@@ -251,6 +258,28 @@ struct DownloadsView: View {
         }
         private var finishedCount: Int { records.filter { $0.status == .finished }.count }
         private var failedCount: Int { records.filter { $0.status == .failed }.count }
+
+        private var activeMetrics: [StatusMetric] {
+            [
+                StatusMetric(title: L("进行中"), count: activeCount, color: .accentColor),
+                StatusMetric(title: L("等待中"), count: queuedCount, color: .secondary),
+                StatusMetric(title: L("已暂停"), count: pausedCount, color: .orange)
+            ].filter { $0.count > 0 }
+        }
+
+        private var completedMetrics: [StatusMetric] {
+            [
+                StatusMetric(title: L("已完成"), count: finishedCount, color: .green),
+                StatusMetric(title: L("失败"), count: failedCount, color: .red),
+                StatusMetric(title: L("已取消"), count: cancelledCount, color: .secondary)
+            ].filter { $0.count > 0 }
+        }
+
+        private var animationKey: String {
+            [activeCount, queuedCount, pausedCount, finishedCount, failedCount, cancelledCount]
+                .map(String.init)
+                .joined(separator: ":")
+        }
 
         private var totalSpeed: String {
             let bytesPerSecond = records
@@ -267,85 +296,97 @@ struct DownloadsView: View {
         }
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(L("任务总览"))
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    HStack(spacing: 5) {
-                        Image(systemName: "speedometer")
-                        Text(L("总速度"))
-                            .foregroundStyle(.secondary)
-                        Text(totalSpeed)
-                            .foregroundStyle(.primary)
-                    }
-                    .font(.footnote.monospacedDigit())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+            VStack(alignment: .leading, spacing: 10) {
+                metricsCard
+                if !activeMetrics.isEmpty {
+                    statusCard(activeMetrics)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+                if !completedMetrics.isEmpty {
+                    statusCard(completedMetrics)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .animation(.easeInOut(duration: 0.28), value: animationKey)
+            .animation(.easeInOut(duration: 0.26), value: storageBlocked)
+        }
+
+        private var metricsCard: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    metricValue(title: L("总速度"), value: totalSpeed, systemImage: "speedometer", color: .accentColor)
+                    Divider().frame(height: 34)
+                    metricValue(
+                        title: L("总进度"),
+                        value: "\(Int((totalProgress * 100).rounded()))%",
+                        systemImage: "chart.bar.fill",
+                        color: .secondary
+                    )
                 }
 
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 3),
-                    alignment: .leading,
-                    spacing: 10
-                ) {
-                    countMetric(L("进行中"), count: activeCount, color: .blue)
-                    countMetric(L("等待中"), count: queuedCount, color: .secondary)
-                    countMetric(L("已暂停"), count: pausedCount, color: .orange)
-                    countMetric(L("已完成"), count: finishedCount, color: .green)
-                    countMetric(L("失败"), count: failedCount, color: .red)
-                    countMetric(L("已取消"), count: cancelledCount, color: .secondary)
-                }
-
-                VStack(spacing: 5) {
-                    HStack {
-                        Text(L("总进度"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("\(Int((totalProgress * 100).rounded()))%")
-                            .font(.caption.monospacedDigit().weight(.medium))
-                            .foregroundStyle(.secondary)
-                    }
-                    ProgressView(value: totalProgress)
-                        .tint(.accentColor)
-                }
+                ProgressView(value: totalProgress)
+                    .tint(.accentColor)
 
                 if storageBlocked {
-                    Divider()
-                    HStack(alignment: .top, spacing: 8) {
+                    Label {
+                        Text(L("储存空间不足"))
+                            .font(.footnote.weight(.medium))
+                    } icon: {
                         Image(systemName: "externaldrive.fill.badge.exclamationmark")
                             .foregroundStyle(.orange)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(L("储存空间不足"))
-                                .font(.footnote.weight(.semibold))
-                            Text(L("可用空间已低于设置的最低保留值，下载已暂停。释放空间后，排队任务会自动继续。"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
                     }
                     .transition(.opacity)
                 }
             }
-            .padding(14)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
-            .animation(.easeInOut(duration: 0.26), value: storageBlocked)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+
+        private func statusCard(_ metrics: [StatusMetric]) -> some View {
+            HStack(spacing: 0) {
+                ForEach(metrics) { item in
+                    if item.id != metrics.first?.id { Divider().frame(height: 30) }
+                    countMetric(item.title, count: item.count, color: item.color)
+                        .frame(maxWidth: .infinity)
+                        .transition(.scale(scale: 0.86).combined(with: .opacity))
+                }
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+
+        private func metricValue(title: String, value: String, systemImage: String, color: Color) -> some View {
+            HStack(spacing: 7) {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(color)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(value)
+                        .font(.callout.monospacedDigit().weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
 
         private func countMetric(_ title: String, count: Int, color: Color) -> some View {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(spacing: 3) {
                 Text("\(count)")
-                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .font(.title3.monospacedDigit().weight(.semibold))
                     .foregroundStyle(color)
                 Text(title)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
