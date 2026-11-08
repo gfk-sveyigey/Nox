@@ -149,6 +149,11 @@ struct DownloadRow: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+        } else if record.status == .cancelled {
+            Text(L("下载尚未开始"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
     }
 
