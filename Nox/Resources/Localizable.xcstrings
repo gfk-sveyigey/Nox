@@ -1093,6 +1093,102 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 실패: %@" } }
       }
     },
+    "下载中 · %@ · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird geladen · %@ · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading · %@ · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement en cours · %@ · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 중 · %@ · %@" } }
+      }
+    },
+    "已完成 · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abgeschlossen · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Terminé · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료 · %@" } }
+      }
+    },
+    "已暂停 · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Pausiert · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Paused · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En pause · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일시 정지 · %@" } }
+      }
+    },
+    "失败 · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fehlgeschlagen · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실패 · %@" } }
+      }
+    },
+    "未开始" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht gestartet" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not Started" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pas commencé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시작 전" } }
+      }
+    },
+    "下载中" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird geladen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En cours" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 중" } }
+      }
+    },
+    "未知错误" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbekannter Fehler" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown error" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur inconnue" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알 수 없는 오류" } }
+      }
+    },
+    "继续" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fortsetzen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Reprendre" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "계속" } }
+      }
+    },
+    "App 在前台开始下载后，系统会授予后台执行时间，并在系统锁屏或灵动岛面板显示进度和取消按钮；该面板无法替换为自定义实时活动。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach dem Start im Vordergrund gewährt das System Hintergrundzeit und zeigt den Fortschritt sowie eine Abbrechen-Schaltfläche auf dem Sperrbildschirm oder in der Dynamic Island. Diese Anzeige lässt sich nicht durch eine eigene Live Activity ersetzen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "After a download starts in the foreground, iOS grants background time and shows progress and a cancel button in its Lock Screen or Dynamic Island interface. That interface can't be replaced with a custom Live Activity." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Après le démarrage d’un téléchargement au premier plan, iOS accorde du temps en arrière-plan et affiche la progression ainsi qu’un bouton d’annulation sur l’écran verrouillé ou la Dynamic Island. Cet affichage ne peut pas être remplacé par une activité en direct personnalisée." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전경에서 다운로드를 시작하면 iOS가 백그라운드 실행 시간을 부여하고 잠금 화면이나 다이내믹 아일랜드에 진행률과 취소 버튼을 표시합니다. 이 화면은 사용자 지정 실시간 활동으로 대체할 수 없습니다." } }
+      }
+    },
+    "循环播放极低音量的静音音频，让 App 保持运行并更新下载进度。可能打断其他 App 的音频播放。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Spielt eine kaum hörbare stille Audiospur in Schleife, damit die App aktiv bleibt und den Downloadfortschritt aktualisiert. Kann die Audiowiedergabe anderer Apps unterbrechen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loops near-silent audio to keep the app active and update download progress. May interrupt audio playing in other apps." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Diffuse en boucle un son presque inaudible pour maintenir l’app active et actualiser la progression. Peut interrompre la lecture audio d’autres apps." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "거의 들리지 않는 무음을 반복 재생해 앱을 활성 상태로 유지하고 다운로드 진행률을 갱신합니다. 다른 앱의 오디오 재생을 중단할 수 있습니다." } }
+      }
+    },
+    "使用系统画中画保持 App 运行并更新下载进度。不占用音频会话，也尽量避免与其他画中画冲突。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hält die App mit systemeigenem Bild-in-Bild aktiv und aktualisiert den Downloadfortschritt. Belegt keine Audiositzung und vermeidet möglichst Konflikte mit anderen PiP-Fenstern." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Uses system Picture in Picture to keep the app active and update download progress. It doesn't use the audio session and helps avoid conflicts with other PiP windows." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilise l’image dans l’image du système pour maintenir l’app active et actualiser la progression. N’utilise pas la session audio et limite les conflits avec les autres fenêtres PiP." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 화면 속 화면으로 앱을 활성 상태로 유지하고 다운로드 진행률을 갱신합니다. 오디오 세션을 사용하지 않으며 다른 PiP 창과의 충돌을 줄입니다." } }
+      }
+    },
+    "HLS 分片缺少下载任务标识" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "HLS-Segment hat keine Download-ID" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "HLS segment is missing its download ID" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L’identifiant de téléchargement du segment HLS est manquant" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "HLS 조각에 다운로드 ID가 없습니다" } }
+      }
+    },
     "保存文件失败：%@" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Datei konnte nicht gespeichert werden: %@" } },

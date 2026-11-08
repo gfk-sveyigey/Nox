@@ -129,38 +129,50 @@ struct DownloadRow: View {
                 .foregroundStyle(.red)
                 .lineLimit(1)
         } else if record.status == .queued {
-            Text(L("排队中 · 等待空闲下载位"))
-                .font(.footnote)
+            Text(L("未开始"))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if record.status == .downloading {
-            Text(stats.map { "\($0.sizeText) · \(speedText($0.bytesPerSecond))" } ?? TransferStats().displayText)
-                .font(.footnote)
+            let currentStats = stats ?? TransferStats()
+            Text(String(format: L("下载中 · %@ · %@"), currentStats.sizeText, speedText(currentStats.bytesPerSecond)))
+                .font(.subheadline)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-        } else if record.status == .failed, let message = record.errorMessage {
-            Text(verbatim: message)
-                .font(.footnote)
+        } else if record.status == .failed {
+            Text(String(format: L("失败 · %@"), shortFailureReason))
+                .font(.subheadline)
                 .foregroundStyle(.red)
-                .lineLimit(2)
+                .lineLimit(1)
         } else if record.status == .finished {
-            Text(TransferStats.formattedSize(record.receivedBytes ?? record.totalBytes ?? 0))
-                .font(.footnote)
+            Text(String(format: L("已完成 · %@"), TransferStats.formattedSize(record.receivedBytes ?? record.totalBytes ?? 0)))
+                .font(.subheadline)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if record.status == .cancelled, let received = record.receivedBytes, received > 0 {
-            Text(String(format: L("已暂停 · %@，继续"), TransferStats.formattedSize(received)))
-                .font(.footnote)
+            let size = TransferStats(bytesReceived: received, totalBytes: record.totalBytes ?? 0).sizeText
+            Text(String(format: L("已暂停 · %@"), size))
+                .font(.subheadline)
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if record.status == .cancelled {
-            Text(L("下载尚未开始"))
-                .font(.footnote)
+            Text(L("未开始"))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
+    }
+
+    private var shortFailureReason: String {
+        guard let message = record.errorMessage, !message.isEmpty else { return L("未知错误") }
+        let localizedPrefix = L("下载失败：%@").components(separatedBy: "%@").first ?? ""
+        let prefixes = [localizedPrefix, "Download failed: ", "Download fehlgeschlagen: ", "Échec du téléchargement : ", "다운로드 실패: "]
+        let prefix = prefixes.first { !$0.isEmpty && message.hasPrefix($0) }
+        let reason = prefix.map { String(message.dropFirst($0.count)) } ?? message
+        return reason.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func speedText(_ bytesPerSecond: Double) -> String {

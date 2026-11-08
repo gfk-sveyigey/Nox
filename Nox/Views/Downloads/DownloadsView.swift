@@ -231,12 +231,6 @@ struct DownloadsView: View {
             // 左侧红色减号按钮，与悬浮删除按钮重复。
             // swipeActions 在编辑态自动失效，不影响多选。
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                Button(role: .destructive) {
-                    manager.deleteFile(for: record)
-                    finishSelection()
-                } label: {
-                    Label(L("删除"), systemImage: "trash")
-                }
                 if record.status != .finished {
                     Button {
                         if record.status == .queued || record.status == .downloading {
@@ -250,6 +244,12 @@ struct DownloadsView: View {
                         Label(L("取消"), systemImage: "xmark.circle")
                     }
                     .tint(.orange)
+                }
+                Button(role: .destructive) {
+                    manager.deleteFile(for: record)
+                    finishSelection()
+                } label: {
+                    Label(L("删除"), systemImage: "trash")
                 }
             }
         }
@@ -270,24 +270,24 @@ struct DownloadsView: View {
         let storageBlocked: Bool
 
         private var activeCount: Int { records.filter { $0.status == .downloading }.count }
-        private var queuedCount: Int { records.filter { $0.status == .queued }.count }
+        private var notStartedCount: Int {
+            records.filter {
+                $0.status == .queued || ($0.status == .cancelled && ($0.receivedBytes ?? 0) == 0)
+            }.count
+        }
         private var pausedCount: Int {
             records.filter { $0.status == .cancelled && ($0.receivedBytes ?? 0) > 0 }.count
-        }
-        private var cancelledCount: Int {
-            records.filter { $0.status == .cancelled && ($0.receivedBytes ?? 0) == 0 }.count
         }
         private var finishedCount: Int { records.filter { $0.status == .finished }.count }
         private var failedCount: Int { records.filter { $0.status == .failed }.count }
 
         private var statusMetrics: [StatusMetric] {
             [
-                StatusMetric(title: L("进行中"), count: activeCount, color: .accentColor),
-                StatusMetric(title: L("等待中"), count: queuedCount, color: .secondary),
+                StatusMetric(title: L("下载中"), count: activeCount, color: .accentColor),
+                StatusMetric(title: L("未开始"), count: notStartedCount, color: .secondary),
                 StatusMetric(title: L("已暂停"), count: pausedCount, color: .orange),
                 StatusMetric(title: L("已完成"), count: finishedCount, color: .green),
-                StatusMetric(title: L("失败"), count: failedCount, color: .red),
-                StatusMetric(title: L("已取消"), count: cancelledCount, color: .secondary)
+                StatusMetric(title: L("失败"), count: failedCount, color: .red)
             ].filter { $0.count > 0 }
         }
 
@@ -299,7 +299,7 @@ struct DownloadsView: View {
         }
 
         private var animationKey: String {
-            [activeCount, queuedCount, pausedCount, finishedCount, failedCount, cancelledCount]
+            [activeCount, notStartedCount, pausedCount, finishedCount, failedCount]
                 .map(String.init)
                 .joined(separator: ":")
         }

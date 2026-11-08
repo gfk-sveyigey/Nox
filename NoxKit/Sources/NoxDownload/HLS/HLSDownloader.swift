@@ -512,7 +512,7 @@ final class HLSDownloader {
 
         if let segmentLoader {
             guard let recordID else {
-                throw ParserError.manifestRequestFailed(L("分片缺少下载任务标识"))
+                throw ParserError.manifestRequestFailed(L("HLS 分片缺少下载任务标识"))
             }
             return try await segmentLoader(request, recordID, segmentIndex, manifestSignature)
         }
