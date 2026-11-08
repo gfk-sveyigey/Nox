@@ -857,12 +857,12 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일이 없거나 삭제되었습니다" } }
       }
     },
-    "取消下载" : {
+    "取消" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download abbrechen" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel download" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler le téléchargement" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 취소" } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abbrechen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "취소" } }
       }
     },
     "重试" : {

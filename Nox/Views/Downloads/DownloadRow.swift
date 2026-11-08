@@ -103,7 +103,7 @@ struct DownloadRow: View {
             }
             .disabled(record.status == .finished)
             Button { onCancel(record) } label: {
-                Label(L("取消下载"), systemImage: "xmark.circle")
+                Label(L("取消"), systemImage: "xmark.circle")
             }
             .disabled(record.status == .finished)
             Button(role: .destructive) { onDelete(record) } label: {

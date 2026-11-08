@@ -247,7 +247,7 @@ struct DownloadsView: View {
                     }
                     .tint(.blue)
                     Button { manager.cancel(record) } label: {
-                        Label(L("取消下载"), systemImage: "xmark.circle")
+                        Label(L("取消"), systemImage: "xmark.circle")
                     }
                     .tint(.orange)
                 }
@@ -470,7 +470,7 @@ struct DownloadsView: View {
                     manager.discardAll(ids: Set(selectedRecords.filter { $0.status != .finished }.map(\.id)))
                     finishSelection()
                 } label: {
-                    Label(L("取消下载"), systemImage: "xmark.circle")
+                    Label(L("取消"), systemImage: "xmark.circle")
                 }
                 .disabled(selectedRecords.allSatisfy { $0.status == .finished })
 
@@ -500,7 +500,7 @@ struct DownloadsView: View {
                 Button {
                     manager.discardAll(ids: Set(appState.downloads.filter { $0.status != .finished }.map(\.id)))
                 } label: {
-                    Label(L("取消下载"), systemImage: "xmark.circle")
+                    Label(L("取消"), systemImage: "xmark.circle")
                 }
                 .disabled(appState.downloads.allSatisfy { $0.status == .finished })
             }
