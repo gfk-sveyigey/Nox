@@ -301,10 +301,10 @@ struct DownloadsView: View {
         var body: some View {
             HStack(alignment: .top, spacing: 8) {
                 metricsCard
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, height: 160, alignment: .topLeading)
                 ForEach(Array(statusGroups.enumerated()), id: \.offset) { _, group in
                     statusCard(group)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, height: 160, alignment: .topLeading)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
@@ -315,12 +315,10 @@ struct DownloadsView: View {
         private var metricsCard: some View {
             VStack(alignment: .leading, spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
-                    metricValue(title: L("总速度"), value: totalSpeed, systemImage: "speedometer", color: .accentColor)
+                    metricValue(title: L("总速度"), value: totalSpeed)
                     metricValue(
                         title: L("总进度"),
-                        value: "\(Int((totalProgress * 100).rounded()))%",
-                        systemImage: "chart.bar.fill",
-                        color: .secondary
+                        value: "\(Int((totalProgress * 100).rounded()))%"
                     )
                 }
 
@@ -332,11 +330,13 @@ struct DownloadsView: View {
                         Image(systemName: "externaldrive.fill.badge.exclamationmark")
                             .foregroundStyle(.orange)
                     }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                     .transition(.opacity)
                 }
             }
             .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, height: 160, alignment: .leading)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
@@ -348,24 +348,19 @@ struct DownloadsView: View {
                 }
             }
             .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
+            .frame(maxWidth: .infinity, height: 160, alignment: .center)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
-        private func metricValue(title: String, value: String, systemImage: String, color: Color) -> some View {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Image(systemName: systemImage)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(color)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(value)
-                        .font(.subheadline.monospacedDigit().weight(.semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
+        private func metricValue(title: String, value: String) -> some View {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.title3.monospacedDigit().weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -373,10 +368,10 @@ struct DownloadsView: View {
         private func countMetric(_ title: String, count: Int, color: Color) -> some View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(count)")
-                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .font(.title3.monospacedDigit().weight(.semibold))
                     .foregroundStyle(color)
                 Text(title)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
