@@ -301,10 +301,12 @@ struct DownloadsView: View {
         var body: some View {
             HStack(alignment: .top, spacing: 8) {
                 metricsCard
-                    .frame(maxWidth: .infinity, height: 160, alignment: .topLeading)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 160, alignment: .topLeading)
                 ForEach(Array(statusGroups.enumerated()), id: \.offset) { _, group in
                     statusCard(group)
-                        .frame(maxWidth: .infinity, height: 160, alignment: .topLeading)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 160, alignment: .topLeading)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
@@ -336,7 +338,8 @@ struct DownloadsView: View {
                 }
             }
             .padding(12)
-            .frame(maxWidth: .infinity, height: 160, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .frame(height: 160, alignment: .leading)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
@@ -348,7 +351,8 @@ struct DownloadsView: View {
                 }
             }
             .padding(12)
-            .frame(maxWidth: .infinity, height: 160, alignment: .center)
+            .frame(maxWidth: .infinity)
+            .frame(height: 160, alignment: .center)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
