@@ -32,11 +32,11 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
         case .foregroundOnly:
             return L("不使用后台下载，也不启动保活。切到后台时暂停任务，回到前台后自动继续。")
         case .continuedProcessing:
-            return L("App 在前台开始下载后，系统授予后台执行时间，并强制在其自带的锁屏 / 灵动岛面板显示进度与取消按钮；该面板无法替换为自定义实时活动。")
+            return L("App 在前台使用普通下载会话开始下载后，系统授予后台执行时间，并强制在其自带的锁屏 / 灵动岛面板显示进度与取消按钮；该面板无法替换为自定义实时活动。")
         case .silentAudio:
-            return L("循环播放极低电平静音，让 App 保持运行；普通文件走后台会话，HLS 使用兼容分片引擎。锁屏后仍可继续，可能打断其他 App 正在播放的音频。")
+            return L("循环播放极低电平静音，让 App 保持运行并继续前台下载、刷新进度。可能打断其他 App 正在播放的音频。")
         case .pictureInPicture:
-            return L("用系统画中画让 App 保持运行；普通文件走后台会话，HLS 使用兼容分片引擎。锁屏后仍可继续，不占用音频会话，也尽量减少与其他画中画的互相挤占。")
+            return L("用系统画中画保活，让 App 保持运行并继续前台下载、刷新进度。不占用音频会话，也尽量减少与其他画中画的互相挤占。")
         }
     }
 
@@ -59,19 +59,17 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// 普通文件是否使用 Background URLSession。
+    /// 普通文件和 HLS 分片是否使用 Background URLSession。
     ///
-    /// 除「仅前台下载」外都交给系统后台会话：URLSession 的 default 配置没有
-    /// 独立的后台传输能力，App 一旦被系统挂起就会停。静音音频 / 画中画负责
-    /// 尽量让 App 保持运行；普通文件的传输则始终交给后台会话。
+    /// 系统下载模式交给后台会话独立运行；PiP、静音音频和持续处理模式依靠
+    /// 保活机制维持 App 进程，因此使用普通 URLSession 持续处理和发布进度。
     public var usesBackgroundDownloadSession: Bool {
-        self != .foregroundOnly
+        self == .off
     }
 
-    /// HLS 分片是否使用后台 URLSession。
+    /// HLS 分片是否使用后台 URLSession，与普通文件保持一致。
     ///
-    /// 只有「系统下载」使用后台分片会话；静音音频 / 画中画 / 持续处理沿用
-    /// 兼容分片引擎（URLSession.shared），由保活策略保证锁屏后的执行时间。
+    /// 其他模式下，HLS 由 App 内的通用分片引擎通过普通 URLSession 调度。
     public var usesBackgroundHLSSegments: Bool {
         self == .off
     }

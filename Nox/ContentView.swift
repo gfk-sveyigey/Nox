@@ -117,8 +117,7 @@ struct ContentView: View {
                 }
             }
         }
-        // 调整「同时下载任务数」后立即补位；调小时不打断正在跑的任务，
-        // 只让后续排队任务等到活动数降到新上限以下。
+        // 调整「同时下载任务数」后立即重排队列，确保活跃任务不超过新上限。
         .onChange(of: appState.maxConcurrentDownloads) { _, _ in
             downloadManager.reconcileQueue()
         }

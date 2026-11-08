@@ -95,6 +95,8 @@ public final class KeepAliveCoordinator: ObservableObject {
 
     /// 诊断信息出口，接到 App 日志。
     public var onLog: ((String) -> Void)?
+    /// 保活无法维持且未降级恢复时通知下载管理器暂停前台会话任务。
+    public var onInterruption: (() -> Void)?
 
     /// 详细诊断日志（只在画中画相关时输出）。
     private func verboseLog(_ message: @autoclosure () -> String) {
@@ -335,7 +337,7 @@ public final class KeepAliveCoordinator: ObservableObject {
             }
             if !handled {
                 fallbackMode = nil
-                notifyInterruptionIfNeeded()
+                reportInterruption()
             }
         }
     }
@@ -398,7 +400,7 @@ public final class KeepAliveCoordinator: ObservableObject {
         }
 
         onLog?("保活中断，将在回到前台后重建")
-        notifyInterruptionIfNeeded()
+        reportInterruption()
     }
 
     /// 画中画「始终没能启动」（不是启动后被系统/用户结束）。
@@ -418,6 +420,11 @@ public final class KeepAliveCoordinator: ObservableObject {
         }
         // 不做自动重试：等用户回到前台由 `didEnterForeground()` 重建。
         onLog?("保活中断，将在回到前台后重建")
+        reportInterruption()
+    }
+
+    private func reportInterruption() {
+        onInterruption?()
         notifyInterruptionIfNeeded()
     }
 

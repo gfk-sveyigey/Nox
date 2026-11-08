@@ -45,7 +45,6 @@ extension DownloadManager {
     /// （暂停 / 删除 / 重试）。
     func invalidateRun(for id: UUID) {
         runTokens.removeValue(forKey: id)
-        avAssetDownloader.cancel(recordID: id)
         slotTasks[id]?.cancel()
         slotTasks.removeValue(forKey: id)
 
@@ -72,7 +71,7 @@ extension DownloadManager {
     /// 后台 / 前台下载会话切换时重启当前任务。
     ///
     /// 不把任务标成取消：分片文件仍在磁盘上，重新排队后会从断点继续。
-    func restartActiveDownloadsForSessionChange() {
+    func restartActiveDownloadsForSessionChange(reason: String = "download session change") {
         let targets = store.downloads.filter {
             $0.status == .queued || $0.status == .downloading
         }
@@ -91,7 +90,13 @@ extension DownloadManager {
             store.updateDownload(updated)
         }
 
-        reconcileTaskQueue(reason: "download session change")
+        reconcileTaskQueue(reason: reason)
+    }
+
+    /// 保活失效后不能让普通 URLSession 在后台继续尝试；回到前台并重建保活后再续传。
+    func pauseForKeepAliveInterruption() {
+        guard store.keepAliveMode.startsKeepAlive else { return }
+        restartActiveDownloadsForSessionChange(reason: "keep-alive interruption")
     }
 
     /// 让调度器的内部状态与持久化记录重新对齐。
@@ -184,8 +189,39 @@ extension DownloadManager {
             return
         }
 
-        // 5. 按 FIFO 补满空闲槽位。调小上限时不打断正在跑的任务，
-        //    只让 active 数自然降到新上限以下后再继续取队列。
+        // PiP / 静音音频 / 持续处理使用普通会话；保活失效时暂停补位，
+        // 直到回到前台并确认策略重新运行。
+        if store.keepAliveMode.startsKeepAlive,
+           UIApplication.shared.applicationState == .background,
+           keepAlive.currentMode == .off {
+            return
+        }
+
+        // 调低并发上限时，把超额任务停回等待队列。
+        if activeIDs.count > maxConcurrentTasks {
+            let excessCount = activeIDs.count - maxConcurrentTasks
+            let excess = activeIDs
+                .compactMap { records[$0] }
+                .sorted { lhs, rhs in lhs.createdAt > rhs.createdAt }
+                .prefix(excessCount)
+
+            for record in excess {
+                invalidateRun(for: record.id)
+                resetScheduling(for: record.id)
+                removeFromQueue(record.id)
+                releaseSlotWithoutPump(record.id)
+                clearTransferStats(for: record.id)
+
+                var waiting = record
+                waiting.status = .queued
+                waiting.errorMessage = nil
+                store.updateDownload(waiting)
+                records[waiting.id] = waiting
+                pendingQueue.append(waiting.id)
+            }
+        }
+
+        // 5. 按 FIFO 补满空闲槽位；上限调低时超额任务已重排至等待队列。
         while activeIDs.count < maxConcurrentTasks, !pendingQueue.isEmpty {
             let id = pendingQueue.removeFirst()
 

@@ -29,9 +29,8 @@ final class DownloadLiveActivityManager {
     /// 进度定时器每秒刷新一次；Live Activity 合并到约 1 秒一次，
     /// 既不会错过保活方式的进度变化，也不会因过密更新被系统节流。
     private static let minimumUpdateInterval: TimeInterval = 1.0
-    /// 下载活动可能在后台按分片 / 回调刷新，间隔不一定固定；
-    /// 留出一小时再标记过期，避免进程短暂挂起（尤其画中画）时
-    /// 卡片被当成 stale 而不再出现在灵动岛。
+    /// 后台更新受系统调度，长时间无回调时将活动标记为过期；
+    /// 锁屏卡片会展示最后一次更新时间，明确区分旧快照与实时进度。
     private static let staleInterval: TimeInterval = 3600
     /// 系统最多让一个活动活跃 8 小时，到点会强制结束并立刻从灵动岛移除，
     /// 但锁屏上还会再留最多 4 小时。提前一点换成新活动，避免出现

@@ -4,8 +4,8 @@ import NoxCore
 import NoxKeepAlive
 
 final class HLSDownloader {
-    /// 系统下载模式下，把分片请求交给后台 URLSession。
-    typealias SegmentLoader = @Sendable (URLRequest, UUID) async throws -> Data
+    /// 系统下载模式下，把分片请求交给后台 URLSession，并带上可恢复的分片编号。
+    typealias SegmentLoader = @Sendable (URLRequest, UUID, Int, String) async throws -> Data
 
     struct Progress {
         let completed: Int
@@ -128,11 +128,11 @@ final class HLSDownloader {
 
         if previousSignature != signature {
             Self.removeContents(of: partsDirectory)
-            try? signature.write(to: signatureURL, atomically: true, encoding: .utf8)
         } else {
             // 上次中断可能留下半截 .tmp，清掉；已改名的 .part 才是可信的
             Self.removeTemporaryFiles(in: partsDirectory)
         }
+        try? signature.write(to: signatureURL, atomically: true, encoding: .utf8)
 
         // 3) 密钥
         var key: Data?
@@ -174,7 +174,17 @@ final class HLSDownloader {
                     userAgent: userAgent,
                     allowsCellularAccess: allowsCellularAccess,
                     recordID: recordID,
-                    segmentLoader: segmentLoader
+                    segmentLoader: segmentLoader,
+                    segmentIndex: -1,
+                    manifestSignature: signature
+                )
+            } else {
+                try? FileManager.default.removeItem(
+                    at: DownloadStorage.hlsResponseURL(
+                        recordID: recordID,
+                        segmentIndex: -1,
+                        manifestSignature: signature
+                    )
                 )
             }
 
@@ -193,6 +203,13 @@ final class HLSDownloader {
             if Self.isUsable(partURL) {
                 resumedCount += 1
                 resumedBytes += DownloadStorage.fileSize(at: partURL)
+                try? FileManager.default.removeItem(
+                    at: DownloadStorage.hlsResponseURL(
+                        recordID: recordID,
+                        segmentIndex: index,
+                        manifestSignature: signature
+                    )
+                )
             } else {
                 pendingIndexes.append(index)
             }
@@ -241,7 +258,9 @@ final class HLSDownloader {
                             userAgent: userAgent,
                             allowsCellularAccess: allowsCellularAccess,
                             recordID: recordID,
-                            segmentLoader: segmentLoader
+                            segmentLoader: segmentLoader,
+                            segmentIndex: index,
+                            manifestSignature: signature
                         )
                     }
                 }
@@ -311,17 +330,21 @@ final class HLSDownloader {
 
     // MARK: - 续传辅助
 
-    /// 清单签名：清单地址 + 分片数 + 密钥与初始化段地址 + 首尾分片地址。
-    /// 任一变化都说明「这不是同一份清单」，旧分片不能再拼。
+    /// 完整清单签名；清单变化时旧分片与合并检查点不再复用。
     private static func signature(for playlist: HLSPlaylist, playlistURL: URL) -> String {
-        [
+        let value = ([
             playlistURL.absoluteString,
-            String(playlist.segments.count),
             playlist.keyURL?.absoluteString ?? "-",
             playlist.initSegmentURL?.absoluteString ?? "-",
-            playlist.segments.first?.url.absoluteString ?? "-",
-            playlist.segments.last?.url.absoluteString ?? "-"
-        ].joined(separator: "|")
+            playlist.keyMethod ?? "-"
+        ] + playlist.segments.map { "\($0.sequence)|\($0.url.absoluteString)" })
+            .joined(separator: "\n")
+        let data = Data(value.utf8)
+        var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        data.withUnsafeBytes { buffer in
+            _ = CC_SHA256(buffer.baseAddress, CC_LONG(data.count), &digest)
+        }
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 
     /// 分片存在且非空即视为已完成 —— 依赖「先写 .tmp 再原子改名」的写入策略。
@@ -470,7 +493,9 @@ final class HLSDownloader {
         allowsCellularAccess: Bool,
         timeout: TimeInterval,
         recordID: UUID? = nil,
-        segmentLoader: SegmentLoader? = nil
+        segmentLoader: SegmentLoader? = nil,
+        segmentIndex: Int = -1,
+        manifestSignature: String = ""
     ) async throws -> Data? {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -489,7 +514,7 @@ final class HLSDownloader {
             guard let recordID else {
                 throw ParserError.manifestRequestFailed(L("分片缺少下载任务标识"))
             }
-            return try await segmentLoader(request, recordID)
+            return try await segmentLoader(request, recordID, segmentIndex, manifestSignature)
         }
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -512,7 +537,9 @@ final class HLSDownloader {
         userAgent: String?,
         allowsCellularAccess: Bool,
         recordID: UUID,
-        segmentLoader: SegmentLoader?
+        segmentLoader: SegmentLoader?,
+        segmentIndex: Int,
+        manifestSignature: String
     ) async throws -> Int64 {
         var lastError: Error = ParserError.manifestRequestFailed(L("分片下载失败"))
         let attempts = 2
@@ -521,7 +548,15 @@ final class HLSDownloader {
             if Task.isCancelled { throw CancellationError() }
 
             do {
-                guard let data = try await performFetch(
+                let responseURL = DownloadStorage.hlsResponseURL(
+                    recordID: recordID,
+                    segmentIndex: segmentIndex,
+                    manifestSignature: manifestSignature
+                )
+                let data: Data
+                if let segmentLoader, let recovered = try? Data(contentsOf: responseURL) {
+                    data = recovered
+                } else if let fetched = try await performFetch(
                     url,
                     referer: referer,
                     cookieHeader: cookieHeader,
@@ -529,8 +564,12 @@ final class HLSDownloader {
                     allowsCellularAccess: allowsCellularAccess,
                     timeout: 45,
                     recordID: recordID,
-                    segmentLoader: segmentLoader
-                ) else {
+                    segmentLoader: segmentLoader,
+                    segmentIndex: segmentIndex,
+                    manifestSignature: manifestSignature
+                ) {
+                    data = fetched
+                } else {
                     throw ParserError.manifestRequestFailed(L("分片响应为空"))
                 }
 
@@ -553,12 +592,24 @@ final class HLSDownloader {
 
                 try? FileManager.default.removeItem(at: destination)
                 try FileManager.default.moveItem(at: temporary, to: destination)
+                if segmentLoader != nil {
+                    try? FileManager.default.removeItem(at: responseURL)
+                }
 
                 return Int64(payload.count)
             } catch {
                 if Task.isCancelled { throw CancellationError() }
 
                 lastError = error
+                if segmentLoader != nil {
+                    try? FileManager.default.removeItem(
+                        at: DownloadStorage.hlsResponseURL(
+                            recordID: recordID,
+                            segmentIndex: segmentIndex,
+                            manifestSignature: manifestSignature
+                        )
+                    )
+                }
 
                 if attempt < attempts {
                     try? await Task.sleep(nanoseconds: UInt64(500_000_000 * UInt64(attempt + 1)))

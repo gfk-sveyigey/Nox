@@ -51,8 +51,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
     /// 后台保活：有活跃下载时启动，全部结束 / 取消时停止。
     let keepAlive: KeepAliveCoordinator
-    /// HLS 的系统 AVAsset 引擎。只有用户选择该引擎时才会创建后台会话。
-    lazy var avAssetDownloader = AVAssetHLSDownloader()
     var keepAliveObservation: AnyCancellable?
     /// 下载记录状态变化的兜底观察：任何状态迁移都会触发一次队列对齐。
     var recordObservation: AnyCancellable?
@@ -72,8 +70,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 实际连接总数 ≈ 本值 × 单任务并发。
     ///
     /// 正在探测、下载、合并分片的都算占一个槽位；完成 / 失败 / 暂停 / 删除
-    /// 会立即释放。调小上限不会打断正在跑的任务，只会暂时停止补位，
-    /// 等 active 数自然降到新上限以下后再继续取队列。
+    /// 会立即释放。调小上限时，超出新上限的较晚启动任务会暂停并回到等待队列。
     var maxConcurrentTasks: Int {
         let configured = store.maxConcurrentDownloads
 
@@ -186,11 +183,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         )
     }()
 
-    /// 分片请求使用的会话：由当前后台方式决定。
+    /// 分片请求使用的会话：系统下载由后台 URLSession 接管；保活下载模式
+    /// 使用普通 URLSession，让 App 持续处理并发布进度。
     ///
-    /// 只有「仅前台下载」使用普通 URLSession。其余方式都使用 Background
-    /// URLSession：保活策略负责让 App 保持运行、平滑刷新进度；即使进程被
-    /// 系统挂起，后台会话仍能把传输交给系统继续完成。
+    /// 仅前台下载使用普通会话并在后台暂停；PiP、静音音频和持续处理也使用
+    /// 普通会话，由各自的保活策略维持运行。
     var downloadSession: URLSession {
         store.keepAliveMode.usesBackgroundDownloadSession ? session : foregroundSession
     }
@@ -213,20 +210,13 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         )
         _ = session
 
-        // 如果本次启动是 AVAsset 后台下载事件唤醒的，先建立它的后台会话，
-        // 否则系统找不到代理，完成回调会一直悬着。
-        if BackgroundSessionEvents.shared.hasPending(
-            identifier: AVAssetHLSDownloader.sessionIdentifier
-        ) {
-            avAssetDownloader.prepareForBackgroundEvents(
-                allowsCellularAccess: allowsCellularDownloads
-            )
-        }
-
         // 启动时扫一遍：上次运行留下的「已完成」记录，文件可能已被系统清理或用户删除。
         refreshMissingFiles()
 
         keepAlive.onLog = { message in LogStore.shared.info(message) }
+        keepAlive.onInterruption = { [weak self] in
+            self?.pauseForKeepAliveInterruption()
+        }
         keepAlive.piPVerboseLogging = store.pipVerboseLogging
         keepAlive.preferredMode = store.keepAliveMode
         keepAlive.piPCoexistenceFallback = store.pipCoexistenceFallback

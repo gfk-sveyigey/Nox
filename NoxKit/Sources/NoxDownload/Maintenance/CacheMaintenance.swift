@@ -110,6 +110,10 @@ extension DownloadManager {
             // 已下载分片留在磁盘上，回前台后从断点继续。
             if store.keepAliveMode == .foregroundOnly {
                 pauseForForegroundOnly()
+            } else if store.keepAliveMode.startsKeepAlive,
+                      keepAlive.currentMode == .off,
+                      hasActiveDownloads {
+                pauseForKeepAliveInterruption()
             }
 
             if backgroundTransitionGrace == nil, hasActiveDownloads {
