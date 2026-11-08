@@ -260,20 +260,22 @@ struct DownloadsView: View {
         private var finishedCount: Int { records.filter { $0.status == .finished }.count }
         private var failedCount: Int { records.filter { $0.status == .failed }.count }
 
-        private var activeMetrics: [StatusMetric] {
+        private var statusMetrics: [StatusMetric] {
             [
                 StatusMetric(title: L("进行中"), count: activeCount, color: .accentColor),
                 StatusMetric(title: L("等待中"), count: queuedCount, color: .secondary),
-                StatusMetric(title: L("已暂停"), count: pausedCount, color: .orange)
-            ].filter { $0.count > 0 }
-        }
-
-        private var completedMetrics: [StatusMetric] {
-            [
+                StatusMetric(title: L("已暂停"), count: pausedCount, color: .orange),
                 StatusMetric(title: L("已完成"), count: finishedCount, color: .green),
                 StatusMetric(title: L("失败"), count: failedCount, color: .red),
                 StatusMetric(title: L("已取消"), count: cancelledCount, color: .secondary)
             ].filter { $0.count > 0 }
+        }
+
+        private var statusGroups: [[StatusMetric]] {
+            let metrics = statusMetrics
+            guard metrics.count >= 3 else { return metrics.isEmpty ? [] : [metrics] }
+            let splitIndex = (metrics.count + 1) / 2
+            return [Array(metrics[..<splitIndex]), Array(metrics[splitIndex...])]
         }
 
         private var animationKey: String {
@@ -297,14 +299,12 @@ struct DownloadsView: View {
         }
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
                 metricsCard
-                if !activeMetrics.isEmpty {
-                    statusCard(activeMetrics)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-                if !completedMetrics.isEmpty {
-                    statusCard(completedMetrics)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                ForEach(Array(statusGroups.enumerated()), id: \.offset) { _, group in
+                    statusCard(group)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
@@ -313,10 +313,9 @@ struct DownloadsView: View {
         }
 
         private var metricsCard: some View {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
                     metricValue(title: L("总速度"), value: totalSpeed, systemImage: "speedometer", color: .accentColor)
-                    Divider().frame(height: 34)
                     metricValue(
                         title: L("总进度"),
                         value: "\(Int((totalProgress * 100).rounded()))%",
@@ -324,9 +323,6 @@ struct DownloadsView: View {
                         color: .secondary
                     )
                 }
-
-                ProgressView(value: totalProgress)
-                    .tint(.accentColor)
 
                 if storageBlocked {
                     Label {
@@ -339,37 +335,34 @@ struct DownloadsView: View {
                     .transition(.opacity)
                 }
             }
-            .padding(16)
+            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
         private func statusCard(_ metrics: [StatusMetric]) -> some View {
-            HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
                 ForEach(metrics) { item in
-                    if item.id != metrics.first?.id { Divider().frame(height: 30) }
                     countMetric(item.title, count: item.count, color: item.color)
-                        .frame(maxWidth: .infinity)
                         .transition(.scale(scale: 0.86).combined(with: .opacity))
                 }
             }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity)
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
         private func metricValue(title: String, value: String, systemImage: String, color: Color) -> some View {
-            HStack(spacing: 7) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Image(systemName: systemImage)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(color)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text(value)
-                        .font(.headline.monospacedDigit())
+                        .font(.subheadline.monospacedDigit().weight(.semibold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
@@ -378,12 +371,12 @@ struct DownloadsView: View {
         }
 
         private func countMetric(_ title: String, count: Int, color: Color) -> some View {
-            VStack(spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(count)")
-                    .font(.title3.monospacedDigit().weight(.semibold))
+                    .font(.subheadline.monospacedDigit().weight(.semibold))
                     .foregroundStyle(color)
                 Text(title)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
