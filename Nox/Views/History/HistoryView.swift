@@ -116,17 +116,14 @@ struct HistoryView: View {
     var list: some View {
         ScrollViewReader { proxy in
             List(selection: listSelection) {
-                Color.clear
-                    .frame(height: 1)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .id("history-top")
                 rows
             }
             .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
             .onChange(of: scrollToTopToken) { _, _ in
                 withAnimation(.easeInOut(duration: 0.3)) {
-                    proxy.scrollTo("history-top", anchor: .top)
+                    if let firstID = appState.history.first?.id {
+                        proxy.scrollTo(firstID, anchor: .top)
+                    }
                 }
             }
         }
@@ -184,6 +181,7 @@ struct HistoryView: View {
                         )
                     }
                 }
+                .id(item.id)
                 .tag(item.id)
                 .contextMenu {
                     // 标题被截断成一行，长按时先把完整标题展示出来；

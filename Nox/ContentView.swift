@@ -30,7 +30,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $tabSelection.selection) {
+        TabView(selection: tabSelection.binding) {
             VideoBrowserView(
                 appState: appState,
                 downloads: downloadManager,
@@ -226,6 +226,20 @@ final class TabSelectionState: ObservableObject {
             // 重复点击当前标签才会走到这里。
             handleTabReselect(selection)
         }
+    }
+
+    /// 重选事件只交给双击检测，不将相同值写回 TabView，避免系统单击回顶。
+    var binding: Binding<Int> {
+        Binding(
+            get: { self.selection },
+            set: { value in
+                if value == self.selection {
+                    self.handleTabReselect(value)
+                } else {
+                    self.selection = value
+                }
+            }
+        )
     }
 
     /// 双击「浏览」的次数；浏览页观察它并滚回顶部。
