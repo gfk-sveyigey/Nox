@@ -273,8 +273,8 @@ struct DownloadsView: View {
 
         private var statusGroups: [[StatusMetric]] {
             let metrics = statusMetrics
-            guard metrics.count >= 3 else { return metrics.isEmpty ? [] : [metrics] }
-            let splitIndex = min(metrics.count, 3)
+            guard metrics.count > 3 else { return metrics.isEmpty ? [] : [metrics] }
+            let splitIndex = 3
             return [Array(metrics[..<splitIndex]), Array(metrics[splitIndex...])]
         }
 
