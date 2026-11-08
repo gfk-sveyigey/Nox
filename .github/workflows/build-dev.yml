@@ -73,7 +73,7 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/DerivedData \
-            MARKETING_VERSION='${{ steps.version.outputs.raw }}' \
+            MARKETING_VERSION='${{ steps.version.outputs.raw }}(Build dev ${{ github.run_number }})' \
             CURRENT_PROJECT_VERSION='${{ github.run_number }}' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
