@@ -237,20 +237,20 @@ struct DownloadsView: View {
                 } label: {
                     Label(L("删除"), systemImage: "trash")
                 }
-                Button { manager.cancel(record) } label: {
-                    Label(L("取消下载"), systemImage: "xmark.circle")
+                if record.status != .finished {
+                    Button {
+                        if record.status == .queued || record.status == .downloading {
+                            manager.pause(record)
+                        } else { manager.retry(record) }
+                    } label: {
+                        Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
+                    }
+                    .tint(.blue)
+                    Button { manager.cancel(record) } label: {
+                        Label(L("取消下载"), systemImage: "xmark.circle")
+                    }
+                    .tint(.orange)
                 }
-                .tint(.orange)
-                .disabled(record.status == .finished)
-                Button {
-                    if record.status == .queued || record.status == .downloading {
-                        manager.pause(record)
-                    } else { manager.retry(record) }
-                } label: {
-                    Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续下载"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
-                }
-                .tint(.blue)
-                .disabled(record.status == .finished)
             }
         }
     }
@@ -294,7 +294,7 @@ struct DownloadsView: View {
         private var statusGroups: [[StatusMetric]] {
             let metrics = statusMetrics
             guard metrics.count > 3 else { return metrics.isEmpty ? [] : [metrics] }
-            let splitIndex = 3
+            let splitIndex = (metrics.count + 1) / 2
             return [Array(metrics[..<splitIndex]), Array(metrics[splitIndex...])]
         }
 
@@ -308,6 +308,7 @@ struct DownloadsView: View {
             let bytesPerSecond = records
                 .filter { $0.status == .downloading }
                 .reduce(0.0) { $0 + (transfers[$1.id]?.bytesPerSecond ?? 0) }
+            guard bytesPerSecond > 0 else { return "0" }
             return TransferStats(bytesPerSecond: bytesPerSecond).speedText
         }
 
@@ -442,7 +443,7 @@ struct DownloadsView: View {
 
     /// 下载页右上角的多功能菜单。
     ///
-    /// 非多选态提供「全部继续 / 全部暂停 / 清空」这类全局操作；
+    /// 非多选态提供全局继续 / 暂停 / 取消操作；
     /// 多选态整合针对选中项的批量操作。
     /// 菜单本身始终可用，即使没有选中项也会展开，只是不适用的操作置灰。
     @ViewBuilder
@@ -453,7 +454,7 @@ struct DownloadsView: View {
                     manager.retryAll(ids: Set(retryableRecords.map(\.id)))
                     finishSelection()
                 } label: {
-                    Label(retryActionTitle, systemImage: "arrow.clockwise")
+                    Label(L("继续"), systemImage: "arrow.clockwise")
                 }
                 .disabled(retryableRecords.isEmpty)
 
@@ -464,6 +465,14 @@ struct DownloadsView: View {
                     Label(L("暂停"), systemImage: "pause.circle")
                 }
                 .disabled(pausableRecords.isEmpty)
+
+                Button {
+                    manager.discardAll(ids: Set(selectedRecords.filter { $0.status != .finished }.map(\.id)))
+                    finishSelection()
+                } label: {
+                    Label(L("取消下载"), systemImage: "xmark.circle")
+                }
+                .disabled(selectedRecords.allSatisfy { $0.status == .finished })
 
                 Divider()
 
@@ -477,27 +486,26 @@ struct DownloadsView: View {
                 Button {
                     manager.retryAll(ids: Set(globalRetryableRecords.map(\.id)))
                 } label: {
-                    Label(L("全部继续"), systemImage: "arrow.clockwise")
+                    Label(L("继续"), systemImage: "arrow.clockwise")
                 }
                 .disabled(globalRetryableRecords.isEmpty)
 
                 Button {
                     manager.cancelAll(ids: Set(globalPausableRecords.map(\.id)))
                 } label: {
-                    Label(L("全部暂停"), systemImage: "pause.circle")
+                    Label(L("暂停"), systemImage: "pause.circle")
                 }
                 .disabled(globalPausableRecords.isEmpty)
+
+                Button {
+                    manager.discardAll(ids: Set(appState.downloads.filter { $0.status != .finished }.map(\.id)))
+                } label: {
+                    Label(L("取消下载"), systemImage: "xmark.circle")
+                }
+                .disabled(appState.downloads.allSatisfy { $0.status == .finished })
             }
 
             Divider()
-            Button {
-                let targets = editMode.isEditing ? selectedRecords : appState.downloads
-                manager.discardAll(ids: Set(targets.map(\.id)))
-                finishSelection()
-            } label: {
-                Label(L("取消下载"), systemImage: "xmark.circle")
-            }
-            .disabled((editMode.isEditing ? selectedRecords : appState.downloads).allSatisfy { $0.status == .finished })
             Button(role: .destructive) {
                 if !editMode.isEditing { selection = Set(appState.downloads.map(\.id)) }
                 showingDeleteConfirmation = true
@@ -548,13 +556,6 @@ struct DownloadsView: View {
         }
     }
 
-    /// 全部选中项都已有下载进度时才写「继续下载」，否则写「重试」。
-    var retryActionTitle: String {
-        let records = retryableRecords
-        guard !records.isEmpty else { return L("重试") }
-        return records.allSatisfy { ($0.receivedBytes ?? 0) > 0 } ? L("继续下载") : L("重试")
-    }
-
     var allSelected: Bool {
         !appState.downloads.isEmpty && selection.count == appState.downloads.count
     }
@@ -580,10 +581,10 @@ struct DownloadsView: View {
                 }
             } label: {
                 Text(allSelected ? L("取消全选") : L("全选"))
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.primary)
-                    .padding(.horizontal, 20)
-                    .frame(height: 52)
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -612,7 +613,7 @@ struct DownloadsView: View {
         Image(systemName: systemImage)
             .font(.system(size: 18, weight: .semibold))
             .foregroundStyle(color)
-            .frame(width: 52, height: 52)
+            .frame(width: 44, height: 44)
             .contentShape(Circle())
     }
 

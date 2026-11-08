@@ -49,6 +49,7 @@ struct DownloadRow: View {
             HStack(spacing: 10) {
                 Image(systemName: iconName)
                     .foregroundStyle(iconColor)
+                    .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 3) {
                     // 显示实际文件名（而非标题）—— 这才是「文件」App 里看到的名字。
@@ -98,7 +99,7 @@ struct DownloadRow: View {
                     onPause(record)
                 } else { onRetry(record) }
             } label: {
-                Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续下载"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
+                Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
             }
             .disabled(record.status == .finished)
             Button { onCancel(record) } label: {
@@ -119,11 +120,6 @@ struct DownloadRow: View {
         }
     }
 
-    /// 暂停过就写「继续下载」，否则写「重试」
-    var retryTitle: String {
-        (record.receivedBytes ?? 0) > 0 ? L("继续下载") : L("重试")
-    }
-
     @ViewBuilder
     var statusLine: some View {
         if record.status == .finished, isMissingFile {
@@ -138,7 +134,7 @@ struct DownloadRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if record.status == .downloading {
-            Text(stats?.displayText ?? TransferStats().displayText)
+            Text(stats.map { "\($0.sizeText) · \(speedText($0.bytesPerSecond))" } ?? TransferStats().displayText)
                 .font(.footnote)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -148,8 +144,14 @@ struct DownloadRow: View {
                 .font(.footnote)
                 .foregroundStyle(.red)
                 .lineLimit(2)
+        } else if record.status == .finished {
+            Text(TransferStats.formattedSize(record.receivedBytes ?? record.totalBytes ?? 0))
+                .font(.footnote)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         } else if record.status == .cancelled, let received = record.receivedBytes, received > 0 {
-            Text(String(format: L("已暂停 · 已下载 %@，重试可继续"), TransferStats.formattedSize(received)))
+            Text(String(format: L("已暂停 · %@，继续"), TransferStats.formattedSize(received)))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -159,6 +161,11 @@ struct DownloadRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
+    }
+
+    private func speedText(_ bytesPerSecond: Double) -> String {
+        guard bytesPerSecond > 0 else { return "0" }
+        return TransferStats(bytesPerSecond: bytesPerSecond).speedText
     }
 
     var displayProgress: Double {
@@ -197,12 +204,13 @@ struct DownloadRow: View {
     var iconName: String {
         switch record.status {
         case .finished: return "checkmark.circle.fill"
-        case .failed: return "exclamationmark.circle.fill"
-        case .cancelled: return "arrow.clockwise.circle"
-        case .queued: return "clock"
-        case .downloading: return "arrow.down.circle"
+        case .failed: return "xmark.octagon.fill"
+        case .cancelled: return (record.receivedBytes ?? 0) > 0 ? "pause.circle.fill" : "xmark.circle.fill"
+        case .queued: return "clock.badge"
+        case .downloading: return "arrow.down.circle.fill"
         }
     }
+
 }
 
 /// 从当前最上层视图控制器弹出系统分享面板。

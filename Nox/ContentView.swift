@@ -215,17 +215,7 @@ final class TabSelectionState: ObservableObject {
     static let doubleTapInterval: TimeInterval = 0.45
 
     @Published var selection: Int = 0 {
-        didSet {
-            guard oldValue == selection else {
-                // 正常的标签切换不是「再次点击」，并清掉切换前残留的候选，
-                // 避免换到别的标签再回来后被拼成一次双击。
-                resetDoubleTap()
-                return
-            }
-
-            // 重复点击当前标签才会走到这里。
-            handleTabReselect(selection)
-        }
+        didSet { resetDoubleTap() }
     }
 
     /// 重选事件只交给双击检测，不将相同值写回 TabView，避免系统单击回顶。
