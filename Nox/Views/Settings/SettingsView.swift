@@ -28,7 +28,7 @@ struct SettingsView: View {
                 }
                 .onChange(of: scrollToTopToken) { _, _ in
                     withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo("settings-top", anchor: .top)
+                        proxy.scrollTo("settings-first-row", anchor: .top)
                     }
                 }
             }
@@ -51,6 +51,7 @@ struct SettingsView: View {
             ) {
                 NotificationSettingsView(manager: manager)
             }
+            .id("settings-first-row")
 
             settingsLink(
                 L("下载设置"),
@@ -79,8 +80,6 @@ struct SettingsView: View {
                 StorageSettingsView(manager: manager)
             }
         }
-        .id("settings-top")
-
         Section {
             NavigationLink {
                 SiteSettingsView()
