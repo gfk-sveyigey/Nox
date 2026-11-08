@@ -70,8 +70,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 实际连接总数 ≈ 本值 × 单任务并发。
     ///
     /// 正在探测、下载、合并分片的都算占一个槽位；完成 / 失败 / 暂停 / 删除
-    /// 会立即释放。调小上限不会打断正在跑的任务，只会暂时停止补位，
-    /// 等 active 数自然降到新上限以下后再继续取队列。
+    /// 会立即释放。调小上限时，超出新上限的较晚启动任务会暂停并回到等待队列。
     var maxConcurrentTasks: Int {
         let configured = store.maxConcurrentDownloads
 

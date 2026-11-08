@@ -197,8 +197,31 @@ extension DownloadManager {
             return
         }
 
-        // 5. 按 FIFO 补满空闲槽位。调小上限时不打断正在跑的任务，
-        //    只让 active 数自然降到新上限以下后再继续取队列。
+        // 调低并发上限时，把超额任务停回等待队列。
+        if activeIDs.count > maxConcurrentTasks {
+            let excessCount = activeIDs.count - maxConcurrentTasks
+            let excess = activeIDs
+                .compactMap { records[$0] }
+                .sorted { lhs, rhs in lhs.createdAt > rhs.createdAt }
+                .prefix(excessCount)
+
+            for record in excess {
+                invalidateRun(for: record.id)
+                resetScheduling(for: record.id)
+                removeFromQueue(record.id)
+                releaseSlotWithoutPump(record.id)
+                clearTransferStats(for: record.id)
+
+                var waiting = record
+                waiting.status = .queued
+                waiting.errorMessage = nil
+                store.updateDownload(waiting)
+                records[waiting.id] = waiting
+                pendingQueue.append(waiting.id)
+            }
+        }
+
+        // 5. 按 FIFO 补满空闲槽位；上限调低时超额任务已重排至等待队列。
         while activeIDs.count < maxConcurrentTasks, !pendingQueue.isEmpty {
             let id = pendingQueue.removeFirst()
 

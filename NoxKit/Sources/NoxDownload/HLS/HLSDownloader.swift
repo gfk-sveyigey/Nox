@@ -122,7 +122,6 @@ final class HLSDownloader {
         // 2) 续传判据：签名一致才保留旧分片。
         //    同一部片子换了集数或清晰度，分片序号会对不上，硬拼出来的是损坏文件。
         let signature = Self.signature(for: playlist, playlistURL: playlistURL)
-        let responseSignature = Self.responseSignature(for: playlist, playlistURL: playlistURL)
         let signatureURL = partsDirectory.appendingPathComponent(Self.signatureFileName)
 
         let previousSignature = try? String(contentsOf: signatureURL, encoding: .utf8)
@@ -177,14 +176,14 @@ final class HLSDownloader {
                     recordID: recordID,
                     segmentLoader: segmentLoader,
                     segmentIndex: -1,
-                    manifestSignature: responseSignature
+                    manifestSignature: signature
                 )
             } else {
                 try? FileManager.default.removeItem(
                     at: DownloadStorage.hlsResponseURL(
                         recordID: recordID,
                         segmentIndex: -1,
-                        manifestSignature: responseSignature
+                        manifestSignature: signature
                     )
                 )
             }
@@ -208,7 +207,7 @@ final class HLSDownloader {
                     at: DownloadStorage.hlsResponseURL(
                         recordID: recordID,
                         segmentIndex: index,
-                        manifestSignature: responseSignature
+                        manifestSignature: signature
                     )
                 )
             } else {
@@ -261,7 +260,7 @@ final class HLSDownloader {
                             recordID: recordID,
                             segmentLoader: segmentLoader,
                             segmentIndex: index,
-                            manifestSignature: responseSignature
+                            manifestSignature: signature
                         )
                     }
                 }
@@ -331,20 +330,8 @@ final class HLSDownloader {
 
     // MARK: - 续传辅助
 
-    /// 保留原有签名格式，确保升级后已落盘分片与合并检查点仍可续用。
+    /// 完整清单签名；清单变化时旧分片与合并检查点不再复用。
     private static func signature(for playlist: HLSPlaylist, playlistURL: URL) -> String {
-        [
-            playlistURL.absoluteString,
-            String(playlist.segments.count),
-            playlist.keyURL?.absoluteString ?? "-",
-            playlist.initSegmentURL?.absoluteString ?? "-",
-            playlist.segments.first?.url.absoluteString ?? "-",
-            playlist.segments.last?.url.absoluteString ?? "-"
-        ].joined(separator: "|")
-    }
-
-    /// 将完整清单散列到后台响应文件名，避免旧 run 的迟到回调覆盖新清单。
-    private static func responseSignature(for playlist: HLSPlaylist, playlistURL: URL) -> String {
         let value = ([
             playlistURL.absoluteString,
             playlist.keyURL?.absoluteString ?? "-",
