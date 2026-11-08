@@ -26,6 +26,7 @@ public protocol DownloadStateStore: AnyObject {
     var downloadCompletionNotifications: Bool { get set }
     var showsTaskNames: Bool { get set }
     var customLiveActivityEnabled: Bool { get set }
+    var customLiveActivityDuringContinuedProcessing: Bool { get set }
     var keepAliveLifetime: KeepAliveLifetime { get set }
     var pipCoexistenceFallback: PiPCoexistenceFallback { get set }
     var pipWindowHeight: Double { get set }

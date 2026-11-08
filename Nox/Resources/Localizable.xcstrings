@@ -3612,6 +3612,86 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrez Nox pour reprendre les téléchargements inachevés." } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "Nox를 열어 완료되지 않은 다운로드를 계속하세요." } }
       }
+    },
+    "持续处理时同时显示自定义实时活动" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Während fortgesetzter Verarbeitung zusätzlich eigene Live Activity anzeigen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Also show the custom Live Activity during continued processing" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher aussi l’activité en direct personnalisée pendant le traitement continu" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "연속 처리 중 사용자 지정 실시간 활동도 표시" } }
+      }
+    },
+    "任务总览" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabenübersicht" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Task overview" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aperçu des tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 개요" } }
+      }
+    },
+    "总速度" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesamtgeschwindigkeit" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total speed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vitesse totale" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "총 속도" } }
+      }
+    },
+    "总进度" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesamtfortschritt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Overall progress" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Progression totale" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 진행률" } }
+      }
+    },
+    "进行中" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktiv" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Active" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En cours" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "진행 중" } }
+      }
+    },
+    "等待中" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wartend" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Waiting" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En attente" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "대기 중" } }
+      }
+    },
+    "已暂停" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Pausiert" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Paused" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En pause" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일시 정지" } }
+      }
+    },
+    "已完成" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abgeschlossen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Terminé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료" } }
+      }
+    },
+    "失败" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fehlgeschlagen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실패" } }
+      }
+    },
+    "已取消" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abgebrochen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancelled" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annulé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "취소됨" } }
+      }
     }
   },
   "version" : "1.0"

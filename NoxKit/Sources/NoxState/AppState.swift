@@ -76,6 +76,8 @@ public final class AppState: ObservableObject {
     @Published public var showsTaskNames = true
     /// 是否使用 Nox 自定义的灵动岛 / 实时活动。
     @Published public var customLiveActivityEnabled = true
+    /// 持续处理时是否额外显示 Nox 自定义实时活动；仍受上方总开关控制。
+    @Published public var customLiveActivityDuringContinuedProcessing = false
     /// 画中画共存保护不可用时怎么办（继续用画中画 / 改用静音音频 / 停止保活）。
     @Published public var pipCoexistenceFallback: PiPCoexistenceFallback = .keepAlive
 
@@ -127,6 +129,7 @@ public final class AppState: ObservableObject {
     private let downloadCompletionNotificationsKey = "Nox.downloadCompletionNotifications"
     private let showsTaskNamesKey = "Nox.showsTaskNames"
     private let customLiveActivityEnabledKey = "Nox.customLiveActivityEnabled"
+    private let customLiveActivityDuringContinuedProcessingKey = "Nox.customLiveActivityDuringContinuedProcessing"
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
     private let pipWindowHeightKey = "Nox.pipWindowHeight"
@@ -324,6 +327,7 @@ public final class AppState: ObservableObject {
         defaults.set(downloadCompletionNotifications, forKey: downloadCompletionNotificationsKey)
         defaults.set(showsTaskNames, forKey: showsTaskNamesKey)
         defaults.set(customLiveActivityEnabled, forKey: customLiveActivityEnabledKey)
+        defaults.set(customLiveActivityDuringContinuedProcessing, forKey: customLiveActivityDuringContinuedProcessingKey)
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
@@ -430,6 +434,7 @@ public final class AppState: ObservableObject {
         downloadCompletionNotifications = defaults.bool(forKey: downloadCompletionNotificationsKey)
         showsTaskNames = defaults.object(forKey: showsTaskNamesKey) as? Bool ?? true
         customLiveActivityEnabled = defaults.object(forKey: customLiveActivityEnabledKey) as? Bool ?? true
+        customLiveActivityDuringContinuedProcessing = defaults.bool(forKey: customLiveActivityDuringContinuedProcessingKey)
 
         pipCoexistenceFallback = PiPCoexistenceFallback(
             rawValue: defaults.string(forKey: pipCoexistenceFallbackKey) ?? ""

@@ -368,6 +368,12 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         store.persist()
     }
 
+    /// 设置持续处理时是否允许额外显示自定义实时活动。
+    public func setCustomLiveActivityDuringContinuedProcessing(_ enabled: Bool) {
+        store.customLiveActivityDuringContinuedProcessing = enabled
+        store.persist()
+    }
+
     /// 设置页选择「画中画共存保护不可用」时的兜底方案。
     public func setPiPCoexistenceFallback(_ fallback: PiPCoexistenceFallback) {
         store.pipCoexistenceFallback = fallback

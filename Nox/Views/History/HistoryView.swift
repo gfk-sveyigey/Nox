@@ -18,6 +18,7 @@ struct HistoryView: View {
     /// 非多选态点按时的短暂高亮：让用户看到「点到了」，但不会像多选一样留下选中。
     @State var tapFlashSelection = Set<UUID>()
     @State var tapFlashToken = UUID()
+    let scrollToTopToken: Int
 
     let openInBrowser: (URL) -> Void
 
@@ -113,8 +114,22 @@ struct HistoryView: View {
     }
 
     var list: some View {
-        List(selection: listSelection) { rows }
+        ScrollViewReader { proxy in
+            List(selection: listSelection) {
+                Color.clear
+                    .frame(height: 1)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .id("history-top")
+                rows
+            }
             .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
+            .onChange(of: scrollToTopToken) { _, _ in
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    proxy.scrollTo("history-top", anchor: .top)
+                }
+            }
+        }
     }
 
     /// 非多选态把行选中转成一次短暂高亮，随后自动清空；

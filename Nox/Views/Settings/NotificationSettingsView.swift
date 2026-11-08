@@ -40,6 +40,14 @@ struct NotificationSettingsView: View {
                     Text(L("自定义灵动岛与实时活动"))
                 }
 
+                Toggle(isOn: Binding(
+                    get: { appState.customLiveActivityDuringContinuedProcessing },
+                    set: { manager.setCustomLiveActivityDuringContinuedProcessing($0) }
+                )) {
+                    Text(L("持续处理时同时显示自定义实时活动"))
+                }
+                .disabled(!appState.customLiveActivityEnabled)
+
                 SettingsPickerRow(
                     title: L("显示内容"),
                     selection: Binding(

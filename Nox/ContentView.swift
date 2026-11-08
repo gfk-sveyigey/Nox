@@ -40,18 +40,27 @@ struct ContentView: View {
                 .tabItem { Label(L("浏览"), systemImage: "safari") }
                 .tag(0)
 
-            DownloadsView(appState: appState, manager: downloadManager)
+            DownloadsView(
+                appState: appState,
+                manager: downloadManager,
+                scrollToTopToken: tabSelection.downloadsDoubleTapCount
+            )
                 .tabItem { Label(L("下载"), systemImage: "arrow.down.circle") }
                 .tag(1)
 
-            HistoryView { url in
+            HistoryView(
+                scrollToTopToken: tabSelection.historyDoubleTapCount
+            ) { url in
                 browserURL = url
                 tabSelection.selection = 0
             }
-            .tabItem { Label(L("历史"), systemImage: "clock") }
-            .tag(2)
+                .tabItem { Label(L("历史"), systemImage: "clock") }
+                .tag(2)
 
-            SettingsView(manager: downloadManager)
+            SettingsView(
+                manager: downloadManager,
+                scrollToTopToken: tabSelection.settingsDoubleTapCount
+            )
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(3)
         }
@@ -200,11 +209,7 @@ struct ContentView: View {
 
 }
 
-/// `TabView` 的 selection 包装。
-///
-/// SwiftUI 在用户再次点击**当前已选中**的标签时，会把同一个值重新写回
-/// `selection` 绑定。设置页的「点当前标签回到顶部」就是系统基于这个事件做的；
-/// 浏览页是 `WKWebView`，不参与 SwiftUI 的滚动视图管理，所以需要自己处理。
+/// `TabView` 的 selection 包装，用重复写入的选中项识别双击当前标签。
 final class TabSelectionState: ObservableObject {
     /// 两下之间允许的最长间隔。
     static let doubleTapInterval: TimeInterval = 0.45
@@ -219,22 +224,30 @@ final class TabSelectionState: ObservableObject {
             }
 
             // 重复点击当前标签才会走到这里。
-            guard selection == 0 else { return }
-            handleBrowseReselect()
+            handleTabReselect(selection)
         }
     }
 
     /// 双击「浏览」的次数；浏览页观察它并滚回顶部。
     @Published private(set) var browseDoubleTapCount = 0
+    @Published private(set) var downloadsDoubleTapCount = 0
+    @Published private(set) var historyDoubleTapCount = 0
+    @Published private(set) var settingsDoubleTapCount = 0
 
     private var lastReselectAt = -Double.infinity
 
-    private func handleBrowseReselect() {
+    private func handleTabReselect(_ tab: Int) {
         let now = CACurrentMediaTime()
 
         if now - lastReselectAt <= Self.doubleTapInterval {
             resetDoubleTap()
-            browseDoubleTapCount += 1
+            switch tab {
+            case 0: browseDoubleTapCount += 1
+            case 1: downloadsDoubleTapCount += 1
+            case 2: historyDoubleTapCount += 1
+            case 3: settingsDoubleTapCount += 1
+            default: break
+            }
         } else {
             lastReselectAt = now
         }
