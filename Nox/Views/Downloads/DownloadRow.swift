@@ -49,6 +49,7 @@ struct DownloadRow: View {
             HStack(spacing: 10) {
                 Image(systemName: iconName)
                     .foregroundStyle(iconColor)
+                    .font(.system(size: 22))
                     .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -145,7 +146,7 @@ struct DownloadRow: View {
         } else if record.status == .failed {
             Text(String(format: L("失败 · %@"), shortFailureReason))
                 .font(.subheadline)
-                .foregroundStyle(.red)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if record.status == .finished {
             Text(String(format: L("已完成 · %@"), TransferStats.formattedSize(record.receivedBytes ?? record.totalBytes ?? 0)))
@@ -155,7 +156,10 @@ struct DownloadRow: View {
                 .lineLimit(1)
         } else if record.status == .paused {
             let received = record.receivedBytes ?? 0
-            let size = TransferStats(bytesReceived: received, totalBytes: record.totalBytes ?? 0).sizeText
+            let total = record.totalBytes ?? 0
+            let size = total > 0
+                ? TransferStats(bytesReceived: received, totalBytes: total).sizeText
+                : TransferStats.formattedSize(received)
             Text(String(format: L("已暂停 · %@"), size))
                 .font(.subheadline)
                 .monospacedDigit()
@@ -179,7 +183,6 @@ struct DownloadRow: View {
     }
 
     private func speedText(_ bytesPerSecond: Double) -> String {
-        guard bytesPerSecond > 0 else { return "0" }
         return TransferStats(bytesPerSecond: bytesPerSecond).speedText
     }
 
@@ -219,10 +222,10 @@ struct DownloadRow: View {
     var iconName: String {
         switch record.status {
         case .finished: return "checkmark.circle.fill"
-        case .failed: return "xmark.octagon.fill"
+        case .failed: return "exclamationmark.circle.fill"
         case .paused: return "pause.circle.fill"
-        case .notStarted, .legacyCancelled: return "circle.dashed"
-        case .queued: return "clock.badge"
+        case .notStarted, .legacyCancelled: return "circle"
+        case .queued: return "clock.fill"
         case .downloading: return "arrow.down.circle.fill"
         }
     }

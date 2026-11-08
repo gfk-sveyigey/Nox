@@ -231,7 +231,17 @@ struct DownloadsView: View {
             // 左侧红色减号按钮，与悬浮删除按钮重复。
             // swipeActions 在编辑态自动失效，不影响多选。
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                    manager.deleteFile(for: record)
+                    finishSelection()
+                } label: {
+                    Label(L("删除"), systemImage: "trash")
+                }
                 if record.status != .finished {
+                    Button { manager.cancel(record) } label: {
+                        Label(L("取消"), systemImage: "xmark.circle")
+                    }
+                    .tint(.orange)
                     Button {
                         if record.status == .queued || record.status == .downloading {
                             manager.pause(record)
@@ -240,16 +250,6 @@ struct DownloadsView: View {
                         Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
                     }
                     .tint(.blue)
-                    Button { manager.cancel(record) } label: {
-                        Label(L("取消"), systemImage: "xmark.circle")
-                    }
-                    .tint(.orange)
-                }
-                Button(role: .destructive) {
-                    manager.deleteFile(for: record)
-                    finishSelection()
-                } label: {
-                    Label(L("删除"), systemImage: "trash")
                 }
             }
         }

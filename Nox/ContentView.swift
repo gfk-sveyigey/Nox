@@ -57,10 +57,7 @@ struct ContentView: View {
                 .tabItem { Label(L("历史"), systemImage: "clock") }
                 .tag(2)
 
-            SettingsView(
-                manager: downloadManager,
-                scrollToTopToken: tabSelection.settingsDoubleTapCount
-            )
+            SettingsView(manager: downloadManager)
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(3)
         }
@@ -236,7 +233,6 @@ final class TabSelectionState: ObservableObject {
     @Published private(set) var browseDoubleTapCount = 0
     @Published private(set) var downloadsDoubleTapCount = 0
     @Published private(set) var historyDoubleTapCount = 0
-    @Published private(set) var settingsDoubleTapCount = 0
 
     private var lastReselectAt = -Double.infinity
 
@@ -249,7 +245,6 @@ final class TabSelectionState: ObservableObject {
             case 0: browseDoubleTapCount += 1
             case 1: downloadsDoubleTapCount += 1
             case 2: historyDoubleTapCount += 1
-            case 3: settingsDoubleTapCount += 1
             default: break
             }
         } else {

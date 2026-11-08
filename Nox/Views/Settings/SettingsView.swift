@@ -13,26 +13,16 @@ struct SettingsView: View {
     @ObservedObject var localization = LocalizationManager.shared
     @ObservedObject var manager: DownloadManager
     @ObservedObject var registry = VideoSiteParserRegistry.shared
-    let scrollToTopToken: Int
-
-    init(manager: DownloadManager, scrollToTopToken: Int = 0) {
+    init(manager: DownloadManager) {
         _manager = ObservedObject(wrappedValue: manager)
-        self.scrollToTopToken = scrollToTopToken
     }
 
     var body: some View {
         NavigationStack {
-            ScrollViewReader { proxy in
-                Form {
-                    settingsSections
-                }
-                .contentMargins(.top, 20, for: .scrollContent)
-                .onChange(of: scrollToTopToken) { _, _ in
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo("settings-first-row", anchor: .top)
-                    }
-                }
+            Form {
+                settingsSections
             }
+            .contentMargins(.top, 20, for: .scrollContent)
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
         }
