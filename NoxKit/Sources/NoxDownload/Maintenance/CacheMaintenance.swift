@@ -131,6 +131,7 @@ extension DownloadManager {
             )
             self.backgroundTransitionGrace = nil
         }
+        refreshMissingFiles()
         resetSpeedSamples()
         keepAlive.didEnterForeground()
         resumeAfterForegroundOnly()

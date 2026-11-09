@@ -179,7 +179,11 @@ struct DownloadRow: View {
         let prefixes = [localizedPrefix, "Download failed: ", "Download fehlgeschlagen: ", "Échec du téléchargement : ", "다운로드 실패: "]
         let prefix = prefixes.first { !$0.isEmpty && message.hasPrefix($0) }
         let reason = prefix.map { String(message.dropFirst($0.count)) } ?? message
-        return reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let withoutStatus = reason
+            .replacingOccurrences(of: #"[（(]\s*HTTP\s*[:：]?\s*\d{3}\s*[）)]"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)\bHTTP\s*[:：]?\s*\d{3}\b"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ":：·-")))
+        return withoutStatus.isEmpty ? L("未知错误") : withoutStatus
     }
 
     private func speedText(_ bytesPerSecond: Double) -> String {
