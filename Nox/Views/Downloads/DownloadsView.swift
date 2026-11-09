@@ -104,7 +104,10 @@ struct DownloadsView: View {
             .onChange(of: visibleRecords.map(\.id)) { _, ids in
                 selection.formIntersection(Set(ids))
             }
-            .onAppear { isVisible = true }
+            .onAppear {
+                isVisible = true
+                manager.refreshMissingFiles()
+            }
             .onDisappear {
                 isVisible = false
                 tapFlashSelection.removeAll()
@@ -542,12 +545,12 @@ struct DownloadsView: View {
                 }
             }
 
-            if menuStatuses.contains(.finished) {
+            if editMode.isEditing && menuStatuses.contains(.finished) {
                 Section {
                     Button {
                         shareSelected()
                     } label: {
-                        Label(L(editMode.isEditing ? "分享" : "全部分享"), systemImage: "square.and.arrow.up")
+                        Label(L("分享"), systemImage: "square.and.arrow.up")
                     }
                     .disabled(shareableRecords.isEmpty)
                 }

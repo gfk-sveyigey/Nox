@@ -125,9 +125,9 @@ struct DownloadRow: View {
     var statusLine: some View {
         if record.status == .finished, isMissingFile {
             // 文件被系统清理或用户删除后，条目还在：明确提示缺失
-            Label(L("文件缺失"), systemImage: "exclamationmark.triangle")
-                .font(.footnote)
-                .foregroundStyle(.red)
+            Text(L("文件缺失"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if record.status == .queued {
             let size = TransferStats(bytesReceived: record.receivedBytes ?? 0, totalBytes: record.totalBytes ?? 0).sizeText

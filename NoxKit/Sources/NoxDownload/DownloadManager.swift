@@ -263,6 +263,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
+                self?.refreshMissingFiles()
                 self?.keepAlive.didEnterForeground()
                 self?.reconcileTaskQueue(reason: "active")
             }
