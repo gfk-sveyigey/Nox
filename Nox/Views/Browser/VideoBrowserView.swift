@@ -44,6 +44,7 @@ struct VideoBrowserView: View {
     @State var isProgressIndeterminate = false
     /// 是否显示原生「首页」（尚未打开任何页面，或用户点了主页按钮）
     @State var showingHome = true
+    @State private var tabsExpanded = true
     @FocusState var addressFocused: Bool
 
     /// 地址栏展开 / 收起时的高度
@@ -129,33 +130,20 @@ struct VideoBrowserView: View {
             // 浏览页没有导航栏内容。保留空 NavigationStack 的导航栏会在地址栏上方
             // 多出一条空白，直接隐藏；顶部安全区仍由系统保留。
             .toolbar(.hidden, for: .navigationBar)
-            .toolbar(showingHome ? .visible : .hidden, for: .tabBar)
+            .toolbar(.hidden, for: .tabBar)
             .overlay(alignment: .bottomLeading) {
-                if !showingHome {
-                    Menu {
-                        Button { selectTab(0) } label: {
-                            Label(L("浏览"), systemImage: "safari")
-                        }
-                        Button { selectTab(1) } label: {
-                            Label(L("下载"), systemImage: "arrow.down.circle")
-                        }
-                        Button { selectTab(2) } label: {
-                            Label(L("设置"), systemImage: "gearshape")
-                        }
-                    } label: {
-                        Image(systemName: "square.grid.2x2")
-                            .font(.system(size: 20, weight: .medium))
-                            .frame(width: 44, height: 44)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.accentColor)
-                    .browserGlassBar(cornerRadius: nil)
-                    .padding(.leading, 16)
-                    .padding(.bottom, 16)
-                    .accessibilityLabel(L("切换标签页"))
-                    .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .bottomLeading)))
-                }
+                BrowserExpandingTabBar(expanded: showingHome || tabsExpanded, onExpand: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { tabsExpanded = true }
+                }, onSelect: { tab in
+                    if tab == 0 {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { tabsExpanded = false }
+                    } else { selectTab(tab) }
+                })
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            }
+            .onChange(of: showingHome) { _, home in
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { tabsExpanded = home }
             }
             .onAppear {
                 loadRequestedURLIfNeeded()

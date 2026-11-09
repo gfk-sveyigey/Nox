@@ -53,8 +53,22 @@ struct DownloadsView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
                 list
+                if visibleRecords.isEmpty {
+                    ContentUnavailableView {
+                        Label {
+                            Text(L("暂无下载"))
+                                .font(.title2.weight(.regular))
+                        } icon: {
+                            Image(systemName: "arrow.down.circle")
+                        }
+                    } description: {
+                        EmptyView()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .allowsHitTesting(false)
+                }
             }
             // 空列表时也把顶部安全区铺满分组背景，避免导航栏上方露出一条浅色空白。
             .background(pageBackgroundColor.ignoresSafeArea())
@@ -206,21 +220,6 @@ struct DownloadsView: View {
                 .listRowSeparator(.hidden)
                 .id("downloads-overview")
             }
-        }
-
-        if visibleRecords.isEmpty {
-            ContentUnavailableView {
-                Label {
-                    Text(L("暂无下载"))
-                        .font(.title2.weight(.regular))
-                } icon: {
-                    Image(systemName: "arrow.down.circle")
-                }
-            } description: {
-                EmptyView()
-            }
-            .frame(maxWidth: .infinity, minHeight: 280)
-            .listRowBackground(Color.clear)
         }
 
         ForEach(visibleRecords) { record in
