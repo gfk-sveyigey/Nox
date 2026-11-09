@@ -169,10 +169,7 @@ extension VideoBrowserView {
     func prepareDownload(title: String, variant: VideoVariant, referer: URL?, parserName: String? = nil) {
         var metadata = variant.metadata ?? DownloadMetadata()
         metadata.originalPageURL = metadata.originalPageURL ?? parser.lastLoadURL ?? referer
-        metadata.finalPageURL = metadata.finalPageURL ?? parser.currentPageURL ?? referer
-        metadata.normalizedPageURL = metadata.normalizedPageURL ?? metadata.finalPageURL
         metadata.parserName = metadata.parserName ?? parserName
-        metadata.parsingMethod = metadata.parsingMethod ?? (parserName == nil ? "sniffer" : "script")
         showParseSheet = false
         showSniffer = false
 

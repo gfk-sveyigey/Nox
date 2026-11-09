@@ -220,36 +220,35 @@ struct HistoryView: View {
 
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            NavigationLink {
-                HistorySettingsView()
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Section {
+                    Button(editMode.isEditing ? L("完成") : L("选择")) {
+                        withAnimation { editMode = editMode.isEditing ? .inactive : .active }
+                    }
+                    .disabled(appState.history.isEmpty && !editMode.isEditing)
+                }
+                Section {
+                    NavigationLink { HistorySettingsView() } label: {
+                        Label(L("设置"), systemImage: "gearshape")
+                    }
+                }
+                Section {
+                    if editMode.isEditing {
+                        Button(role: .destructive) { showingDeleteConfirmation = true } label: {
+                            Label(L("删除"), systemImage: "trash")
+                        }
+                        .disabled(selection.isEmpty)
+                    }
+                    Button(role: .destructive) { showingClearConfirmation = true } label: {
+                        Label(L("清空"), systemImage: "trash")
+                    }
+                    .disabled(appState.history.isEmpty)
+                }
             } label: {
-                Text(L("设置"))
+                Image(systemName: "ellipsis")
             }
-        }
-
-        ToolbarItem(placement: .topBarTrailing) {
-            if !appState.history.isEmpty {
-                Button(editMode.isEditing ? L("完成") : L("选择")) {
-                    withAnimation { editMode = editMode.isEditing ? .inactive : .active }
-                }
-            }
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            if editMode.isEditing {
-                // 多选态：红色文字，和列表的删除语义一致。
-                Button(role: .destructive) {
-                    showingDeleteConfirmation = true
-                } label: {
-                    Text(L("删除"))
-                        .foregroundStyle(.red)
-                }
-                .disabled(selection.isEmpty)
-            } else if !appState.history.isEmpty {
-                Button(L("清空")) {
-                    showingClearConfirmation = true
-                }
-            }
+            .accessibilityLabel(L("更多操作"))
         }
     }
 }

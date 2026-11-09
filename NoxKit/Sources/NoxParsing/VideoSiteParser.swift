@@ -13,7 +13,6 @@ public protocol VideoSiteParser: AnyObject {
     /// 稳定标识，用于持久化「站点开关」。
     /// 一经发布就不要改，否则用户已保存的开关状态会失效。
     var identifier: String { get }
-    var sourceNormalizationRules: [SourceURLNormalizationRule] { get }
 
     /// 匹配优先级：数值越大越先命中。通用 Sniffer 使用负数，永远垫底。
     var priority: Int { get }
@@ -45,7 +44,6 @@ public protocol VideoSiteParser: AnyObject {
 }
 
 extension VideoSiteParser {
-    public var sourceNormalizationRules: [SourceURLNormalizationRule] { [] }
     /// 普通站点默认优先级；需要覆盖其它解析器的插件可在 manifest 里声明更高值。
     public var priority: Int { 0 }
 

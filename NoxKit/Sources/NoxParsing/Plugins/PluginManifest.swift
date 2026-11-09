@@ -16,13 +16,6 @@ struct PluginManifest: Decodable {
 
     static let supportedAPIVersion = 1
 
-    struct SourceNormalization: Decodable {
-        let identifier: String
-        let host: String
-        let pattern: String
-        let replacement: String
-    }
-    let sourceNormalization: [SourceNormalization]?
     let apiVersion: Int
     let id: String
     let name: String

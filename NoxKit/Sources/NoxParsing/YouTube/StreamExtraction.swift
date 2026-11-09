@@ -160,28 +160,11 @@ extension YouTubeParser {
             let ext = container.isEmpty ? (isAudio ? "m4a" : "mp4") : container
             let rate = (format["bitrate"] as? Int) ?? 0
 
-            var metadata = DownloadMetadata()
-            let details = player["videoDetails"] as? [String: Any]
-            metadata.videoID = details?["videoId"] as? String
-            metadata.duration = (details?["lengthSeconds"] as? String).flatMap(Double.init)
-            metadata.width = format["width"] as? Int
-            metadata.height = format["height"] as? Int
-            metadata.frameRate = (format["fps"] as? NSNumber)?.doubleValue
-            metadata.bitrate = (format["bitrate"] as? NSNumber)?.int64Value
-            if let codecs = mime.components(separatedBy: "codecs=\"").dropFirst().first?.components(separatedBy: "\"").first {
-                let values = codecs.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                if isAudio { metadata.audioCodec = values.first }
-                else {
-                    metadata.videoCodec = values.first
-                    if values.count > 1 { metadata.audioCodec = values[1] }
-                }
-            }
-
             let candidate: Candidate
             if isAudio {
                 let kbps = max(1, rate / 1000)
                 candidate = Candidate(
-                    variant: VideoVariant(quality: "\(L("音频")) \(kbps)KBPS", format: ext, url: url, metadata: metadata),
+                    variant: VideoVariant(quality: "\(L("音频")) \(kbps)KBPS", format: ext, url: url),
                     isAudio: true,
                     isCombined: false,
                     height: 0,
@@ -192,7 +175,7 @@ extension YouTubeParser {
                 let isCombined = (format["itag"] as? Int).map { combinedItags.contains($0) } ?? false
                 let quality = isCombined ? label : label + " · " + L("仅视频")
                 candidate = Candidate(
-                    variant: VideoVariant(quality: quality, format: ext, url: url, metadata: metadata),
+                    variant: VideoVariant(quality: quality, format: ext, url: url),
                     isAudio: false,
                     isCombined: isCombined,
                     height: (format["height"] as? Int) ?? 0,

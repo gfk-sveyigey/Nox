@@ -566,23 +566,10 @@ final class PluginRuntime: NSObject {
                 return nil
             }
 
-            var metadata = DownloadMetadata()
-            metadata.videoID = (item["videoID"] ?? object["videoID"]) as? String
-            metadata.width = item["width"] as? Int
-            metadata.height = item["height"] as? Int
-            metadata.duration = (item["duration"] ?? object["duration"]) as? Double
-            metadata.videoCodec = item["videoCodec"] as? String
-            metadata.audioCodec = item["audioCodec"] as? String
-            metadata.frameRate = item["frameRate"] as? Double
-            metadata.bitrate = (item["bitrate"] as? NSNumber)?.int64Value
-            metadata.audioLanguage = item["audioLanguage"] as? String
-            metadata.subtitleLanguage = item["subtitleLanguage"] as? String
-
             return VideoVariant(
                 quality: item["quality"] as? String ?? "",
                 format: item["format"] as? String ?? "",
-                url: url,
-                metadata: metadata
+                url: url
             )
         }
 

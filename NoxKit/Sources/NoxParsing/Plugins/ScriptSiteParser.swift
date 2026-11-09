@@ -24,13 +24,6 @@ final class ScriptSiteParser: VideoSiteParser {
         self.origin = origin
     }
 
-    var sourceNormalizationRules: [SourceURLNormalizationRule] {
-        (package.manifest.sourceNormalization ?? []).map {
-            SourceURLNormalizationRule(identifier: $0.identifier, host: $0.host,
-                                       pattern: $0.pattern, replacement: $0.replacement)
-        }
-    }
-
     var identifier: String { package.manifest.id }
     var displayName: String { package.manifest.displayName }
     var priority: Int { package.manifest.effectivePriority }

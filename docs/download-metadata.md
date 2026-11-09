@@ -1,28 +1,16 @@
 # Download metadata
 
-New tasks keep optional `DownloadMetadata` alongside the existing record. Existing
-records decode without it. Missing metadata is shown as unavailable; historical
-completion dates are not guessed. `updateDates` is reserved for explicit task
-source/link updates, not progress, pause or retry operations. Completion time is
-recorded when a task first transitions into `finished`.
+New tasks keep optional `DownloadMetadata` alongside the existing record.
+It stores the source page URL, parser name (without a version), optional request
+headers, explicit task-update dates and completion date. Quality and format
+remain on the download record itself.
 
-Plugin `parse` results may include `videoID` and `duration` at the result level.
-Each variant may supply `videoID`, `width`, `height`, `duration`, `videoCodec`,
-`audioCodec`, `frameRate`, `bitrate`, `audioLanguage`, and `subtitleLanguage`.
-Variant values take precedence. No video identity hash is computed.
+Existing records decode without metadata. Unknown fields from the earlier
+metadata format are ignored and disappear when the task list is saved again.
+Completion dates are not inferred for historical tasks. `updateDates` is reserved
+for explicit task source/link updates, not progress, pause or retry operations.
+Completion time is recorded when a task transitions into `finished`.
 
-A plugin manifest may supply `sourceNormalization`, an array of explicit rules:
-
-```json
-{
-  "identifier": "example-language-path-v1",
-  "host": "example.com",
-  "pattern": "^(https://example\\.com)/(?:en|zh|ja)/video/",
-  "replacement": "$1/video/"
-}
-```
-
-Rules apply only to that exact host, first match wins, and the result must retain
-the host. Without a matching rule, the final page URL is retained unchanged and
-no rule identifier is saved. No universal language-removal regex is applied.
-The original page URL and final page URL are preserved separately.
+No URL normalization, video identity hash, video ID or extended media attributes
+are stored. Task details show unavailable values explicitly, omit absent update
+history, and show failure reasons only for failed tasks.

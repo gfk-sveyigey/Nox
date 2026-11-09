@@ -256,6 +256,12 @@ struct DownloadsView: View {
             // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
             // 左侧红色减号按钮，与悬浮删除按钮重复。
             // swipeActions 在编辑态自动失效，不影响多选。
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button { detailsRecord = record } label: {
+                    Label(L("详细信息"), systemImage: "info.circle")
+                }
+                .tint(.blue)
+            }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button(role: .destructive) {
                     manager.deleteFile(for: record)

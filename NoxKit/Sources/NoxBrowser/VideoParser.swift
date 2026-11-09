@@ -186,17 +186,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         let variants = parsed.map { variant in
             var metadata = variant.metadata ?? DownloadMetadata()
             metadata.originalPageURL = lastLoadURL ?? pageURL
-            metadata.finalPageURL = pageURL
-            metadata.normalizedPageURL = pageURL
             metadata.parserName = siteParser.displayName
-            metadata.parsingMethod = siteParser.identifier == SnifferSite.identifier ? "sniffer" : "script"
-            for rule in siteParser.sourceNormalizationRules {
-                if let normalized = rule.normalize(pageURL) {
-                    metadata.normalizedPageURL = normalized
-                    metadata.normalizationRule = rule.identifier
-                    break
-                }
-            }
             return VideoVariant(id: variant.id, quality: variant.quality, format: variant.format,
                                 url: variant.url, metadata: metadata)
         }

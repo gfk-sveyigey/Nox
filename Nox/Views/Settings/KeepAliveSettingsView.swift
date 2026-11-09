@@ -30,6 +30,16 @@ struct KeepAliveSettingsView: View {
                     }
                 )
 
+                if appState.keepAliveMode == .continuedProcessing {
+                    Toggle(isOn: Binding(
+                        get: { appState.customLiveActivityDuringContinuedProcessing },
+                        set: { manager.setCustomLiveActivityDuringContinuedProcessing($0) }
+                    )) {
+                        Text(L("持续处理时同时显示自定义实时活动"))
+                    }
+                    .disabled(!appState.customLiveActivityEnabled)
+                }
+
                 // 只有画中画才有悬浮窗，其它保活方式下这个滑块没有意义。
                 if appState.keepAliveMode == .pictureInPicture {
                     VStack(alignment: .leading, spacing: 6) {
