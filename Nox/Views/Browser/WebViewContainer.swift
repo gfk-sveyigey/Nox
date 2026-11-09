@@ -9,7 +9,7 @@ import NoxBrowser
 
 // MARK: - WKWebView 容器（含下拉刷新）
 
-struct WebViewContainer: UIViewRepresentable {
+struct WebViewContainer: UIViewControllerRepresentable {
     let webView: WKWebView
     /// 滚动偏移回调：供外层收缩地址栏。
     var onScroll: (CGFloat) -> Void
@@ -18,7 +18,7 @@ struct WebViewContainer: UIViewRepresentable {
         Coordinator(webView: webView, onScroll: onScroll)
     }
 
-    func makeUIView(context: Context) -> WKWebView {
+    func makeUIViewController(context: Context) -> BrowserContentController {
         // 下拉刷新（替代原来的「刷新」按钮）
         if webView.scrollView.refreshControl == nil {
             let control = UIRefreshControl()
@@ -31,11 +31,12 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         context.coordinator.startObservingOffset()
-        return webView
+        return BrowserContentController(webView: webView)
     }
 
-    func updateUIView(_ uiView: WKWebView, context: Context) {
+    func updateUIViewController(_ controller: BrowserContentController, context: Context) {
         context.coordinator.onScroll = onScroll
+        controller.connectContentScrollView()
     }
 
     final class Coordinator {
@@ -66,6 +67,34 @@ struct WebViewContainer: UIViewRepresentable {
 
         @objc func refresh() {
             webView?.reload()
+        }
+    }
+}
+
+/// Register WebKit's nested scroll view with the native tab containers.
+final class BrowserContentController: UIViewController {
+    private let webView: WKWebView
+    init(webView: WKWebView) {
+        self.webView = webView
+        super.init(nibName: nil, bundle: nil)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func loadView() { view = webView }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        connectContentScrollView()
+    }
+    override func didMove(toParent parent: UIViewController?) {
+        super.didMove(toParent: parent)
+        guard parent != nil else { return }
+        DispatchQueue.main.async { [weak self] in self?.connectContentScrollView() }
+    }
+    func connectContentScrollView() {
+        guard #available(iOS 26.0, *) else { return }
+        var controller: UIViewController? = self
+        while let current = controller, !(current is UITabBarController) {
+            current.setContentScrollView(webView.scrollView)
+            controller = current.parent
         }
     }
 }
