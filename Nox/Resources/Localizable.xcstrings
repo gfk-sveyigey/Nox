@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "全部取消" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel All" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle abbrechen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout annuler" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모두 취소" } }
+      }
+    },
+    "全部分享" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share All" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle teilen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout partager" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모두 공유" } }
+      }
+    },
     "全部" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "All" } },

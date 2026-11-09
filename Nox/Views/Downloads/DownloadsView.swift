@@ -496,7 +496,7 @@ struct DownloadsView: View {
                         }.map(\.id)))
                         finishSelection()
                     } label: {
-                        Label(L("继续"), systemImage: "arrow.clockwise")
+                        Label(L(editMode.isEditing ? "继续" : "全部继续"), systemImage: "arrow.clockwise")
                     }
                     .disabled(!actionRecords.contains { [.notStarted, .paused, .failed].contains($0.status) })
                 }
@@ -507,7 +507,7 @@ struct DownloadsView: View {
                         }.map(\.id)))
                         finishSelection()
                     } label: {
-                        Label(L("暂停"), systemImage: "pause.circle")
+                        Label(L(editMode.isEditing ? "暂停" : "全部暂停"), systemImage: "pause.circle")
                     }
                     .disabled(!actionRecords.contains { [.queued, .downloading].contains($0.status) })
                 }
@@ -518,7 +518,7 @@ struct DownloadsView: View {
                         }.map(\.id)))
                         finishSelection()
                     } label: {
-                        Label(L("取消"), systemImage: "xmark.circle")
+                        Label(L(editMode.isEditing ? "取消" : "全部取消"), systemImage: "xmark.circle")
                     }
                     .disabled(!actionRecords.contains { [.queued, .downloading, .paused, .failed].contains($0.status) })
                 }
@@ -529,7 +529,7 @@ struct DownloadsView: View {
                     Button {
                         shareSelected()
                     } label: {
-                        Label(L("分享"), systemImage: "square.and.arrow.up")
+                        Label(L(editMode.isEditing ? "分享" : "全部分享"), systemImage: "square.and.arrow.up")
                     }
                     .disabled(shareableRecords.isEmpty)
                 }
@@ -540,7 +540,7 @@ struct DownloadsView: View {
                     if !editMode.isEditing { selection = Set(visibleRecords.map(\.id)) }
                     showingDeleteConfirmation = true
                 } label: {
-                    Label(L("删除"), systemImage: "trash")
+                    Label(L(editMode.isEditing ? "删除" : "清空"), systemImage: "trash")
                 }
                 .disabled(actionRecords.isEmpty)
             }
