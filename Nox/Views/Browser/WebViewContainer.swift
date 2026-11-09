@@ -30,6 +30,7 @@ struct WebViewContainer: UIViewControllerRepresentable {
             webView.scrollView.refreshControl = control
         }
 
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         context.coordinator.startObservingOffset()
         return BrowserContentController(webView: webView)
     }

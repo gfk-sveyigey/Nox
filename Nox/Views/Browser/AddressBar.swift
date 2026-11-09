@@ -15,10 +15,32 @@ extension VideoBrowserView {
     /// 地址栏：中间是胶囊形输入框，主页与书签按钮各自独立浮在两侧。
     /// 页面向下滚动时高度收缩，回到顶部再展开；加载进度直接用输入框底色表达。
     var addressToolbar: some View {
-        addressBar
-            .padding(.horizontal, 10)
-            .padding(.vertical, isScrolledDown ? 3 : 8)
-            .animation(.easeInOut(duration: 0.2), value: isScrolledDown)
+        Group {
+            if isScrolledDown && !addressFocused && !showingHome {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.22)) { isScrolledDown = false }
+                    addressFocused = true
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "globe").font(.caption2)
+                        Text(parser.currentPageURL?.host ?? address)
+                            .font(.subheadline.weight(.medium)).lineLimit(1)
+                        if showsLoadingIndicator { ProgressView().controlSize(.mini) }
+                    }
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 16).frame(height: 30)
+                    .browserGlassBar(cornerRadius: nil)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L("输入网页地址"))
+                .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .top)))
+            } else {
+                addressBar.transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, isScrolledDown && !addressFocused ? 3 : 8)
+        .animation(.easeInOut(duration: 0.22), value: isScrolledDown)
     }
 
     var addressBar: some View {
@@ -161,7 +183,7 @@ extension VideoBrowserView {
 
     /// 地址栏展开 / 收起时，三个控件共用的高度。
     var barControlHeight: CGFloat {
-        isScrolledDown ? collapsedControlHeight : controlHeight
+        controlHeight
     }
 
     /// 地址栏两侧独立的圆形按钮（主页 / 书签）。
@@ -214,11 +236,15 @@ extension VideoBrowserView {
     }
 
     func updateCollapsedState(for offset: CGFloat) {
-        let collapsed = offset > 24
+        let delta = offset - previousScrollOffset
+        previousScrollOffset = offset
+        guard !addressFocused, !showingHome else { return }
+        let collapsed: Bool
+        if offset <= 8 { collapsed = false }
+        else if delta > 3 && offset > 40 { collapsed = true }
+        else if delta < -5 { collapsed = false }
+        else { return }
         guard collapsed != isScrolledDown else { return }
-
-        withAnimation(.easeInOut(duration: 0.2)) {
-            isScrolledDown = collapsed
-        }
+        withAnimation(.easeInOut(duration: 0.22)) { isScrolledDown = collapsed }
     }
 }

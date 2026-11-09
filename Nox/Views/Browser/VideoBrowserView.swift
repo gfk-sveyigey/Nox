@@ -35,6 +35,7 @@ struct VideoBrowserView: View {
     @State var filenameInput = ""
     /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
     @State var isScrolledDown = false
+    @State var previousScrollOffset: CGFloat = 0
     /// 地址栏加载底色的进度（0…1）与可见 / 呼吸状态（见 `addressLoadingTint`）。
     @State var progressFraction: Double = 0
     @State var isProgressVisible = false
@@ -78,8 +79,7 @@ struct VideoBrowserView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                addressToolbar
+            ZStack(alignment: .top) {
 
                 // 用 ZStack 而不是 .overlay：让徽标与 WebView 处于同一层级的显式上下关系，
                 // 命中测试时徽标在上；`.overlay` 盖在 UIViewRepresentable 之上
@@ -90,6 +90,7 @@ struct VideoBrowserView: View {
                         updateCollapsedState(for: offset)
                     }
                     .background(Color(.systemBackground))
+                    .ignoresSafeArea(.container, edges: [.top, .bottom])
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     // 原生首页：盖在 WebView 上，不往网页里塞占位页。
@@ -117,6 +118,7 @@ struct VideoBrowserView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                addressToolbar.zIndex(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(browserChromeBackground.ignoresSafeArea())
