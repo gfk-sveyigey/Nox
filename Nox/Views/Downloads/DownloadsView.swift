@@ -191,15 +191,17 @@ struct DownloadsView: View {
 
     @ViewBuilder
     var rows: some View {
-        Section {
-            DownloadOverviewCard(
-                records: appState.downloads,
-                transfers: manager.transfers,
-                storageBlocked: manager.storageBlocked
-            )
-            .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
-            .listRowSeparator(.hidden)
-            .id("downloads-overview")
+        if !appState.downloads.isEmpty {
+            Section {
+                DownloadOverviewCard(
+                    records: appState.downloads,
+                    transfers: manager.transfers,
+                    storageBlocked: manager.storageBlocked
+                )
+                .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
+                .listRowSeparator(.hidden)
+                .id("downloads-overview")
+            }
         }
 
         if visibleRecords.isEmpty {
