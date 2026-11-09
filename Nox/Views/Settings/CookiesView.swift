@@ -5,7 +5,7 @@ import NoxCore
 
 /// 「Cookie 管理」二级页：按站点归组，点进去查看该站点的全部 Cookie。
 ///
-/// 与下载 / 历史页一致，双指滑动进入多选，按站点批量删除。
+/// 与下载页一致，双指滑动进入多选，按站点批量删除。
 struct CookiesView: View {
     @ObservedObject var localization = LocalizationManager.shared
 

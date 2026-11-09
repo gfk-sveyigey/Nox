@@ -48,10 +48,7 @@ struct ContentView: View {
                 .tabItem { Label(L("下载"), systemImage: "arrow.down.circle") }
                 .tag(1)
 
-            SettingsView(manager: downloadManager, scrollToTopToken: tabSelection.settingsDoubleTapCount) { url in
-                browserURL = url
-                tabSelection.selection = 0
-            }
+            SettingsView(manager: downloadManager, scrollToTopToken: tabSelection.settingsDoubleTapCount)
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(2)
         }

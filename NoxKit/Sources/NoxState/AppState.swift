@@ -26,18 +26,6 @@ public final class AppState: ObservableObject {
     /// 同时进行的下载任务数默认值
     public static let defaultMaxConcurrentDownloads = NoxDefaults.defaultMaxConcurrentDownloads
 
-    /// 历史保留「无限制」的取值
-    public static let unlimitedHistory = NoxDefaults.unlimitedHistory
-    /// 历史「按条数」保留的可选上限（0 = 无限制）
-    public static let historyCountOptions = NoxDefaults.historyCountOptions
-    /// 历史「按条数」保留的默认上限
-    public static let defaultHistoryCount = NoxDefaults.defaultHistoryCount
-    /// 历史「按时间」保留的可选天数（0 = 无限制）
-    public static let historyDayOptions = NoxDefaults.historyDayOptions
-    /// 历史「按时间」保留的默认天数
-    public static let defaultHistoryDays = NoxDefaults.defaultHistoryDays
-
-    @Published public var history: [HistoryItem] = []
     /// 浏览页收藏的书签（最新在最前）
     @Published public var bookmarks: [Bookmark] = []
     @Published public var downloads: [DownloadRecord] = []
@@ -97,13 +85,6 @@ public final class AppState: ObservableObject {
     /// 实际布局用的最小高度：0.1pt，视觉隐藏。
     public static let minimizedPiPWindowHeight: Double = NoxDefaults.minimizedPiPWindowHeight
 
-    /// 历史记录的保留方式：按条数 / 按时间
-    @Published public var historyRetentionMode: HistoryRetentionMode = .count
-    /// 「按条数」保留时的上限（见 `historyCountOptions`）
-    @Published public var historyRetentionCount: Int = AppState.defaultHistoryCount
-    /// 「按时间」保留时的天数上限（见 `historyDayOptions`）
-    @Published public var historyRetentionDays: Int = AppState.defaultHistoryDays
-
     /// 外观模式：跟随系统 / 浅色 / 深色
     @Published public var appearanceMode: AppearanceMode = .system
 
@@ -113,7 +94,6 @@ public final class AppState: ObservableObject {
     /// 浏览器页不能用它的旧值立刻重算，改为在写入完成后递增这里。
     @Published public private(set) var siteAvailabilityRevision = 0
 
-    private let historyKey = "Nox.history"
     private let bookmarksKey = "Nox.bookmarks"
     private let downloadsKey = "Nox.downloads"
     private let qualityKey = "Nox.quality"
@@ -136,89 +116,11 @@ public final class AppState: ObservableObject {
     private let pipVerboseLoggingKey = "Nox.pipVerboseLogging"
     /// 旧版「是否以最小化显示」开关的键，仅用于读盘迁移。
     private let pipMinimizedKey = "Nox.pipMinimized"
-    private let historyRetentionModeKey = "Nox.historyRetentionMode"
-    private let historyRetentionCountKey = "Nox.historyRetentionCount"
-    private let historyRetentionDaysKey = "Nox.historyRetentionDays"
     private let appearanceModeKey = "Nox.appearanceMode"
     private let disabledSitesKey = "Nox.disabledSites"
 
     public init() {
         load()
-    }
-
-    // MARK: - 历史
-
-    /// 追加一条历史。
-    ///
-    /// 同一页面只保留最新一条：用 `URL.pageIdentity` 而不是原样比较 ——
-    /// 同一个页面常带不同的跟踪参数（`utm_*`、`spm_id_from`…），
-    /// 逐字比较会让它反复堆出新记录，历史页很快被同一页刷满。
-    public func addHistory(title: String, url: URL) {
-        let identity = url.pageIdentity
-
-        history.removeAll { $0.url.pageIdentity == identity }
-
-        history.insert(
-            HistoryItem(id: UUID(), title: title, url: url, visitedAt: .now),
-            at: 0
-        )
-        applyHistoryRetention()
-        persist()
-    }
-
-    /// 按当前保留策略裁剪历史。
-    ///
-    /// - 按条数：只保留最新的 N 条；
-    /// - 按时间：丢弃超过 N 天的记录。
-    public func applyHistoryRetention() {
-        switch historyRetentionMode {
-        case .count:
-            // 0 = 无限制：不做裁剪
-            guard historyRetentionCount != Self.unlimitedHistory else { return }
-
-            let limit = max(1, historyRetentionCount)
-            if history.count > limit {
-                history = Array(history.prefix(limit))
-            }
-        case .days:
-            // 0 = 无限制：永不过期
-            guard historyRetentionDays != Self.unlimitedHistory else { return }
-
-            let cutoff = Calendar.current.date(
-                byAdding: .day,
-                value: -max(1, historyRetentionDays),
-                to: .now
-            ) ?? .distantPast
-            history.removeAll { $0.visitedAt < cutoff }
-        }
-    }
-
-    /// 删除某个页面（按归一化身份）对应的历史记录。
-    ///
-    /// 取消下载时会调用：被取消的任务不应留在历史里。
-    public func removeHistory(matching url: URL?) {
-        guard let url else { return }
-        let identity = url.pageIdentity
-        history.removeAll { $0.url.pageIdentity == identity }
-        persist()
-    }
-
-    public func removeHistory(_ item: HistoryItem) {
-        history.removeAll { $0.id == item.id }
-        persist()
-    }
-
-    /// 批量删除（历史页多选时用）
-    public func removeHistory(ids: Set<UUID>) {
-        guard !ids.isEmpty else { return }
-
-        history.removeAll { ids.contains($0.id) }
-        persist()
-    }
-
-    public func clearHistory() {
-        history.removeAll()
-        persist()
     }
 
     // MARK: - 书签
@@ -308,10 +210,6 @@ public final class AppState: ObservableObject {
     public func persist() {
         let defaults = UserDefaults.standard
 
-        if let data = try? JSONEncoder().encode(history) {
-            defaults.set(data, forKey: historyKey)
-        }
-
         if let data = try? JSONEncoder().encode(bookmarks) {
             defaults.set(data, forKey: bookmarksKey)
         }
@@ -338,20 +236,17 @@ public final class AppState: ObservableObject {
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
         defaults.set(pipVerboseLogging, forKey: pipVerboseLoggingKey)
-        defaults.set(historyRetentionMode.rawValue, forKey: historyRetentionModeKey)
-        defaults.set(historyRetentionCount, forKey: historyRetentionCountKey)
-        defaults.set(historyRetentionDays, forKey: historyRetentionDaysKey)
         defaults.set(appearanceMode.rawValue, forKey: appearanceModeKey)
         defaults.set(Array(disabledSiteIDs).sorted(), forKey: disabledSitesKey)
     }
 
     private func load() {
-        let defaults = UserDefaults.standard
-
-        if let data = defaults.data(forKey: historyKey),
-           let value = try? JSONDecoder().decode([HistoryItem].self, from: data) {
-            history = value
+        // Remove obsolete history storage; download records remain untouched.
+        for key in ["Nox.history", "Nox.historyRetentionMode", "Nox.historyRetentionCount", "Nox.historyRetentionDays"] {
+            UserDefaults.standard.removeObject(forKey: key)
         }
+
+        let defaults = UserDefaults.standard
 
         if let data = defaults.data(forKey: bookmarksKey),
            let value = try? JSONDecoder().decode([Bookmark].self, from: data) {
@@ -417,20 +312,6 @@ public final class AppState: ObservableObject {
             minFreeDiskSpace = NoxDefaults.defaultMinFreeDiskSpace
         }
 
-        historyRetentionMode = HistoryRetentionMode(
-            rawValue: defaults.string(forKey: historyRetentionModeKey) ?? ""
-        ) ?? .count
-
-        let storedCount = defaults.integer(forKey: historyRetentionCountKey)
-        historyRetentionCount = Self.historyCountOptions.contains(storedCount)
-            ? storedCount
-            : Self.defaultHistoryCount
-
-        let storedDays = defaults.integer(forKey: historyRetentionDaysKey)
-        historyRetentionDays = Self.historyDayOptions.contains(storedDays)
-            ? storedDays
-            : Self.defaultHistoryDays
-
         appearanceMode = AppearanceMode(
             rawValue: defaults.string(forKey: appearanceModeKey) ?? ""
         ) ?? .system
@@ -480,7 +361,6 @@ public final class AppState: ObservableObject {
         disabledSiteIDs = disabled
 
         // 读盘后先按当前保留策略裁剪一次，避免旧数据一直撑着。
-        applyHistoryRetention()
     }
 }
 

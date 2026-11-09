@@ -290,6 +290,7 @@ struct DownloadsView: View {
     }
 
     struct DownloadOverviewCard: View {
+        @ObservedObject private var localization = LocalizationManager.shared
 
         private struct StatusMetric: Identifiable {
             let title: String
@@ -317,12 +318,12 @@ struct DownloadsView: View {
 
         private var statusMetrics: [StatusMetric] {
             [
-                StatusMetric(title: L("下载中"), count: activeCount, color: .accentColor),
-                StatusMetric(title: L("未开始"), count: notStartedCount, color: .secondary),
-                StatusMetric(title: L("排队中"), count: queuedCount, color: .secondary),
-                StatusMetric(title: L("已暂停"), count: pausedCount, color: .orange),
-                StatusMetric(title: L("已完成"), count: finishedCount, color: .green),
-                StatusMetric(title: L("失败"), count: failedCount, color: .red)
+                StatusMetric(title: "下载中", count: activeCount, color: .accentColor),
+                StatusMetric(title: "未开始", count: notStartedCount, color: .secondary),
+                StatusMetric(title: "排队中", count: queuedCount, color: .secondary),
+                StatusMetric(title: "已暂停", count: pausedCount, color: .orange),
+                StatusMetric(title: "已完成", count: finishedCount, color: .green),
+                StatusMetric(title: "失败", count: failedCount, color: .red)
             ].filter { $0.count > 0 }
         }
 
@@ -407,7 +408,7 @@ struct DownloadsView: View {
                     metricValue(title: L("总速度"), value: totalSpeed)
                     metricValue(
                         title: L("总进度"),
-                        value: "\(Int((totalProgress * 100).rounded()))%"
+                        value: totalProgress.formatted(.percent.precision(.fractionLength(0)).locale(AppLocale.current))
                     )
                 }
 
@@ -446,10 +447,10 @@ struct DownloadsView: View {
 
         private func countMetric(_ title: String, count: Int, color: Color) -> some View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(count)")
+                Text(count.formatted(.number.locale(AppLocale.current)))
                     .font(.body.monospacedDigit().weight(.semibold))
                     .foregroundStyle(color)
-                Text(title)
+                Text(L(title))
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

@@ -14,10 +14,8 @@ struct SettingsView: View {
     @ObservedObject var manager: DownloadManager
     @ObservedObject var registry = VideoSiteParserRegistry.shared
     let scrollToTopToken: Int
-    let openInBrowser: (URL) -> Void
 
-    init(manager: DownloadManager, scrollToTopToken: Int = 0, openInBrowser: @escaping (URL) -> Void = { _ in }) {
-        self.openInBrowser = openInBrowser
+    init(manager: DownloadManager, scrollToTopToken: Int = 0) {
         self.scrollToTopToken = scrollToTopToken
         _manager = ObservedObject(wrappedValue: manager)
     }
@@ -104,15 +102,6 @@ struct SettingsView: View {
                 iconColor: .teal
             ) {
                 CookiesView()
-            }
-
-            settingsLink(
-                L("历史记录"),
-                subtitle: L("设置历史保留方式，并清理访问记录。"),
-                systemImage: "clock.arrow.circlepath",
-                iconColor: .indigo
-            ) {
-                HistoryView(openInBrowser: openInBrowser)
             }
 
             settingsLink(

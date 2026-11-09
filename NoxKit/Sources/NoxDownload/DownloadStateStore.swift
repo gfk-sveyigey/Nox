@@ -36,7 +36,6 @@ public protocol DownloadStateStore: AnyObject {
     func updateDownload(_ record: DownloadRecord, persist: Bool)
     func removeDownload(_ record: DownloadRecord)
     func clearFinishedDownloads()
-    func addHistory(title: String, url: URL)
     func persist()
 }
 

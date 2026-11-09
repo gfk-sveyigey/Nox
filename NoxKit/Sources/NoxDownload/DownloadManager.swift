@@ -451,11 +451,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
         store.addDownload(record)
 
-        // 历史在这里（真正入队下载时）记录，而不是解析时：
-        // 解析了但没下载、或下载被取消，都不该在历史里留下痕迹。
-        // 历史标题用文件名（去扩展名），而不是页面标题。
-        store.addHistory(title: record.displayTitle, url: referer ?? record.sourceURL)
-
         LogStore.shared.info("enqueue \(record.displayFilename) [\(record.quality)/\(record.format)] <- \(referer?.absoluteString ?? record.sourceURL.absoluteString)")
 
         start(record)
@@ -491,8 +486,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
         store.updateDownload(updated)
 
-        // 取消后历史会保留，这里只是把它重新排到最前（addHistory 按页面去重）。
-        store.addHistory(title: updated.displayTitle, url: updated.refererURL ?? updated.sourceURL)
         LogStore.shared.info("retry \(updated.displayFilename)")
 
         // 重新开始：丢弃旧采样，速度从头累积。
@@ -536,8 +529,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         reconcileTaskQueue(reason: "cancel")
         LogStore.shared.info("cancel \(live.displayFilename)")
 
-        // 取消后保留历史记录：取消只是想停下来，不代表这次访问没发生过。
-        // 真正要清掉历史时，用下载页 / 历史页的「清空」或左滑删除。
+
     }
 
     /// 只修改单个任务的状态并释放槽位；多个任务批量暂停时由调用方统一

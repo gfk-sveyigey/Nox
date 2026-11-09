@@ -140,7 +140,7 @@ extension VideoBrowserView {
         Int(quality.filter(\.isNumber)) ?? 0
     }
 
-    /// 「解析视频」路径。历史已由 `parseCurrentPage()` 记过，这里不重复记。
+    /// 「解析视频」路径。
     func download(_ variant: VideoVariant) async {
         guard let parsedVideo else { return }
         prepareDownload(title: parsedVideo.title, variant: variant, referer: parsedVideo.pageURL, parserName: parser.currentSiteName)
@@ -148,8 +148,6 @@ extension VideoBrowserView {
 
     /// 嗅探面板路径。
     ///
-    /// - 历史记的是**页面**地址与页面标题，而不是媒体地址：
-    ///   历史页的「跳转网页」要能回到原页面，且同一页面上的多条资源不会各占一条记录。
     /// - Referer 用 WebView 当前地址。
     func download(_ item: SnifferBridge.Item) {
         showSniffer = false

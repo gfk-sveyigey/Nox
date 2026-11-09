@@ -30,7 +30,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     /// 视图层会用它在页面区域**直接盖一层错误提示**（不再是弹窗）。
     @Published public private(set) var loadErrorMessage: String?
 
-    /// 最近一次加载是不是「用户主动换页」（地址栏输入 / 历史跳转）。
+    /// 最近一次加载是不是「用户主动换页」（地址栏输入 / 外部跳转）。
     ///
     /// 只有这种情况才在换页期间盖一层加载占位，避免「输入了新地址却还显示旧页面」；
     /// 页面内点链接保持浏览器习惯（旧页面留到新页面提交），但失败提示两种都会给。
@@ -132,8 +132,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
 
     /// 当前页面地址。
     ///
-    /// 从嗅探面板加入下载时，历史记的是**页面**地址而不是媒体地址：
-    /// 这样历史页的「跳转网页」能回到原页面，同一页面上的多条资源也不会各占一条记录。
+    /// 当前来源网页，用于保存下载任务来源与构造 Referer。
     public var currentPageURL: URL? { webView.url }
 
     /// 当前页面标题。WKWebView 加载完成后会自动维护，取用无需再执行 JS。
@@ -195,8 +194,6 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
 
         let title = await page.documentTitle() ?? pageURL.host ?? "Video"
         LogStore.shared.info("parsed \(variants.count) variant(s) on \(pageURL.absoluteString)")
-        // 历史在「真正入队下载」时记录（见 DownloadManager.enqueue），
-        // 只解析不下载、或下载被取消，都不该在历史里留下记录。
         return ParsedVideo(title: title, pageURL: pageURL, variants: variants)
     }
 
