@@ -83,10 +83,6 @@ struct TabReselectionInterceptor: UIViewControllerRepresentable {
 
         func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
             if viewController === tabBarController.selectedViewController {
-                // Allow native compact browser tab expansion.
-                if #available(iOS 26.0, *), tabBarController.selectedIndex == 0 {
-                    return original?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
-                }
                 onReselect(tabBarController.selectedIndex)
                 return false
             }
