@@ -16,6 +16,25 @@ struct DownloadsView: View {
 
     @State var editMode: EditMode = .inactive
     @State var selection = Set<UUID>()
+    @State private var statusFilter: DownloadStatus?
+
+    private let filterStatuses: [DownloadStatus] = [.notStarted, .queued, .downloading, .paused, .finished, .failed]
+
+    var visibleRecords: [DownloadRecord] {
+        appState.downloads.filter { statusFilter == nil || $0.status == statusFilter }
+    }
+
+    func statusTitle(_ status: DownloadStatus?) -> String {
+        switch status {
+        case .notStarted: return L("未开始")
+        case .queued: return L("排队中")
+        case .downloading: return L("下载中")
+        case .paused: return L("已暂停")
+        case .finished: return L("已完成")
+        case .failed: return L("失败")
+        default: return L("全部")
+        }
+    }
     /// 可见行的全局坐标，双指滑动时据此把路径映射到具体任务。
     @State var rowFrames: [UUID: CGRect] = [:]
     @State var showingDeleteConfirmation = false
@@ -81,6 +100,14 @@ struct DownloadsView: View {
                 } else {
                     tapFlashSelection.removeAll()
                 }
+            }
+            .onChange(of: statusFilter) { _, _ in
+                finishSelection()
+                tapFlashSelection.removeAll()
+                rowFrames.removeAll()
+            }
+            .onChange(of: visibleRecords.map(\.id)) { _, ids in
+                selection.formIntersection(Set(ids))
             }
             .onAppear { isVisible = true }
             .onDisappear {
@@ -177,7 +204,7 @@ struct DownloadsView: View {
             .id("downloads-overview")
         }
 
-        if appState.downloads.isEmpty {
+        if visibleRecords.isEmpty {
             ContentUnavailableView {
                 Label {
                     Text(L("暂无下载"))
@@ -192,7 +219,7 @@ struct DownloadsView: View {
             .listRowBackground(Color.clear)
         }
 
-        ForEach(appState.downloads) { record in
+        ForEach(visibleRecords) { record in
             DownloadRow(
                 record: record,
                 stats: manager.transfers[record.id],
@@ -410,142 +437,118 @@ struct DownloadsView: View {
 
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarLeading) {
-            if !appState.downloads.isEmpty {
-                if editMode.isEditing {
-                    // 主题色对号 = 完成，和系统「照片」的多选一致。
-                    Button {
-                        finishSelection()
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .fontWeight(.semibold)
-                    }
-                    .accessibilityLabel(L("完成"))
-                } else {
-                    Button(L("选择")) {
-                        withAnimation { editMode = .active }
+        ToolbarItem(placement: .topBarLeading) {
+            Menu {
+                Picker(L("任务状态"), selection: $statusFilter) {
+                    Text(L("全部")).tag(Optional<DownloadStatus>.none)
+                    ForEach(filterStatuses, id: \.self) { status in
+                        Text(statusTitle(status)).tag(Optional(status))
                     }
                 }
+            } label: {
+                Label(statusTitle(statusFilter), systemImage: statusFilter == nil
+                      ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
             }
+            .accessibilityLabel(L("筛选任务"))
         }
-
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            if !appState.downloads.isEmpty {
-                // 普通态与多选态都把多功能菜单放在右上角。
-                multiFunctionMenu
-            }
+        ToolbarItem(placement: .topBarTrailing) {
+            multiFunctionMenu
         }
     }
 
-    /// 下载页右上角的多功能菜单。
-    ///
-    /// 非多选态提供全局继续 / 暂停 / 取消操作；
-    /// 多选态整合针对选中项的批量操作。
-    /// 菜单本身始终可用，即使没有选中项也会展开，只是不适用的操作置灰。
-    @ViewBuilder
+    /// All batch actions are scoped to the current filter and, in selection mode, selected rows.
+    var actionRecords: [DownloadRecord] {
+        editMode.isEditing ? selectedRecords : visibleRecords
+    }
+
+    var menuStatuses: Set<DownloadStatus> {
+        Set(visibleRecords.map(\.status))
+    }
+
     var multiFunctionMenu: some View {
         Menu {
-            if editMode.isEditing {
+            Section {
                 Button {
-                    manager.retryAll(ids: Set(retryableRecords.map(\.id)))
-                    finishSelection()
+                    if editMode.isEditing { finishSelection() }
+                    else { withAnimation { editMode = .active } }
                 } label: {
-                    Label(L("继续"), systemImage: "arrow.clockwise")
+                    Label(L(editMode.isEditing ? "完成" : "选择"),
+                          systemImage: editMode.isEditing ? "checkmark" : "checkmark.circle")
                 }
-                .disabled(retryableRecords.isEmpty)
-
-                Button {
-                    manager.pauseAll(ids: Set(pausableRecords.map(\.id)))
-                    finishSelection()
-                } label: {
-                    Label(L("暂停"), systemImage: "pause.circle")
-                }
-                .disabled(pausableRecords.isEmpty)
-
-                Button {
-                    manager.discardAll(ids: Set(selectedRecords.filter { $0.status != .finished }.map(\.id)))
-                    finishSelection()
-                } label: {
-                    Label(L("取消"), systemImage: "xmark.circle")
-                }
-                .disabled(selectedRecords.allSatisfy { $0.status == .finished })
-
-                Divider()
-
-                Button {
-                    shareSelected()
-                } label: {
-                    Label(L("分享"), systemImage: "square.and.arrow.up")
-                }
-                .disabled(shareableRecords.isEmpty)
-            } else {
-                Button {
-                    manager.retryAll(ids: Set(globalRetryableRecords.map(\.id)))
-                } label: {
-                    Label(L("继续"), systemImage: "arrow.clockwise")
-                }
-                .disabled(globalRetryableRecords.isEmpty)
-
-                Button {
-                    manager.pauseAll(ids: Set(globalPausableRecords.map(\.id)))
-                } label: {
-                    Label(L("暂停"), systemImage: "pause.circle")
-                }
-                .disabled(globalPausableRecords.isEmpty)
-
-                Button {
-                    manager.discardAll(ids: Set(appState.downloads.filter { $0.status != .finished }.map(\.id)))
-                } label: {
-                    Label(L("取消"), systemImage: "xmark.circle")
-                }
-                .disabled(appState.downloads.allSatisfy { $0.status == .finished })
+                .disabled(visibleRecords.isEmpty && !editMode.isEditing)
             }
 
-            Divider()
-            Button(role: .destructive) {
-                if !editMode.isEditing { selection = Set(appState.downloads.map(\.id)) }
-                showingDeleteConfirmation = true
-            } label: {
-                Label(L("删除"), systemImage: "trash")
+            Section {
+                if !menuStatuses.isDisjoint(with: [.notStarted, .paused, .failed]) {
+                    Button {
+                        manager.retryAll(ids: Set(actionRecords.filter {
+                            [.notStarted, .paused, .failed].contains($0.status)
+                        }.map(\.id)))
+                        finishSelection()
+                    } label: {
+                        Label(L("继续"), systemImage: "arrow.clockwise")
+                    }
+                    .disabled(!actionRecords.contains { [.notStarted, .paused, .failed].contains($0.status) })
+                }
+                if !menuStatuses.isDisjoint(with: [.queued, .downloading]) {
+                    Button {
+                        manager.pauseAll(ids: Set(actionRecords.filter {
+                            [.queued, .downloading].contains($0.status)
+                        }.map(\.id)))
+                        finishSelection()
+                    } label: {
+                        Label(L("暂停"), systemImage: "pause.circle")
+                    }
+                    .disabled(!actionRecords.contains { [.queued, .downloading].contains($0.status) })
+                }
+                if !menuStatuses.isDisjoint(with: [.queued, .downloading, .paused, .failed]) {
+                    Button {
+                        manager.discardAll(ids: Set(actionRecords.filter {
+                            [.queued, .downloading, .paused, .failed].contains($0.status)
+                        }.map(\.id)))
+                        finishSelection()
+                    } label: {
+                        Label(L("取消"), systemImage: "xmark.circle")
+                    }
+                    .disabled(!actionRecords.contains { [.queued, .downloading, .paused, .failed].contains($0.status) })
+                }
             }
-            .disabled(editMode.isEditing ? selection.isEmpty : appState.downloads.isEmpty)
+
+            if menuStatuses.contains(.finished) {
+                Section {
+                    Button {
+                        shareSelected()
+                    } label: {
+                        Label(L("分享"), systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(shareableRecords.isEmpty)
+                }
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    if !editMode.isEditing { selection = Set(visibleRecords.map(\.id)) }
+                    showingDeleteConfirmation = true
+                } label: {
+                    Label(L("删除"), systemImage: "trash")
+                }
+                .disabled(actionRecords.isEmpty)
+            }
         } label: {
             Image(systemName: "ellipsis.circle")
         }
         .accessibilityLabel(L("更多操作"))
     }
 
-    // MARK: - 全局批量操作（非多选态）
-
-    /// 失败 / 已暂停的全部任务，可一键继续。
-    var globalRetryableRecords: [DownloadRecord] {
-        appState.downloads.filter { $0.status == .failed || $0.status == .paused || $0.status == .notStarted }
-    }
-
-    /// 排队中 / 下载中的全部任务，可一键暂停。
-    var globalPausableRecords: [DownloadRecord] {
-        appState.downloads.filter { $0.status == .queued || $0.status == .downloading }
-    }
-
     // MARK: - 多选批量操作
 
     var selectedRecords: [DownloadRecord] {
-        appState.downloads.filter { selection.contains($0.id) }
-    }
-
-    /// 失败 / 已暂停的任务可以重试或继续。
-    var retryableRecords: [DownloadRecord] {
-        selectedRecords.filter { $0.status == .failed || $0.status == .paused || $0.status == .notStarted }
-    }
-
-    /// 排队中 / 下载中的任务可以暂停；分片已落盘，之后可继续。
-    var pausableRecords: [DownloadRecord] {
-        selectedRecords.filter { $0.status == .queued || $0.status == .downloading }
+        visibleRecords.filter { selection.contains($0.id) }
     }
 
     /// 已完成且本地文件仍在的任务可以分享。
     var shareableRecords: [DownloadRecord] {
-        selectedRecords.filter {
+        actionRecords.filter {
             $0.status == .finished &&
             !manager.missingFileIDs.contains($0.id) &&
             manager.shareableFileURL(for: $0) != nil
@@ -553,7 +556,7 @@ struct DownloadsView: View {
     }
 
     var allSelected: Bool {
-        !appState.downloads.isEmpty && selection.count == appState.downloads.count
+        !visibleRecords.isEmpty && selection == Set(visibleRecords.map(\.id))
     }
 
     var hasClearableDownloads: Bool {
@@ -572,7 +575,7 @@ struct DownloadsView: View {
                     if allSelected {
                         selection.removeAll()
                     } else {
-                        selection = Set(appState.downloads.map(\.id))
+                        selection = Set(visibleRecords.map(\.id))
                     }
                 }
             } label: {

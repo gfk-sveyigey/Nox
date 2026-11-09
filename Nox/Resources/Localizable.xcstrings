@@ -1,6 +1,30 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "全部" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Toutes" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체" } }
+      }
+    },
+    "任务状态" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Task status" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabenstatus" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "État des tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 상태" } }
+      }
+    },
+    "筛选任务" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Filter tasks" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben filtern" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Filtrer les tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 필터" } }
+      }
+    },
     "排队中 · %@" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "In Warteschlange · %@" } },
