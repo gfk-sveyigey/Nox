@@ -62,7 +62,7 @@ struct WebViewContainer: UIViewControllerRepresentable {
 
             // contentOffset 的 KVO 回调在主线程投递，直接转给闭包即可（省去每帧派发的开销）
             offsetObservation = webView.scrollView.observe(\.contentOffset, options: [.new]) { [weak self] scrollView, _ in
-                self?.onScroll(scrollView.contentOffset.y)
+                self?.onScroll(scrollView.contentOffset.y + scrollView.adjustedContentInset.top)
             }
         }
 
@@ -81,6 +81,35 @@ final class BrowserContentController: UIViewController {
     }
     required init?(coder: NSCoder) { fatalError() }
     override func loadView() { view = webView }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateTopContentInset()
+    }
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        updateTopContentInset()
+    }
+
+    // At rest the first page pixel is below the status bar. Scrolling can
+    // still carry page content behind the safe-area material.
+    private func updateTopContentInset() {
+        guard isViewLoaded else { return }
+        let scroll = webView.scrollView
+        let top = view.safeAreaInsets.top
+        let previous = scroll.contentInset.top
+        guard abs(top - previous) > 0.5 else { return }
+        let wasAtTop = abs(scroll.contentOffset.y + previous) < 1
+        var inset = scroll.contentInset
+        inset.top = top
+        scroll.contentInset = inset
+        var indicators = scroll.verticalScrollIndicatorInsets
+        indicators.top = top
+        scroll.verticalScrollIndicatorInsets = indicators
+        if wasAtTop {
+            scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: -top), animated: false)
+        }
+    }
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         connectContentScrollView()
