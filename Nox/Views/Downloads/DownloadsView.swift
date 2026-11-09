@@ -465,8 +465,7 @@ struct DownloadsView: View {
                         }
                     }
                 } label: {
-                    Label(statusTitle(statusFilter), systemImage: statusFilter == nil
-                          ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                    Label(statusTitle(statusFilter), systemImage: "line.3.horizontal.decrease")
                 }
                 .accessibilityLabel(L("筛选任务"))
             }
@@ -578,7 +577,7 @@ struct DownloadsView: View {
                 .disabled(actionRecords.isEmpty)
             }
         } label: {
-            Image(systemName: "ellipsis.circle")
+            Image(systemName: "ellipsis")
         }
         .accessibilityLabel(L("更多操作"))
     }
