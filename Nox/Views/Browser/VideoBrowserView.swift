@@ -33,9 +33,22 @@ struct VideoBrowserView: View {
     @State var isFilenameDialogPresented = false
     /// 只存**不含扩展名**的主名 —— 扩展名固定，不让用户改
     @State var filenameInput = ""
+    /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
+    @State var isScrolledDown = false
+    @State var previousScrollOffset: CGFloat = 0
+    /// 地址栏加载底色的进度（0…1）与可见 / 呼吸状态（见 `addressLoadingTint`）。
+    @State var progressFraction: Double = 0
+    @State var isProgressVisible = false
+    @State var isProgressPulsing = false
+    /// 是否是「不确定进度」（同文档换页拿不到进度，用固定底色 + 呼吸表达「在动」）。
+    @State var isProgressIndeterminate = false
     /// 是否显示原生「首页」（尚未打开任何页面，或用户点了主页按钮）
     @State var showingHome = true
     @FocusState var addressFocused: Bool
+
+    /// 地址栏展开 / 收起时的高度
+    let controlHeight: CGFloat = 40
+    let collapsedControlHeight: CGFloat = 30
 
     /// 待确认文件名的下载请求。用户点「保存」前的全部信息先攒在这里，
     /// 这样嗅探 / 解析两条路径都能复用同一个弹窗。
@@ -73,7 +86,9 @@ struct VideoBrowserView: View {
                 // 有时会被 WKWebView 的图层抢先，导致点击穿透。
                 ZStack(alignment: .bottomTrailing) {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
-                    WebViewContainer(webView: parser.browserWebView, allowsBarHiding: !showingHome && !addressFocused)
+                    WebViewContainer(webView: parser.browserWebView) { offset in
+                        updateCollapsedState(for: offset)
+                    }
                     .background(Color(.systemBackground))
                     .ignoresSafeArea(.container, edges: [.top, .bottom])
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -103,18 +118,21 @@ struct VideoBrowserView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                addressToolbar.zIndex(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(browserChromeBackground.ignoresSafeArea())
             .animation(.easeInOut(duration: 0.2), value: isParseBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: showingHome)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar(.visible, for: .navigationBar)
-            .toolbar { browserNavigationItems }
+            // 浏览页没有导航栏内容。保留空 NavigationStack 的导航栏会在地址栏上方
+            // 多出一条空白，直接隐藏；顶部安全区仍由系统保留。
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 loadRequestedURLIfNeeded()
                 parser.refreshSiteRules()
+                // 切走再切回来时 `isLoading` 不一定有变化，这里按当前状态补一次。
+                updateProgressAppearance(isLoading: showsLoadingIndicator)
             }
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()
@@ -135,6 +153,23 @@ struct VideoBrowserView: View {
             // 在设置里开关站点后，无需等下一次导航再更新解析入口。
             .onChange(of: appState.siteAvailabilityRevision) { _, _ in
                 parser.refreshSiteRules()
+            }
+            // 加载提示：开 / 关看合并后的状态（真实导航 or 同文档换页），
+            // 具体进度按 estimatedProgress 走。
+            .onChange(of: showsLoadingIndicator) { _, loading in
+                updateProgressAppearance(isLoading: loading)
+            }
+            .onChange(of: parser.loadProgress) { _, value in
+                guard parser.isLoading else { return }
+                withAnimation(.easeOut(duration: 0.3)) {
+                    progressFraction = max(progressFraction, min(max(value, 0), 1))
+                }
+            }
+            // 「同文档换页的提示还没结束，又发起了真实导航」时，把形态切回确定进度，
+            // 否则地址栏底色会一直停在不确定进度的深浅上（合计状态没变，上面那个 onChange 不会触发）。
+            .onChange(of: parser.isLoading) { _, loading in
+                guard loading, showsLoadingIndicator else { return }
+                isProgressIndeterminate = false
             }
             .alert(
                 L("解析失败"),
