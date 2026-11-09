@@ -18,12 +18,12 @@ struct HistoryView: View {
     /// 非多选态点按时的短暂高亮：让用户看到「点到了」，但不会像多选一样留下选中。
     @State var tapFlashSelection = Set<UUID>()
     @State var tapFlashToken = UUID()
-    let scrollToTopToken: Int
+    let scrollToTopToken: Int = 0
 
     let openInBrowser: (URL) -> Void
 
     var body: some View {
-        NavigationStack {
+        Group {
             Group {
                 if appState.history.isEmpty {
                     ContentUnavailableView {
@@ -221,15 +221,20 @@ struct HistoryView: View {
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            if !appState.history.isEmpty {
-                Button(editMode.isEditing ? L("完成") : L("选择")) {
-                    withAnimation {
-                        editMode = editMode.isEditing ? .inactive : .active
-                    }
-                }
+            NavigationLink {
+                HistorySettingsView()
+            } label: {
+                Text(L("设置"))
             }
         }
 
+        ToolbarItem(placement: .topBarTrailing) {
+            if !appState.history.isEmpty {
+                Button(editMode.isEditing ? L("完成") : L("选择")) {
+                    withAnimation { editMode = editMode.isEditing ? .inactive : .active }
+                }
+            }
+        }
         ToolbarItem(placement: .topBarTrailing) {
             if editMode.isEditing {
                 // 多选态：红色文字，和列表的删除语义一致。

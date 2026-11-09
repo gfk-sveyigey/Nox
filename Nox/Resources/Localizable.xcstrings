@@ -1,6 +1,342 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "详细信息" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Details" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Details" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Détails" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "상세 정보" } }
+      }
+    },
+    "任务" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Task" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabe" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tâche" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업" } }
+      }
+    },
+    "任务 ID" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Task ID" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben-ID" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Identifiant de tâche" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 ID" } }
+      }
+    },
+    "状态" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Status" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Status" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "État" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "상태" } }
+      }
+    },
+    "进度" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Progress" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fortschritt" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Progression" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "진행률" } }
+      }
+    },
+    "已下载" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloaded" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heruntergeladen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드한 크기" } }
+      }
+    },
+    "文件总大小" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total size" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesamtgröße" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Taille totale" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 크기" } }
+      }
+    },
+    "分片数量" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Segments" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Segmente" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Segments" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "세그먼트 수" } }
+      }
+    },
+    "并发数" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connections" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbindungen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexions" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "연결 수" } }
+      }
+    },
+    "失败原因" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Error" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fehler" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실패 원인" } }
+      }
+    },
+    "来源与解析" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Source and parser" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Quelle und Parser" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Source et analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "출처 및 분석" } }
+      }
+    },
+    "来源网页" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Source page" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Quellseite" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Page source" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "원본 페이지" } }
+      }
+    },
+    "最终来源网页" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Final page URL" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Endgültige Seitenadresse" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Adresse finale de la page" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최종 페이지 주소" } }
+      }
+    },
+    "规范化来源网页" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Normalized page URL" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Normalisierte Seitenadresse" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Adresse normalisée" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정규화된 페이지 주소" } }
+      }
+    },
+    "规范化规则" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Normalization rule" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Normalisierungsregel" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Règle de normalisation" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정규화 규칙" } }
+      }
+    },
+    "解析脚本" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parser script" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Parser-Skript" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Script d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 스크립트" } }
+      }
+    },
+    "解析方式" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing method" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Analysemethode" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Méthode d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 방식" } }
+      }
+    },
+    "脚本解析" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Script" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Skript" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Script" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "스크립트" } }
+      }
+    },
+    "视频 ID" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video ID" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Video-ID" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Identifiant vidéo" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 ID" } }
+      }
+    },
+    "视频规格" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Media details" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mediendetails" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Caractéristiques du média" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "미디어 정보" } }
+      }
+    },
+    "清晰度" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quality" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Qualität" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Qualité" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화질" } }
+      }
+    },
+    "格式" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Format" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Format" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Format" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "형식" } }
+      }
+    },
+    "宽度" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Width" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Breite" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Largeur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "너비" } }
+      }
+    },
+    "高度" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Height" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Höhe" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Hauteur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "높이" } }
+      }
+    },
+    "时长（秒）" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Duration (seconds)" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dauer (Sekunden)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Durée (secondes)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "길이(초)" } }
+      }
+    },
+    "视频编码" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video codec" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Video-Codec" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Codec vidéo" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 코덱" } }
+      }
+    },
+    "音频编码" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio codec" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Audio-Codec" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Codec audio" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오디오 코덱" } }
+      }
+    },
+    "帧率" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Frame rate" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bildrate" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fréquence d’images" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "프레임 속도" } }
+      }
+    },
+    "码率" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bitrate" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bitrate" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Débit" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "비트 전송률" } }
+      }
+    },
+    "音轨语言" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio language" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Audiosprache" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Langue audio" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오디오 언어" } }
+      }
+    },
+    "字幕语言" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Subtitle language" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Untertitelsprache" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Langue des sous-titres" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "자막 언어" } }
+      }
+    },
+    "时间记录" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Timeline" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zeitverlauf" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Dates" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시간 기록" } }
+      }
+    },
+    "创建时间" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Created" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Erstellt" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Création" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "생성 시간" } }
+      }
+    },
+    "完成时间" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abgeschlossen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fin" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료 시간" } }
+      }
+    },
+    "更新时间" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Updated" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktualisiert" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mise à jour" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "업데이트 시간" } }
+      }
+    },
+    "文件" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Datei" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일" } }
+      }
+    },
+    "指定文件名" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Chosen filename" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gewählter Dateiname" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom choisi" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "지정 파일명" } }
+      }
+    },
+    "保存文件名" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved filename" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gespeicherter Dateiname" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom du fichier enregistré" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 파일명" } }
+      }
+    },
+    "文件地址" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File location" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dateipfad" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Emplacement du fichier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 위치" } }
+      }
+    },
+    "下载请求" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download request" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Anfrage" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Requête de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 요청" } }
+      }
+    },
+    "下载链接" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download URL" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Adresse" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Adresse de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 주소" } }
+      }
+    },
+    "未获取" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not available" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht verfügbar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Non disponible" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정보 없음" } }
+      }
+    },
     "全部取消" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel All" } },

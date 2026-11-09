@@ -14,8 +14,10 @@ struct SettingsView: View {
     @ObservedObject var manager: DownloadManager
     @ObservedObject var registry = VideoSiteParserRegistry.shared
     let scrollToTopToken: Int
+    let openInBrowser: (URL) -> Void
 
-    init(manager: DownloadManager, scrollToTopToken: Int = 0) {
+    init(manager: DownloadManager, scrollToTopToken: Int = 0, openInBrowser: @escaping (URL) -> Void = { _ in }) {
+        self.openInBrowser = openInBrowser
         self.scrollToTopToken = scrollToTopToken
         _manager = ObservedObject(wrappedValue: manager)
     }
@@ -110,7 +112,7 @@ struct SettingsView: View {
                 systemImage: "clock.arrow.circlepath",
                 iconColor: .indigo
             ) {
-                HistorySettingsView()
+                HistoryView(openInBrowser: openInBrowser)
             }
 
             settingsLink(

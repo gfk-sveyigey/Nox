@@ -57,6 +57,7 @@ struct VideoBrowserView: View {
         let variant: VideoVariant
         let referer: URL?
         let cookieHeader: String?
+        let metadata: DownloadMetadata
         /// 固定的扩展名（不含点）。用户无法修改
         let fileExtension: String
         /// 完整默认文件名（含扩展名），「使用默认文件名」时直接用它

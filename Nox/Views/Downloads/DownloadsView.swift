@@ -11,6 +11,7 @@ struct DownloadsView: View {
     @ObservedObject var localization = LocalizationManager.shared
 
     @State var showingClearConfirmation = false
+    @State private var detailsRecord: DownloadRecord?
     @State var shareFailureMessage: String?
     @State var showShareFailureAlert = false
 
@@ -88,6 +89,9 @@ struct DownloadsView: View {
                 Button(L("确定"), role: .cancel) {}
             } message: {
                 Text(shareFailureMessage ?? L("无法分享此文件"))
+            }
+            .sheet(item: $detailsRecord) { record in
+                DownloadDetailsView(taskID: record.id, appState: appState, manager: manager)
             }
             .onChange(of: editMode) { _, newValue in
                 if !newValue.isEditing {
@@ -234,6 +238,7 @@ struct DownloadsView: View {
                 },
                 onPause: { record in manager.pause(record); finishSelection() },
                 onDelete: { record in manager.deleteFile(for: record); finishSelection() },
+                onDetails: { detailsRecord = $0 },
                 onCancel: { record in
                     manager.cancel(record)
                     finishSelection()

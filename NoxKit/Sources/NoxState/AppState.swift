@@ -260,7 +260,13 @@ public final class AppState: ObservableObject {
             return
         }
 
-        downloads[index] = record
+        var updated = record
+        if record.status == .finished && downloads[index].status != .finished {
+            var metadata = updated.metadata ?? DownloadMetadata()
+            metadata.completedAt = Date()
+            updated.metadata = metadata
+        }
+        downloads[index] = updated
 
         if shouldPersist {
             persist()

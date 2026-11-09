@@ -13,6 +13,7 @@ struct DownloadRow: View {
     let onRetry: (DownloadRecord) -> Void
     let onPause: (DownloadRecord) -> Void
     let onDelete: (DownloadRecord) -> Void
+    let onDetails: (DownloadRecord) -> Void
     let onCancel: (DownloadRecord) -> Void
 
     /// 编辑态下行内的按钮要收起来，否则点击会被按钮吃掉、选不中行
@@ -28,8 +29,10 @@ struct DownloadRow: View {
         onRetry: @escaping (DownloadRecord) -> Void,
         onPause: @escaping (DownloadRecord) -> Void,
         onDelete: @escaping (DownloadRecord) -> Void,
+        onDetails: @escaping (DownloadRecord) -> Void,
         onCancel: @escaping (DownloadRecord) -> Void
     ) {
+        self.onDetails = onDetails
         self.record = record
         self.stats = stats
         self.isMissingFile = isMissingFile
@@ -89,9 +92,9 @@ struct DownloadRow: View {
         .padding(.vertical, 5)
         .contentShape(Rectangle())
         .contextMenu {
-            // 标题被截断成一行，长按时先把完整标题展示出来；
-            // 下面原有的菜单项保持不动。
-            Text(record.displayFilename)
+            Button { onDetails(record) } label: {
+                Label(L("详细信息"), systemImage: "info.circle")
+            }
 
             Divider()
 

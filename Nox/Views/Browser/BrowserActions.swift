@@ -143,7 +143,7 @@ extension VideoBrowserView {
     /// 「解析视频」路径。历史已由 `parseCurrentPage()` 记过，这里不重复记。
     func download(_ variant: VideoVariant) async {
         guard let parsedVideo else { return }
-        prepareDownload(title: parsedVideo.title, variant: variant, referer: parsedVideo.pageURL)
+        prepareDownload(title: parsedVideo.title, variant: variant, referer: parsedVideo.pageURL, parserName: parser.currentSiteName)
     }
 
     /// 嗅探面板路径。
@@ -166,7 +166,13 @@ extension VideoBrowserView {
     }
 
     /// 统一的入队前准备：收起所有 sheet、取 Cookie、生成默认文件名、弹「选择文件名」。
-    func prepareDownload(title: String, variant: VideoVariant, referer: URL?) {
+    func prepareDownload(title: String, variant: VideoVariant, referer: URL?, parserName: String? = nil) {
+        var metadata = variant.metadata ?? DownloadMetadata()
+        metadata.originalPageURL = metadata.originalPageURL ?? parser.lastLoadURL ?? referer
+        metadata.finalPageURL = metadata.finalPageURL ?? parser.currentPageURL ?? referer
+        metadata.normalizedPageURL = metadata.normalizedPageURL ?? metadata.finalPageURL
+        metadata.parserName = metadata.parserName ?? parserName
+        metadata.parsingMethod = metadata.parsingMethod ?? (parserName == nil ? "sniffer" : "script")
         showParseSheet = false
         showSniffer = false
 
@@ -193,6 +199,7 @@ extension VideoBrowserView {
                 variant: variant,
                 referer: referer,
                 cookieHeader: cookieHeader,
+                metadata: metadata,
                 fileExtension: fileExtension,
                 defaultFilename: suggested
             )
@@ -222,7 +229,8 @@ extension VideoBrowserView {
             variant: request.variant,
             referer: request.referer,
             cookieHeader: request.cookieHeader,
-            filename: filename
+            filename: filename,
+            metadata: request.metadata
         )
 
         isFilenameDialogPresented = false

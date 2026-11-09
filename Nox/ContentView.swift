@@ -48,18 +48,12 @@ struct ContentView: View {
                 .tabItem { Label(L("下载"), systemImage: "arrow.down.circle") }
                 .tag(1)
 
-            HistoryView(
-                scrollToTopToken: tabSelection.historyDoubleTapCount
-            ) { url in
+            SettingsView(manager: downloadManager, scrollToTopToken: tabSelection.settingsDoubleTapCount) { url in
                 browserURL = url
                 tabSelection.selection = 0
             }
-                .tabItem { Label(L("历史"), systemImage: "clock") }
-                .tag(2)
-
-            SettingsView(manager: downloadManager, scrollToTopToken: tabSelection.settingsDoubleTapCount)
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
-                .tag(3)
+                .tag(2)
         }
         .background(TabReselectionInterceptor { tabSelection.handleTabReselect($0) })
         .environmentObject(appState)
@@ -233,7 +227,6 @@ final class TabSelectionState: ObservableObject {
     /// 双击「浏览」的次数；浏览页观察它并滚回顶部。
     @Published private(set) var browseDoubleTapCount = 0
     @Published private(set) var downloadsDoubleTapCount = 0
-    @Published private(set) var historyDoubleTapCount = 0
     @Published private(set) var settingsDoubleTapCount = 0
 
     private var lastReselectAt = -Double.infinity
@@ -246,8 +239,7 @@ final class TabSelectionState: ObservableObject {
             switch tab {
             case 0: browseDoubleTapCount += 1
             case 1: downloadsDoubleTapCount += 1
-            case 2: historyDoubleTapCount += 1
-            case 3: settingsDoubleTapCount += 1
+            case 2: settingsDoubleTapCount += 1
             default: break
             }
         } else {

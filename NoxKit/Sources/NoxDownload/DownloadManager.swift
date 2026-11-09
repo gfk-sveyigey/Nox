@@ -435,7 +435,8 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         variant: VideoVariant,
         referer: URL?,
         cookieHeader: String? = nil,
-        filename: String? = nil
+        filename: String? = nil,
+        metadata: DownloadMetadata? = nil
     ) {
         let record = DownloadRecord(
             title: title,
@@ -444,7 +445,8 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
             sourceURL: variant.url,
             refererURL: referer,
             cookieHeader: cookieHeader,
-            desiredFilename: filename
+            desiredFilename: filename,
+            metadata: metadata
         )
 
         store.addDownload(record)

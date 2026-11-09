@@ -122,7 +122,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     public var canParseCurrentPage: Bool { pageReady && pageMatchesRule && !isLoading }
 
     /// 当前页面命中的站点名（仅当该站点开关为开启时）
-    var currentSiteName: String? { activeParser(for: webView.url)?.displayName }
+    public var currentSiteName: String? { activeParser(for: webView.url)?.displayName }
 
     /// 当前页面实际生效的解析器标识。
     ///
@@ -182,7 +182,24 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         }
 
         let page = WKWebPageContext(webView: webView)
-        let variants = try await siteParser.parse(page: page)
+        let parsed = try await siteParser.parse(page: page)
+        let variants = parsed.map { variant in
+            var metadata = variant.metadata ?? DownloadMetadata()
+            metadata.originalPageURL = lastLoadURL ?? pageURL
+            metadata.finalPageURL = pageURL
+            metadata.normalizedPageURL = pageURL
+            metadata.parserName = siteParser.displayName
+            metadata.parsingMethod = siteParser.identifier == SnifferSite.identifier ? "sniffer" : "script"
+            for rule in siteParser.sourceNormalizationRules {
+                if let normalized = rule.normalize(pageURL) {
+                    metadata.normalizedPageURL = normalized
+                    metadata.normalizationRule = rule.identifier
+                    break
+                }
+            }
+            return VideoVariant(id: variant.id, quality: variant.quality, format: variant.format,
+                                url: variant.url, metadata: metadata)
+        }
 
         guard !variants.isEmpty else { throw ParserError.noVideoVariants }
 
