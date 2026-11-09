@@ -122,6 +122,25 @@ struct VideoBrowserView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(browserChromeBackground.ignoresSafeArea())
+            .overlay(alignment: .top) {
+                GeometryReader { geometry in
+                    // Backdrop material samples the moving webpage, not a snapshot.
+                    // Only this layer extends into the status-bar safe area.
+                    Rectangle()
+                        .fill(.regularMaterial)
+                        .frame(height: geometry.safeAreaInsets.top + 12)
+                        .mask {
+                            VStack(spacing: 0) {
+                                Color.black
+                                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                                    .frame(height: 12)
+                            }
+                        }
+                        .offset(y: -geometry.safeAreaInsets.top)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
             .animation(.easeInOut(duration: 0.2), value: isParseBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: showingHome)
