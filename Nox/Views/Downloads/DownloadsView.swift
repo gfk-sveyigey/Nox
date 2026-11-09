@@ -438,18 +438,28 @@ struct DownloadsView: View {
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Menu {
-                Picker(L("任务状态"), selection: $statusFilter) {
-                    Text(L("全部")).tag(Optional<DownloadStatus>.none)
-                    ForEach(filterStatuses, id: \.self) { status in
-                        Text(statusTitle(status)).tag(Optional(status))
-                    }
+            if editMode.isEditing {
+                Button {
+                    finishSelection()
+                } label: {
+                    Image(systemName: "checkmark")
+                        .fontWeight(.semibold)
                 }
-            } label: {
-                Label(statusTitle(statusFilter), systemImage: statusFilter == nil
-                      ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                .accessibilityLabel(L("完成"))
+            } else {
+                Menu {
+                    Picker(L("任务状态"), selection: $statusFilter) {
+                        Text(L("全部")).tag(Optional<DownloadStatus>.none)
+                        ForEach(filterStatuses, id: \.self) { status in
+                            Text(statusTitle(status)).tag(Optional(status))
+                        }
+                    }
+                } label: {
+                    Label(statusTitle(statusFilter), systemImage: statusFilter == nil
+                          ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                }
+                .accessibilityLabel(L("筛选任务"))
             }
-            .accessibilityLabel(L("筛选任务"))
         }
         ToolbarItem(placement: .topBarTrailing) {
             multiFunctionMenu
@@ -467,15 +477,15 @@ struct DownloadsView: View {
 
     var multiFunctionMenu: some View {
         Menu {
-            Section {
-                Button {
-                    if editMode.isEditing { finishSelection() }
-                    else { withAnimation { editMode = .active } }
-                } label: {
-                    Label(L(editMode.isEditing ? "完成" : "选择"),
-                          systemImage: editMode.isEditing ? "checkmark" : "checkmark.circle")
+            if !editMode.isEditing {
+                Section {
+                    Button {
+                        withAnimation { editMode = .active }
+                    } label: {
+                        Label(L("选择"), systemImage: "checkmark.circle")
+                    }
+                    .disabled(visibleRecords.isEmpty)
                 }
-                .disabled(visibleRecords.isEmpty && !editMode.isEditing)
             }
 
             Section {
