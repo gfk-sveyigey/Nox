@@ -55,11 +55,6 @@ struct DownloadsView: View {
             Group {
                 list
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if editMode.isEditing {
-                    selectionFloatingActions
-                }
-            }
             // 空列表时也把顶部安全区铺满分组背景，避免导航栏上方露出一条浅色空白。
             .background(pageBackgroundColor.ignoresSafeArea())
             .navigationTitle(L("下载"))
@@ -145,7 +140,7 @@ struct DownloadsView: View {
 
     /// 删除或其它操作完成后清理选择并退出多选。
     ///
-    /// 退出时不要包在 `withAnimation` 里：标签栏重新出现、底部 `safeAreaInset`
+    /// 退出时不要包在 `withAnimation` 里：标签栏重新出现、底部工具栏
     /// 同时收起时，两者的过渡会短暂叠出一块比页面更浅的背景。
     func finishSelection() {
         selection.removeAll()
@@ -464,6 +459,29 @@ struct DownloadsView: View {
         ToolbarItem(placement: .topBarTrailing) {
             multiFunctionMenu
         }
+        if editMode.isEditing {
+            ToolbarItemGroup(placement: .bottomBar) {
+                Button(allSelected ? L("取消全选") : L("全选")) {
+                    withAnimation {
+                        if allSelected {
+                            selection.removeAll()
+                        } else {
+                            selection = Set(visibleRecords.map(\.id))
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Button(role: .destructive) {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .disabled(selection.isEmpty)
+                .accessibilityLabel(L("删除"))
+            }
+        }
     }
 
     /// All batch actions are scoped to the current filter and, in selection mode, selected rows.
@@ -577,55 +595,6 @@ struct DownloadsView: View {
         }
     }
 
-    /// 多选态悬浮操作：左下角全选 / 取消全选，右下角删除。
-    var selectionFloatingActions: some View {
-        HStack(alignment: .center) {
-            Button {
-                withAnimation {
-                    if allSelected {
-                        selection.removeAll()
-                    } else {
-                        selection = Set(visibleRecords.map(\.id))
-                    }
-                }
-            } label: {
-                Text(allSelected ? L("取消全选") : L("全选"))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.primary)
-                    .padding(.horizontal, 16)
-                    .frame(height: 44)
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .modifier(GlassCapsuleBackground())
-            .accessibilityLabel(allSelected ? L("取消全选") : L("全选"))
-
-            Spacer(minLength: 0)
-
-            Button(role: .destructive) {
-                showingDeleteConfirmation = true
-            } label: {
-                circleLabel("trash", color: .red)
-                    .opacity(selection.isEmpty ? 0.4 : 1)
-            }
-            .buttonStyle(.plain)
-            .disabled(selection.isEmpty)
-            .modifier(GlassCircleBackground())
-            .accessibilityLabel(L("删除"))
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-    }
-
-    func circleLabel(_ systemImage: String, color: Color) -> some View {
-        Image(systemName: systemImage)
-            .font(.system(size: 18, weight: .semibold))
-            .foregroundStyle(color)
-            .frame(width: 44, height: 44)
-            .contentShape(Circle())
-    }
-
     /// 批量分享：只带上文件仍在的已完成记录。
     ///
     /// 先取出 URL 再退出多选；系统分享面板要等菜单退场后才能弹出，
@@ -659,38 +628,6 @@ struct DownloadsView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             SharePresenter.present(items: [url])
-        }
-    }
-}
-
-/// 多选态文字按钮：与圆形玻璃按钮一致的液态玻璃效果，但使用胶囊形。
-private struct GlassCapsuleBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            content
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-                }
-                .shadow(color: Color.black.opacity(0.15), radius: 10, y: 3)
-        }
-    }
-}
-
-/// 多选态圆形按钮：iOS 26 使用系统液态玻璃，低版本回退到材质 + 描边。
-private struct GlassCircleBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Circle())
-        } else {
-            content
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay {
-                    Circle().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-                }
-                .shadow(color: Color.black.opacity(0.15), radius: 10, y: 3)
         }
     }
 }
