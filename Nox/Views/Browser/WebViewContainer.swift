@@ -11,11 +11,10 @@ import NoxBrowser
 
 struct WebViewContainer: UIViewControllerRepresentable {
     let webView: WKWebView
-    /// 滚动偏移回调：供外层收缩地址栏。
-    var onScroll: (CGFloat) -> Void
+    var allowsBarHiding: Bool
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(webView: webView, onScroll: onScroll)
+        Coordinator(webView: webView)
     }
 
     func makeUIViewController(context: Context) -> BrowserContentController {
@@ -31,38 +30,27 @@ struct WebViewContainer: UIViewControllerRepresentable {
         }
 
         webView.scrollView.contentInsetAdjustmentBehavior = .never
-        context.coordinator.startObservingOffset()
-        return BrowserContentController(webView: webView)
+        let controller = BrowserContentController(webView: webView)
+        controller.allowsBarHiding = allowsBarHiding
+        return controller
     }
 
     func updateUIViewController(_ controller: BrowserContentController, context: Context) {
-        context.coordinator.onScroll = onScroll
+        controller.allowsBarHiding = allowsBarHiding
         controller.connectContentScrollView()
     }
 
     final class Coordinator {
         private weak var webView: WKWebView?
         private var observation: NSKeyValueObservation?
-        private var offsetObservation: NSKeyValueObservation?
-        var onScroll: (CGFloat) -> Void
 
-        init(webView: WKWebView, onScroll: @escaping (CGFloat) -> Void) {
+        init(webView: WKWebView) {
             self.webView = webView
-            self.onScroll = onScroll
 
             // 加载结束后收起刷新指示器，否则会一直转
             observation = webView.observe(\.isLoading, options: [.new]) { webView, _ in
                 guard !webView.isLoading else { return }
                 webView.scrollView.refreshControl?.endRefreshing()
-            }
-        }
-
-        func startObservingOffset() {
-            guard offsetObservation == nil, let webView else { return }
-
-            // contentOffset 的 KVO 回调在主线程投递，直接转给闭包即可（省去每帧派发的开销）
-            offsetObservation = webView.scrollView.observe(\.contentOffset, options: [.new]) { [weak self] scrollView, _ in
-                self?.onScroll(scrollView.contentOffset.y)
             }
         }
 
@@ -74,6 +62,9 @@ struct WebViewContainer: UIViewControllerRepresentable {
 
 /// Register WebKit's nested scroll view with the native tab containers.
 final class BrowserContentController: UIViewController {
+    var allowsBarHiding = false
+    private weak var configuredNavigation: UINavigationController?
+    private var previousHidesBarsOnSwipe = false
     private let webView: WKWebView
     init(webView: WKWebView) {
         self.webView = webView
@@ -90,8 +81,26 @@ final class BrowserContentController: UIViewController {
         guard parent != nil else { return }
         DispatchQueue.main.async { [weak self] in self?.connectContentScrollView() }
     }
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        restoreNavigationBehavior()
+    }
+    private func restoreNavigationBehavior() {
+        configuredNavigation?.hidesBarsOnSwipe = previousHidesBarsOnSwipe
+        configuredNavigation?.setNavigationBarHidden(false, animated: false)
+        configuredNavigation = nil
+    }
     func connectContentScrollView() {
-        guard #available(iOS 26.0, *) else { return }
+        guard isViewLoaded, view.window != nil else { return }
+        if let navigation = navigationController {
+            if configuredNavigation !== navigation {
+                restoreNavigationBehavior()
+                previousHidesBarsOnSwipe = navigation.hidesBarsOnSwipe
+                configuredNavigation = navigation
+            }
+            navigation.hidesBarsOnSwipe = allowsBarHiding
+            if !allowsBarHiding { navigation.setNavigationBarHidden(false, animated: true) }
+        }
         var controller: UIViewController? = self
         while let current = controller, !(current is UITabBarController) {
             current.setContentScrollView(webView.scrollView)
