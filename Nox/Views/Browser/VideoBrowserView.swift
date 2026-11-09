@@ -20,7 +20,6 @@ struct VideoBrowserView: View {
     @Binding var requestedURL: URL?
     /// 由 ContentView 在双击「浏览」标签时递增。
     let scrollToTopToken: Int
-    let selectTab: (Int) -> Void
 
     @State var address = ""
     @State var parsedVideo: ParsedVideo?
@@ -44,7 +43,6 @@ struct VideoBrowserView: View {
     @State var isProgressIndeterminate = false
     /// 是否显示原生「首页」（尚未打开任何页面，或用户点了主页按钮）
     @State var showingHome = true
-    @State private var tabsExpanded = true
     @FocusState var addressFocused: Bool
 
     /// 地址栏展开 / 收起时的高度
@@ -70,14 +68,12 @@ struct VideoBrowserView: View {
         appState: AppState,
         downloads: DownloadManager,
         requestedURL: Binding<URL?>,
-        scrollToTopToken: Int,
-        selectTab: @escaping (Int) -> Void
+        scrollToTopToken: Int
     ) {
         _parser = StateObject(wrappedValue: VideoParser(sites: appState))
         _downloads = ObservedObject(wrappedValue: downloads)
         _requestedURL = requestedURL
         self.scrollToTopToken = scrollToTopToken
-        self.selectTab = selectTab
     }
 
     var body: some View {
@@ -130,21 +126,6 @@ struct VideoBrowserView: View {
             // 浏览页没有导航栏内容。保留空 NavigationStack 的导航栏会在地址栏上方
             // 多出一条空白，直接隐藏；顶部安全区仍由系统保留。
             .toolbar(.hidden, for: .navigationBar)
-            .toolbar(.hidden, for: .tabBar)
-            .overlay(alignment: .bottomLeading) {
-                BrowserExpandingTabBar(expanded: showingHome || tabsExpanded, onExpand: {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { tabsExpanded = true }
-                }, onSelect: { tab in
-                    if tab == 0 {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { tabsExpanded = false }
-                    } else { selectTab(tab) }
-                })
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-            }
-            .onChange(of: showingHome) { _, home in
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { tabsExpanded = home }
-            }
             .onAppear {
                 loadRequestedURLIfNeeded()
                 parser.refreshSiteRules()

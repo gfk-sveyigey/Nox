@@ -35,8 +35,7 @@ struct ContentView: View {
                 appState: appState,
                 downloads: downloadManager,
                 requestedURL: $browserURL,
-                scrollToTopToken: tabSelection.browseDoubleTapCount,
-                selectTab: { tabSelection.selection = $0 }
+                scrollToTopToken: tabSelection.browseDoubleTapCount
             )
                 .tabItem { Label(L("浏览"), systemImage: "safari") }
                 .tag(0)
@@ -53,6 +52,7 @@ struct ContentView: View {
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(2)
         }
+        .modifier(NativeBrowserTabMinimization(enabled: tabSelection.selection == 0))
         .background(TabReselectionInterceptor { tabSelection.handleTabReselect($0) })
         .environmentObject(appState)
         .environmentObject(pluginImport)
@@ -247,5 +247,17 @@ final class TabSelectionState: ObservableObject {
 
     private func resetDoubleTap() {
         lastReselectAt = -Double.infinity
+    }
+}
+
+private struct NativeBrowserTabMinimization: ViewModifier {
+    let enabled: Bool
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(enabled ? .onScrollDown : .never)
+        } else {
+            content
+        }
     }
 }
