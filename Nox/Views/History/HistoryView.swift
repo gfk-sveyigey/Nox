@@ -114,20 +114,12 @@ struct HistoryView: View {
     }
 
     var list: some View {
-        ScrollViewReader { proxy in
-            List(selection: listSelection) {
-                rows
-            }
-            .contentMargins(.top, 20, for: .scrollContent)
-            .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
-            .onChange(of: scrollToTopToken) { _, _ in
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    if let firstID = appState.history.first?.id {
-                        proxy.scrollTo(firstID, anchor: .top)
-                    }
-                }
-            }
+        List(selection: listSelection) {
+            rows
         }
+        .contentMargins(.top, 20, for: .scrollContent)
+        .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
+        .background(ScrollToPhysicalTop(token: scrollToTopToken))
     }
 
     /// 非多选态把行选中转成一次短暂高亮，随后自动清空；

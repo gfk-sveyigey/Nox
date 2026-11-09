@@ -57,10 +57,11 @@ struct ContentView: View {
                 .tabItem { Label(L("历史"), systemImage: "clock") }
                 .tag(2)
 
-            SettingsView(manager: downloadManager)
+            SettingsView(manager: downloadManager, scrollToTopToken: tabSelection.settingsDoubleTapCount)
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(3)
         }
+        .background(TabReselectionInterceptor { tabSelection.handleTabReselect($0) })
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -233,10 +234,11 @@ final class TabSelectionState: ObservableObject {
     @Published private(set) var browseDoubleTapCount = 0
     @Published private(set) var downloadsDoubleTapCount = 0
     @Published private(set) var historyDoubleTapCount = 0
+    @Published private(set) var settingsDoubleTapCount = 0
 
     private var lastReselectAt = -Double.infinity
 
-    private func handleTabReselect(_ tab: Int) {
+    func handleTabReselect(_ tab: Int) {
         let now = CACurrentMediaTime()
 
         if now - lastReselectAt <= Self.doubleTapInterval {
@@ -245,6 +247,7 @@ final class TabSelectionState: ObservableObject {
             case 0: browseDoubleTapCount += 1
             case 1: downloadsDoubleTapCount += 1
             case 2: historyDoubleTapCount += 1
+            case 3: settingsDoubleTapCount += 1
             default: break
             }
         } else {

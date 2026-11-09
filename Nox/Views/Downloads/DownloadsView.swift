@@ -127,20 +127,14 @@ struct DownloadsView: View {
     }
 
     var list: some View {
-        ScrollViewReader { proxy in
-            List(selection: listSelection) { rows }
-                .listStyle(.insetGrouped)
-                .contentMargins(.top, 20, for: .scrollContent)
-                .listSectionSpacing(12)
-                .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
-                // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
-                .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
-                .onChange(of: scrollToTopToken) { _, _ in
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo("downloads-overview", anchor: .top)
-                    }
-                }
-        }
+        List(selection: listSelection) { rows }
+            .listStyle(.insetGrouped)
+            .contentMargins(.top, 20, for: .scrollContent)
+            .listSectionSpacing(12)
+            .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
+            // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
+            .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
+            .background(ScrollToPhysicalTop(token: scrollToTopToken))
     }
 
     /// 非多选态把行选中转成一次短暂高亮，随后自动清空；
