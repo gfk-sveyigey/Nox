@@ -20,6 +20,7 @@ struct VideoBrowserView: View {
     @Binding var requestedURL: URL?
     /// 由 ContentView 在双击「浏览」标签时递增。
     let scrollToTopToken: Int
+    let selectTab: (Int) -> Void
 
     @State var address = ""
     @State var parsedVideo: ParsedVideo?
@@ -68,12 +69,14 @@ struct VideoBrowserView: View {
         appState: AppState,
         downloads: DownloadManager,
         requestedURL: Binding<URL?>,
-        scrollToTopToken: Int
+        scrollToTopToken: Int,
+        selectTab: @escaping (Int) -> Void
     ) {
         _parser = StateObject(wrappedValue: VideoParser(sites: appState))
         _downloads = ObservedObject(wrappedValue: downloads)
         _requestedURL = requestedURL
         self.scrollToTopToken = scrollToTopToken
+        self.selectTab = selectTab
     }
 
     var body: some View {
@@ -126,6 +129,34 @@ struct VideoBrowserView: View {
             // 浏览页没有导航栏内容。保留空 NavigationStack 的导航栏会在地址栏上方
             // 多出一条空白，直接隐藏；顶部安全区仍由系统保留。
             .toolbar(.hidden, for: .navigationBar)
+            .toolbar(showingHome ? .visible : .hidden, for: .tabBar)
+            .overlay(alignment: .bottomLeading) {
+                if !showingHome {
+                    Menu {
+                        Button { selectTab(0) } label: {
+                            Label(L("浏览"), systemImage: "safari")
+                        }
+                        Button { selectTab(1) } label: {
+                            Label(L("下载"), systemImage: "arrow.down.circle")
+                        }
+                        Button { selectTab(2) } label: {
+                            Label(L("设置"), systemImage: "gearshape")
+                        }
+                    } label: {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.system(size: 20, weight: .medium))
+                            .frame(width: 44, height: 44)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
+                    .browserGlassBar(cornerRadius: nil)
+                    .padding(.leading, 16)
+                    .padding(.bottom, 16)
+                    .accessibilityLabel(L("切换标签页"))
+                    .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .bottomLeading)))
+                }
+            }
             .onAppear {
                 loadRequestedURLIfNeeded()
                 parser.refreshSiteRules()

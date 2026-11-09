@@ -35,7 +35,8 @@ struct ContentView: View {
                 appState: appState,
                 downloads: downloadManager,
                 requestedURL: $browserURL,
-                scrollToTopToken: tabSelection.browseDoubleTapCount
+                scrollToTopToken: tabSelection.browseDoubleTapCount,
+                selectTab: { tabSelection.selection = $0 }
             )
                 .tabItem { Label(L("浏览"), systemImage: "safari") }
                 .tag(0)

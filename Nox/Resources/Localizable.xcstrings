@@ -1,6 +1,14 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "切换标签页" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Switch tabs" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Tab wechseln" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Changer d’onglet" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "탭 전환" } }
+      }
+    },
     "详细信息" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Details" } },
