@@ -257,10 +257,12 @@ struct DownloadsView: View {
                     Label(L("删除"), systemImage: "trash")
                 }
                 if record.status != .finished {
-                    Button { manager.cancel(record) } label: {
-                        Label(L("取消"), systemImage: "xmark.circle")
+                    if record.status != .notStarted && record.status != .legacyCancelled {
+                        Button { manager.cancel(record) } label: {
+                            Label(L("取消"), systemImage: "xmark.circle")
+                        }
+                        .tint(.orange)
                     }
-                    .tint(.orange)
                     Button {
                         if record.status == .queued || record.status == .downloading {
                             manager.pause(record)
@@ -275,7 +277,6 @@ struct DownloadsView: View {
     }
 
     struct DownloadOverviewCard: View {
-        @Namespace private var statusAnimation
 
         private struct StatusMetric: Identifiable {
             let title: String
@@ -347,12 +348,37 @@ struct DownloadsView: View {
                 let unitWidth = (geometry.size.width - spacing * CGFloat(groups.count))
                     / (1.5 + CGFloat(groups.count))
 
-                HStack(alignment: .top, spacing: spacing) {
-                    metricsCard
-                        .frame(width: unitWidth * 1.5, height: 96, alignment: .leading)
-                    ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                        statusCard(group)
-                            .frame(width: unitWidth, height: 96, alignment: .topLeading)
+                ZStack(alignment: .topLeading) {
+                    HStack(alignment: .top, spacing: spacing) {
+                        metricsCard
+                            .frame(width: unitWidth * 1.5, height: 96, alignment: .leading)
+                        ForEach(groups.indices, id: \.self) { _ in
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color(.tertiarySystemGroupedBackground))
+                                .frame(width: unitWidth, height: 96)
+                                .transition(.opacity)
+                        }
+                    }
+
+                    // Keep one identity per status even when it moves between cards.
+                    ForEach(statusMetrics) { item in
+                        let index = statusMetrics.firstIndex(where: { $0.id == item.id }) ?? 0
+                        let firstCount = groups.first?.count ?? 0
+                        let column = index < firstCount ? 0 : 1
+                        let row = column == 0 ? index : index - firstCount
+                        let count = groups[column].count
+                        let rowHeight: CGFloat = 22
+                        let rowSpacing: CGFloat = 10
+                        let contentHeight = CGFloat(count) * rowHeight + CGFloat(max(count - 1, 0)) * rowSpacing
+
+                        countMetric(item.title, count: item.count, color: item.color)
+                            .frame(width: max(unitWidth - 20, 0), height: rowHeight, alignment: .leading)
+                            .position(
+                                x: unitWidth * 1.5 + spacing + unitWidth / 2
+                                    + CGFloat(column) * (unitWidth + spacing),
+                                y: (96 - contentHeight) / 2 + rowHeight / 2
+                                    + CGFloat(row) * (rowHeight + rowSpacing)
+                            )
                             .transition(.opacity)
                     }
                 }
@@ -389,20 +415,6 @@ struct DownloadsView: View {
             .padding(.leading, 18)
             .padding(.trailing, 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-
-        private func statusCard(_ metrics: [StatusMetric]) -> some View {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(metrics) { item in
-                    countMetric(item.title, count: item.count, color: item.color)
-                        .matchedGeometryEffect(id: item.id, in: statusAnimation)
-                        .transition(.opacity)
-                }
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
 
