@@ -127,7 +127,8 @@ struct VideoBrowserView: View {
                     // Backdrop material samples the moving webpage, not a snapshot.
                     // Only this layer extends into the status-bar safe area.
                     Rectangle()
-                        .fill(.regularMaterial)
+                        .fill(.ultraThinMaterial)
+                        .opacity(0.65)
                         .frame(height: geometry.safeAreaInsets.top + 12)
                         .mask {
                             VStack(spacing: 0) {
