@@ -7,19 +7,17 @@ import NoxParsing
 import NoxDownload
 import NoxState
 
-extension Notification.Name {
-    static let presentAbout = Notification.Name("Nox.presentAbout")
-}
-
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject var localization = LocalizationManager.shared
     @ObservedObject var manager: DownloadManager
     @ObservedObject var registry = VideoSiteParserRegistry.shared
+    var aboutRequest: UUID
     @State private var showingAbout = false
 
-    init(manager: DownloadManager) {
+    init(manager: DownloadManager, aboutRequest: UUID) {
         _manager = ObservedObject(wrappedValue: manager)
+        self.aboutRequest = aboutRequest
     }
 
     var body: some View {
@@ -41,7 +39,7 @@ struct SettingsView: View {
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .presentAbout)) { _ in
+        .onChange(of: aboutRequest) { _, _ in
             showingAbout = true
         }
     }

@@ -20,6 +20,7 @@ struct ContentView: View {
     @State private var taskFilterHasItems = false
     @State private var parseRequest = UUID()
     @State private var taskMenuRequest = UUID()
+    @State private var aboutRequest = UUID()
     @State private var actionNotice: String?
     @State private var didLogSession = false
     @State private var startupFinished = false
@@ -169,7 +170,7 @@ struct ContentView: View {
             }
             taskMenuRequest = UUID()
         case 2:
-            NotificationCenter.default.post(name: .presentAbout, object: nil)
+            aboutRequest = UUID()
         default:
             guard browserAllowsMinimization && browserCanParse else {
                 actionNotice = L("当前页面暂无可解析的内容。")
@@ -203,7 +204,7 @@ struct ContentView: View {
                     DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
                 }
                 Tab(L("设置"), systemImage: "gearshape", value: 2) {
-                    SettingsView(manager: downloadManager)
+                    SettingsView(manager: downloadManager, aboutRequest: aboutRequest)
                 }
                 Tab(value: 3, role: .search) { Color.clear } label: {
                         Label(contextActionTitle, systemImage: contextActionImage)
@@ -215,7 +216,7 @@ struct ContentView: View {
                 browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
                 DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
                     .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }.tag(1)
-                SettingsView(manager: downloadManager)
+                SettingsView(manager: downloadManager, aboutRequest: aboutRequest)
                     .tabItem { Label(L("设置"), systemImage: "gearshape") }.tag(2)
                 Color.clear
                     .tabItem { Label(contextActionTitle, systemImage: contextActionImage) }
