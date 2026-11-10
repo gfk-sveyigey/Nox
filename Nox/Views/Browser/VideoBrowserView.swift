@@ -128,7 +128,7 @@ struct VideoBrowserView: View {
                     // Only this layer extends into the status-bar safe area.
                     Rectangle()
                         .fill(.ultraThinMaterial)
-                        .opacity(0.65)
+                        .opacity(1 - appState.browserSafeAreaTransparency)
                         .frame(height: geometry.safeAreaInsets.top + 12)
                         .mask {
                             VStack(spacing: 0) {

@@ -1,6 +1,230 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+  "界面设置": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Interface"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Darstellung"
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Interface"
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "화면 설정"
+        }
+      }
+    }
+  },
+  "调整外观、液态玻璃和浏览安全区。": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Customize appearance, Liquid Glass, and the browser safe area."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Darstellung, Liquid Glass und den sicheren Browserbereich anpassen."
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Personnalisez l’apparence, Liquid Glass et la zone de sécurité du navigateur."
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "화면 스타일, Liquid Glass 및 브라우저 안전 영역을 조정합니다."
+        }
+      }
+    }
+  },
+  "启用液态玻璃效果": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Enable Liquid Glass"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass aktivieren"
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Activer Liquid Glass"
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass 사용"
+        }
+      }
+    }
+  },
+  "仅影响应用自定义悬浮组件，系统标签栏和菜单仍由 iOS 控制。": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Applies only to custom floating controls. System tab bars and menus are managed by iOS."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Gilt nur für eigene schwebende Bedienelemente. System-Tableisten und Menüs werden von iOS gesteuert."
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "S’applique uniquement aux commandes flottantes personnalisées. Les barres d’onglets et menus système restent gérés par iOS."
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "앱의 사용자 지정 플로팅 컨트롤에만 적용됩니다. 시스템 탭 막대와 메뉴는 iOS가 관리합니다."
+        }
+      }
+    }
+  },
+  "液态玻璃需要 iOS 26 或更高版本，当前使用兼容材质。": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass requires iOS 26 or later. A compatible material is used on this device."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass erfordert iOS 26 oder neuer. Dieses Gerät verwendet kompatibles Material."
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass nécessite iOS 26 ou ultérieur. Cet appareil utilise un matériau compatible."
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass는 iOS 26 이상이 필요합니다. 현재 호환 재질을 사용합니다."
+        }
+      }
+    }
+  },
+  "顶部安全区透明度": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Top safe area transparency"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Transparenz des oberen sicheren Bereichs"
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Transparence de la zone de sécurité supérieure"
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "상단 안전 영역 투명도"
+        }
+      }
+    }
+  },
+  "透明度预览": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Transparency preview"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Transparenzvorschau"
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Aperçu de la transparence"
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "투명도 미리보기"
+        }
+      }
+    }
+  },
+  "数值越高越透明；仅调整浏览页顶部安全区，不改变网页位置。": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Higher values are more transparent. Only affects the browser’s top safe area, not webpage positioning."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Höhere Werte bedeuten mehr Transparenz. Betrifft nur den oberen sicheren Browserbereich, nicht die Position der Webseite."
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Une valeur élevée augmente la transparence. Seule la zone de sécurité supérieure change, pas la position de la page web."
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "값이 높을수록 투명해집니다. 브라우저 상단 안전 영역에만 적용되며 웹페이지 위치는 바뀌지 않습니다."
+        }
+      }
+    }
+  },
     "切换标签页" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Switch tabs" } },

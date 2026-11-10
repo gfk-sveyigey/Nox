@@ -115,18 +115,14 @@ struct SettingsView: View {
         }
 
         Section {
-            SettingsPickerRow(
-                title: L("外观"),
-                subtitle: L("选择跟随系统、浅色或深色外观。"),
-                systemImage: "circle.lefthalf.filled",
-                iconColor: .pink,
-                selection: $appState.appearanceMode,
-                options: AppearanceMode.allCases.map {
-                    SettingsPickerOption(value: $0, title: $0.title)
-                }
-            )
-            .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
-            .id(localization.language)
+            settingsLink(
+                L("界面设置"),
+                subtitle: L("调整外观、液态玻璃和浏览安全区。"),
+                systemImage: "paintpalette",
+                iconColor: .pink
+            ) {
+                InterfaceSettingsView()
+            }
 
             SettingsPickerRow(
                 title: L("语言"),
