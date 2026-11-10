@@ -1,6 +1,63 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"主题": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Theme"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Design"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Thème"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "테마"
+      }
+    }
+  }
+},
+"模糊从顶部强度缓入至安全区中部的一半强度，再缓出至底部的 0%。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Blur eases in to half strength at the middle of the safe area, then eases out to 0% at the bottom."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die Unschärfe nimmt bis zur Mitte des sicheren Bereichs sanft auf die Hälfte ab und klingt am unteren Rand auf 0 % aus."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Le flou diminue progressivement de moitié au milieu de la zone de sécurité, puis s’atténue jusqu’à 0 % en bas."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "흐림은 안전 영역 중간에서 상단 강도의 절반이 되도록 서서히 줄어든 뒤, 하단에서 0%가 되도록 부드럽게 사라집니다."
+      }
+    }
+  }
+},
+
 "安全区与地址栏交界模糊强度": {
   "localizations": {
     "en": {

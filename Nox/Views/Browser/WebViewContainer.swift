@@ -165,9 +165,9 @@ final class BrowserContentController: UIViewController {
         guard abs(addressBarInset - inset) > 0.5 else { return }
         addressBarInset = inset
         guard isViewLoaded else { return }
-        UIView.animate(withDuration: 0.22, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
-            self.updateTopContentInset()
-        }
+        // Keep the page anchored while the independently overlaid address bar
+        // animates. Animating WebKit's frame triggers repeated viewport reflow.
+        UIView.performWithoutAnimation { self.updateTopContentInset() }
     }
 
     init(webView: WKWebView) {
@@ -204,7 +204,20 @@ final class BrowserContentController: UIViewController {
         defer { isUpdatingInset = false }
         // A real viewport origin, not a scroll inset: window.scrollTo(0, 0),
         // input focus and WebKit navigation all agree on the same page top.
+        let oldFrame = webView.frame
+        let oldOffset = scroll.contentOffset
+        let preserveAnchor = oldFrame.width == frame.width
+            && oldFrame.height > 0 && oldOffset.y > -scroll.adjustedContentInset.top + 1
+            && !isReturningToTop
         webView.frame = frame
+        if preserveAnchor {
+            // screenY = viewportOrigin + documentY - contentOffset.
+            // Compensate the origin change instead of moving the page on screen.
+            let targetY = oldOffset.y + frame.minY - oldFrame.minY
+            let minimum = -scroll.adjustedContentInset.top
+            let maximum = max(minimum, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
+            scroll.setContentOffset(CGPoint(x: oldOffset.x, y: min(maximum, max(minimum, targetY))), animated: false)
+        }
         if scroll.contentInset.top != 0 {
             var inset = scroll.contentInset
             inset.top = 0
