@@ -55,6 +55,7 @@ struct DownloadsView: View {
         case .paused: return L("无已暂停任务")
         case .finished: return L("无已完成任务")
         case .failed: return L("无失败任务")
+        @unknown default: return L("无任务")
         }
     }
     /// 可见行的全局坐标，双指滑动时据此把路径映射到具体任务。
