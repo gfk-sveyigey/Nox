@@ -72,7 +72,7 @@ public final class PluginStore {
     /// 因此这里记录 id，在装配解析器时跳过。
     private let hiddenBundledKey = "Nox.hiddenBundledPlugins"
     /// 是否显示随 App 分发的单文件插件。默认关闭，避免内置 Pornhub 之类的
-    /// 插件占着解析来源；在设置页连续点击标题十次可以恢复。
+    /// 插件占着解析规则；在设置页连续点击标题十次可以恢复。
     private let bundledEnabledKey = "Nox.bundledPluginsEnabled"
 
     private init() {}
@@ -155,7 +155,7 @@ public final class PluginStore {
         let destination = pluginFileURL(for: package.manifest.id)
         let existed = fileManager.fileExists(atPath: destination.path)
         let previousVersion = existed ? installedVersion(at: destination) : nil
-        // 只有真正出现在「解析来源」里的包内插件才算被覆盖。默认隐藏的
+        // 只有真正出现在「解析规则」里的包内插件才算被覆盖。默认隐藏的
         // 内置插件不应让导入提示看起来像一次「内置升级」。
         let overridesBundled = activeBundledParser(id: package.manifest.id) != nil
 

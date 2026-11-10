@@ -400,7 +400,7 @@ struct DownloadsView: View {
                                             }
                                             .padding(.horizontal, 13)
                                             .frame(maxWidth: .infinity, minHeight: 66)
-                                            .background(Color(.tertiarySystemGroupedBackground),
+                                            .background(Color(.secondarySystemGroupedBackground),
                                                         in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                                             .overlay {
                                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -457,7 +457,7 @@ struct DownloadsView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
             .padding(.horizontal, 13)
-            .background(Color(.tertiarySystemGroupedBackground),
+            .background(Color(.secondarySystemGroupedBackground),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)

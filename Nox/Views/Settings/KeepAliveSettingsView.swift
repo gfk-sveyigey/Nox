@@ -146,6 +146,6 @@ struct KeepAliveSettingsView: View {
     }
 }
 
-/// 「解析来源」开关的二级页（各视频站点 + Sniffer）。
+/// 「解析规则」开关的二级页（各视频站点 + Sniffer）。
 ///
 /// 站点数量增长后，这里会自动变长，不用改设置主页的结构。

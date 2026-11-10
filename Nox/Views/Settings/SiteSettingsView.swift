@@ -51,12 +51,12 @@ struct SiteSettingsView: View {
             }
         }
         .environment(\.editMode, $editMode)
-        .navigationTitle(L("解析来源"))
+        .navigationTitle(L("解析规则"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Button(action: handleTitleTap) {
-                    Text(L("解析来源"))
+                    Text(L("解析规则"))
                         .font(.headline)
                         .contentShape(Rectangle())
                 }
@@ -90,7 +90,7 @@ struct SiteSettingsView: View {
         } message: {
             Text(
                 pendingDeleteIsBundled
-                    ? L("这是随 App 分发的内置插件；确认后只会从本机解析来源中移除，之后不会再出现。")
+                    ? L("这是随 App 分发的内置插件；确认后只会从本机解析规则中移除，之后不会再出现。")
                     : L("只删除本机上的插件文件；如果包内有同 id 插件，也不会再恢复。")
             )
         }
@@ -154,7 +154,7 @@ struct SiteSettingsView: View {
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
-            .accessibilityLabel(L("解析来源操作"))
+            .accessibilityLabel(L("解析规则操作"))
         }
     }
 
@@ -187,7 +187,7 @@ struct SiteSettingsView: View {
     private func rowLabel(_ row: SiteRow) -> some View {
         HStack(spacing: 10) {
             Image(systemName: row.systemImage)
-                .foregroundStyle(Color.secondary)
+                .foregroundStyle(row.iconColor)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -319,5 +319,11 @@ struct SiteSettingsView: View {
         let isPlugin: Bool
         let isBundled: Bool
         let isFixed: Bool
+
+        var iconColor: Color {
+            if isFixed { return .teal }
+            if isPlugin { return isBundled ? .purple : .blue }
+            return .orange
+        }
     }
 }

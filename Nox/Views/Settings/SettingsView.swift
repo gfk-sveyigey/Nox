@@ -91,7 +91,7 @@ struct SettingsView: View {
                 SiteSettingsView()
             } label: {
                 SettingsRowLabel(
-                    title: L("解析来源"),
+                    title: L("解析规则"),
                     subtitle: L("管理站点解析插件和匹配顺序。"),
                     systemImage: "puzzlepiece.extension",
                     iconColor: .purple,

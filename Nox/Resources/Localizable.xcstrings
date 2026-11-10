@@ -3020,6 +3020,30 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 소스" } }
       }
     },
+    "解析规则" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Parserregeln" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing Rules" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Règles d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 규칙" } }
+      }
+    },
+    "解析规则操作" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktionen für Parserregeln" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing rule actions" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Actions des règles d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 규칙 작업" } }
+      }
+    },
+    "这是随 App 分发的内置插件；确认后只会从本机解析规则中移除，之后不会再出现。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieses mit der App gelieferte Plugin wird nur von deinen Parserregeln entfernt und später nicht wiederhergestellt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This bundled plugin will only be removed from your local parsing rules and will not return." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce plugin fourni avec l’app sera seulement retiré de vos règles locales et ne réapparaîtra pas." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱에 포함된 이 플러그인은 로컬 분석 규칙에서만 제거되며 다시 나타나지 않습니다." } }
+      }
+    },
     "储存空间" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Speicher" } },
