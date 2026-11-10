@@ -42,7 +42,9 @@ struct DownloadDetailsView: View {
                     }
                     Section(L("时间记录")) {
                         detail("创建时间", date(r.createdAt))
-                        detail("完成时间", r.metadata?.completedAt.map(date))
+                        if r.status == .finished {
+                            detail("完成时间", r.metadata?.completedAt.map(date))
+                        }
                         if let dates = r.metadata?.updateDates, !dates.isEmpty {
                             ForEach(Array(dates.enumerated()), id: \.offset) { _, value in
                                 detail("更新时间", date(value))

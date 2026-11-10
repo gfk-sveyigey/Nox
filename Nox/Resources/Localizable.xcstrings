@@ -57,6 +57,34 @@
     }
   }
 },
+"解析未完成。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Parsing is not complete yet."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die Analyse ist noch nicht abgeschlossen."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "L’analyse n’est pas encore terminée."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "분석이 아직 완료되지 않았습니다."
+      }
+    }
+  }
+},
 "暂无任务可供查看。": {
   "localizations": {
     "en": {

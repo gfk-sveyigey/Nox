@@ -172,8 +172,12 @@ struct ContentView: View {
         case 2:
             aboutRequest = UUID()
         default:
-            guard browserAllowsMinimization && browserCanParse else {
+            guard browserAllowsMinimization else {
                 actionNotice = L("当前页面暂无可解析的内容。")
+                return
+            }
+            guard browserCanParse else {
+                actionNotice = L("解析未完成。")
                 return
             }
             parseRequest = UUID()
