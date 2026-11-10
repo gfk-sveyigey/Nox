@@ -71,7 +71,6 @@ final class HLSDownloader {
         referer: URL?,
         cookieHeader: String?,
         userAgent: String?,
-        quality: PreferredQuality,
         onProgress: (@Sendable (Progress) -> Void)? = nil
     ) async throws -> URL {
         let fileManager = FileManager.default
@@ -89,7 +88,7 @@ final class HLSDownloader {
 
         try Task.checkCancellation()
 
-        // 1) 清单：master 时按偏好挑子流，最多下钻 3 层
+        // 1) master 清单按码率选择子流，最多下钻 3 层
         var playlist = try await loadPlaylist(
             url: playlistURL,
             referer: referer,
@@ -100,7 +99,7 @@ final class HLSDownloader {
         var depth = 0
 
         while playlist.isMaster, depth < 3 {
-            guard let selected = selectVariant(from: playlist.variants, preference: quality) else {
+            guard let selected = playlist.variants.max(by: { $0.bandwidth < $1.bandwidth }) else {
                 throw ParserError.invalidManifest
             }
 
@@ -402,43 +401,6 @@ final class HLSDownloader {
         }
 
         return HLSPlaylist.parse(text, baseURL: url.deletingLastPathComponent())
-    }
-
-    private func selectVariant(
-        from variants: [HLSPlaylist.Variant],
-        preference: PreferredQuality
-    ) -> HLSPlaylist.Variant? {
-        guard !variants.isEmpty else { return nil }
-
-        let sorted = variants.sorted { $0.bandwidth > $1.bandwidth }
-
-        switch preference {
-        case .p360, .p480, .p720, .p1080:
-            let wanted = preference.qualityNumber
-
-            // 取「不超过目标」里最高的那一档
-            if let match = sorted.first(where: { variant in
-                guard let height = Self.height(from: variant.resolution) else { return false }
-                return height <= wanted
-            }) {
-                return match
-            }
-
-            return sorted.last
-
-        case .ask, .best:
-            // master 场景在下载阶段无法弹窗询问，统一取最高码率
-            return sorted.first
-        }
-    }
-
-    private static func height(from resolution: String?) -> Int? {
-        guard let resolution else { return nil }
-
-        let parts = resolution.lowercased().split(separator: "x")
-        guard parts.count == 2 else { return nil }
-
-        return Int(parts[1])
     }
 
     // MARK: - 网络

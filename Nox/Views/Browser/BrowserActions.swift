@@ -66,20 +66,13 @@ extension VideoBrowserView {
             let video = try await parser.parseCurrentPage()
             parsedVideo = video
 
-            // 设置里选了明确清晰度就直接开下；否则留在面板里让用户挑。
-            if let variant = preferredVariant(
-                video.variants,
-                preference: appState.preferredQuality
-            ) {
-                await download(variant)
-            }
         } catch {
             parsedVideo = nil
             parseError = error.localizedDescription
         }
     }
 
-    /// 「重新解析」：只刷新面板里的清晰度列表，**不会**因为设置了下载偏好就自动开下。
+    /// 「重新解析」：刷新资源列表，等待用户手动选择。
     func reparse() async {
         guard parser.canParseCurrentPage, !isParsing else { return }
 
@@ -93,34 +86,6 @@ extension VideoBrowserView {
             parsedVideo = nil
             parseError = error.localizedDescription
         }
-    }
-
-    func preferredVariant(
-        _ variants: [VideoVariant],
-        preference: PreferredQuality
-    ) -> VideoVariant? {
-        switch preference {
-        case .ask:
-            return nil
-        case .best:
-            return variants.max {
-                qualityNumber($0.quality) < qualityNumber($1.quality)
-            } ?? variants.first
-        case .p1080, .p720, .p480, .p360:
-            if let exact = variants.first(where: {
-                qualityNumber($0.quality) == preference.qualityNumber
-            }) {
-                return exact
-            }
-            // 找不到目标清晰度时退回最高可用
-            return variants.max {
-                qualityNumber($0.quality) < qualityNumber($1.quality)
-            } ?? variants.first
-        }
-    }
-
-    func qualityNumber(_ quality: String) -> Int {
-        Int(quality.filter(\.isNumber)) ?? 0
     }
 
     /// 「解析视频」路径。

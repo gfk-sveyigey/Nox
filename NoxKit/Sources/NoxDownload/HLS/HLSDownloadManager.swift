@@ -71,8 +71,7 @@ extension DownloadManager {
                 playlistURL: record.sourceURL,
                 referer: record.refererURL,
                 cookieHeader: record.cookieHeader,
-                userAgent: nil,
-                quality: store.preferredQuality
+                userAgent: nil
             ) { [weak self] progress in
                 // 只记录，不在回调里算速度：分片常成批完成，
                 // 由 1 秒定时器统一计算，速度才稳。

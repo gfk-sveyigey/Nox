@@ -75,7 +75,7 @@ struct DownloadsView: View {
             }
             // 空列表时也把顶部安全区铺满分组背景，避免导航栏上方露出一条浅色空白。
             .background(pageBackgroundColor.ignoresSafeArea())
-            .navigationTitle(L("下载"))
+            .navigationTitle(L("任务"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(pageBackgroundColor, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)

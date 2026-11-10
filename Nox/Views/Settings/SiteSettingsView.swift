@@ -101,7 +101,7 @@ struct SiteSettingsView: View {
             }
             Button(L("取消"), role: .cancel) {}
         } message: {
-            Text(L("恢复后会重新显示随 App 分发的单文件插件，例如 Pornhub。"))
+            Text(L("恢复后会重新显示随 App 分发的单文件插件。"))
         }
     }
 
@@ -187,7 +187,7 @@ struct SiteSettingsView: View {
     private func rowLabel(_ row: SiteRow) -> some View {
         HStack(spacing: 10) {
             Image(systemName: row.systemImage)
-                .foregroundStyle(row.isFixed ? Color.secondary : Color.accentColor)
+                .foregroundStyle(Color.secondary)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 3) {

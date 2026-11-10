@@ -41,7 +41,7 @@ struct ContentView: View {
                 appState: appState,
                 manager: downloadManager
             )
-                .tabItem { Label(L("下载"), systemImage: "arrow.down.circle") }
+                .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }
                 .tag(1)
 
             SettingsView(manager: downloadManager)

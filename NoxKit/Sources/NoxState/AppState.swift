@@ -34,7 +34,6 @@ public final class AppState: ObservableObject {
     public var downloadsPublisher: AnyPublisher<[DownloadRecord], Never> {
         $downloads.eraseToAnyPublisher()
     }
-    @Published public var preferredQuality: PreferredQuality = .ask
     /// 实验性：多线程（分片）下载
     @Published public var experimentalMultiThreadDownload = false
     /// 下载线程数（1...32），仅在多线程下载开启时生效
@@ -97,7 +96,6 @@ public final class AppState: ObservableObject {
 
     private let bookmarksKey = "Nox.bookmarks"
     private let downloadsKey = "Nox.downloads"
-    private let qualityKey = "Nox.quality"
     private let multiThreadKey = "Nox.multiThreadDownload"
     private let segmentCountKey = "Nox.multiThreadSegmentCount"
     private let m3u8ConcurrencyKey = "Nox.m3u8SegmentConcurrency"
@@ -219,7 +217,6 @@ public final class AppState: ObservableObject {
             defaults.set(data, forKey: downloadsKey)
         }
 
-        defaults.set(preferredQuality.rawValue, forKey: qualityKey)
         defaults.set(experimentalMultiThreadDownload, forKey: multiThreadKey)
         defaults.set(multiThreadSegmentCount, forKey: segmentCountKey)
         defaults.set(m3u8SegmentConcurrency, forKey: m3u8ConcurrencyKey)
@@ -279,7 +276,6 @@ public final class AppState: ObservableObject {
             }
         }
 
-        preferredQuality = PreferredQuality.migrated(from: defaults.string(forKey: qualityKey))
         experimentalMultiThreadDownload = defaults.bool(forKey: multiThreadKey)
 
         let storedSegments = defaults.integer(forKey: segmentCountKey)

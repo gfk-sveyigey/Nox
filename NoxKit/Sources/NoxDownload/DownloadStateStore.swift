@@ -12,7 +12,6 @@ public protocol DownloadStateStore: AnyObject {
     /// 下载记录变化时发出（驱动后台保活的启停）。
     var downloadsPublisher: AnyPublisher<[DownloadRecord], Never> { get }
 
-    var preferredQuality: PreferredQuality { get }
     var experimentalMultiThreadDownload: Bool { get }
     var multiThreadSegmentCount: Int { get }
     var m3u8SegmentConcurrency: Int { get }
