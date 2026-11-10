@@ -31,14 +31,9 @@ struct ContentView: View {
 
     var body: some View {
         mainTabs
-        .animation(.easeInOut(duration: 0.25), value: selectedTab == 0 && browserAllowsMinimization)
         .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserParseAvailability.self) { browserCanParse = $0 }
-        .onPreferenceChange(BrowserMinimizationPreference.self) { value in
-            guard browserAllowsMinimization != value else { return }
-            if selectedTab == 0 { prepareTabLayoutTransition() }
-            withAnimation(.easeInOut(duration: 0.25)) { browserAllowsMinimization = value }
-        }
+        .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -142,16 +137,8 @@ struct ContentView: View {
         }
     }
 
-    private func prepareTabLayoutTransition() {
-        NotificationCenter.default.post(name: .parseTabLayoutWillChange, object: nil)
-    }
-
     private func selectTab(_ value: Int) {
-        guard selectedTab != value else { return }
-        if browserAllowsMinimization && (selectedTab == 0 || value == 0) {
-            prepareTabLayoutTransition()
-        }
-        withAnimation(.easeInOut(duration: 0.25)) { selectedTab = value }
+        selectedTab = value
     }
 
     private var tabSelection: Binding<Int> {
@@ -277,40 +264,6 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
         var onParse: (() -> Void)?
         private weak var observedTabs: UITabBarController?
         private weak var originalDelegate: UITabBarControllerDelegate?
-        private var previousItemCount: Int?
-        private var transitionSnapshot: UIView?
-
-        override func viewDidLoad() {
-            super.viewDidLoad()
-            NotificationCenter.default.addObserver(self, selector: #selector(prepareLayoutTransition),
-                                                   name: .parseTabLayoutWillChange, object: nil)
-        }
-
-        @objc private func prepareLayoutTransition() {
-            guard !UIAccessibility.isReduceMotionEnabled,
-                  transitionSnapshot == nil,
-                  let bar = observedTabs?.tabBar,
-                  let container = bar.window, !bar.isHidden,
-                  let snapshot = bar.snapshotView(afterScreenUpdates: false) else { return }
-            // Capture BEFORE SwiftUI changes the tab collection. Observing the
-            // item count after layout is too late to capture the old appearance.
-            snapshot.frame = bar.convert(bar.bounds, to: container)
-            snapshot.isUserInteractionEnabled = false
-            snapshot.accessibilityElementsHidden = true
-            container.addSubview(snapshot)
-            transitionSnapshot = snapshot
-            DispatchQueue.main.async { [weak self, weak bar] in
-                bar?.superview?.layoutIfNeeded()
-                UIView.animate(withDuration: 0.25, delay: 0,
-                               options: [.beginFromCurrentState, .curveEaseInOut]) {
-                    snapshot.alpha = 0
-                } completion: { [weak self] _ in
-                    snapshot.removeFromSuperview()
-                    self?.transitionSnapshot = nil
-                }
-            }
-        }
-
         func restoreDelegate() {
             if observedTabs?.delegate === self {
                 observedTabs?.delegate = originalDelegate
@@ -325,12 +278,6 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
                controllers.count == 4, controllers[3] === viewController {
                 if actionEnabled { onParse?() }
                 return false
-            }
-            // SwiftUI's delegate may synchronously update the selection and
-            // remove the search tab. Capture the old bar before forwarding.
-            if tabBarController.selectedViewController !== viewController,
-               tabBarController.viewControllers?.count == 4 {
-                prepareLayoutTransition()
             }
             return originalDelegate?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
         }
@@ -362,21 +309,6 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
             var root: UIViewController = self
             while let parent = root.parent { root = parent }
             guard let tabs = findTabs(root), let items = tabs.tabBar.items else { return }
-            if let previousItemCount, previousItemCount != items.count,
-               !UIAccessibility.isReduceMotionEnabled {
-                // SwiftUI's animation transaction does not animate UIKit tab
-                // insertion. Animate the native bar's rendered layout change.
-                let transition = CATransition()
-                transition.type = .fade
-                transition.duration = 0.25
-                transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                tabs.tabBar.layer.add(transition, forKey: "parseTabVisibility")
-                UIView.animate(withDuration: 0.25, delay: 0,
-                               options: [.beginFromCurrentState, .curveEaseInOut]) {
-                    tabs.tabBar.layoutIfNeeded()
-                }
-            }
-            previousItemCount = items.count
             if tabs.delegate !== self {
                 originalDelegate = tabs.delegate
                 observedTabs = tabs
@@ -389,7 +321,3 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
     }
 }
 
-
-private extension Notification.Name {
-    static let parseTabLayoutWillChange = Notification.Name("Nox.parseTabLayoutWillChange")
-}
