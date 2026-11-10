@@ -4,6 +4,12 @@ import NoxCore
 import NoxDownload
 import NoxState
 
+struct TaskFilterAvailabilityPreference: PreferenceKey {
+    static var defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
 
 struct DownloadsView: View {
     @ObservedObject var appState: AppState
@@ -39,6 +45,18 @@ struct DownloadsView: View {
         default: return L("全部")
         }
     }
+
+    var emptyStateTitle: String {
+        guard let statusFilter else { return L("无任务") }
+        switch statusFilter {
+        case .notStarted: return L("无未开始任务")
+        case .queued: return L("无排队中任务")
+        case .downloading: return L("无进行中任务")
+        case .paused: return L("无已暂停任务")
+        case .finished: return L("无已完成任务")
+        case .failed: return L("无失败任务")
+        }
+    }
     /// 可见行的全局坐标，双指滑动时据此把路径映射到具体任务。
     @State var rowFrames: [UUID: CGRect] = [:]
     @State var showingDeleteConfirmation = false
@@ -61,7 +79,7 @@ struct DownloadsView: View {
                     GeometryReader { geometry in
                         ContentUnavailableView {
                             Label {
-                                Text(L("无任务"))
+                                Text(emptyStateTitle)
                                     .font(.title2.weight(.regular))
                             } icon: {
                                 Image(systemName: "arrow.down.circle")
@@ -84,6 +102,7 @@ struct DownloadsView: View {
             .toolbarBackground(pageBackgroundColor, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .environment(\.editMode, $editMode)
+            .preference(key: TaskFilterAvailabilityPreference.self, value: !visibleRecords.isEmpty)
             .toolbar {
                 if !appState.downloads.isEmpty { toolbarContent }
             }
@@ -117,7 +136,7 @@ struct DownloadsView: View {
                 DownloadDetailsView(taskID: record.id, appState: appState, manager: manager)
             }
             .onChange(of: menuRequest) { _, _ in
-                guard !appState.downloads.isEmpty, !editMode.isEditing else { return }
+                guard !visibleRecords.isEmpty, !editMode.isEditing else { return }
                 showingActionMenu = true
             }
             .sheet(isPresented: $showingActionMenu) {
@@ -479,6 +498,7 @@ struct DownloadsView: View {
                 Image(systemName: "ellipsis")
             }
             .accessibilityLabel(L("更多操作"))
+            .disabled(visibleRecords.isEmpty)
         }
         if editMode.isEditing {
             ToolbarItemGroup(placement: .bottomBar) {

@@ -365,6 +365,62 @@
     }
   }
 },
+"无未开始任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No unstarted tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine ausstehenden Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche non démarrée" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "시작 전 작업 없음" } }
+  }
+},
+"无排队中任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No queued tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine Aufgaben in der Warteschlange" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche en attente" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "대기 중인 작업 없음" } }
+  }
+},
+"无进行中任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No active tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine aktiven Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche en cours" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "진행 중인 작업 없음" } }
+  }
+},
+"无已暂停任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No paused tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine pausierten Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche en pause" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "일시 정지된 작업 없음" } }
+  }
+},
+"无已完成任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No completed tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine abgeschlossenen Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche terminée" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "완료된 작업 없음" } }
+  }
+},
+"无失败任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No failed tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine fehlgeschlagenen Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche échouée" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "실패한 작업 없음" } }
+  }
+},
+"当前筛选类型没有任务。": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No tasks match this filter." } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine Aufgaben entsprechen diesem Filter." } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche ne correspond à ce filtre." } },
+    "ko": { "stringUnit": { "state": "translated", "value": "이 필터에 해당하는 작업이 없습니다." } }
+  }
+},
 "浏览设置": {
   "localizations": {
     "en": {
