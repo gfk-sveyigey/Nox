@@ -68,7 +68,7 @@ extension VideoBrowserView {
     /// 地址栏上方也是页面的一部分。首页显示书签列表时让顶部安全区沿用
     /// 分组背景色，避免列表上方出现一条更浅的空白。
     var browserChromeBackground: Color {
-        showingHome ? homeBackgroundColor : Color(.systemBackground)
+        showingHome ? homeBackgroundColor : Color(uiColor: parser.browserThemeColor)
     }
 
     func bookmarkRow(_ bookmark: Bookmark) -> some View {

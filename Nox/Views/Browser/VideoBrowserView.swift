@@ -82,10 +82,13 @@ struct VideoBrowserView: View {
         GeometryReader { geometry in
             let top = geometry.safeAreaInsets.top
             let bar = isAddressBarHidden ? 0 : addressToolbarHeight
-            BrowserFrostedBackdrop(
-                safeAreaHeight: top, addressBarHeight: bar,
-                topStrength: 1 - appState.browserSafeAreaTransparency
-            )
+            ZStack {
+                browserChromeBackground
+                BrowserFrostedBackdrop(
+                    safeAreaHeight: top, addressBarHeight: bar,
+                    topStrength: 1 - appState.browserSafeAreaTransparency
+                )
+            }
                 .frame(height: top + bar)
                 .offset(y: -top)
         }
