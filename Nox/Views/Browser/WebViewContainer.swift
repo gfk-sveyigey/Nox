@@ -87,10 +87,13 @@ struct WebViewContainer: UIViewControllerRepresentable {
                 let delta = offset - (self.previousOffset ?? offset)
                 self.previousOffset = offset
                 guard self.controller?.isUpdatingInset != true,
-                      self.controller?.isReturningToTop != true else { return }
+                      self.controller?.isReturningToTop != true,
+                      !webView.isLoading,
+                      scrollView.isDragging || scrollView.isDecelerating else { return }
                 let distance = offset + scrollView.adjustedContentInset.top
                 DispatchQueue.main.async { [weak self] in
-                    guard let self, self.controller?.isReturningToTop != true else { return }
+                    guard let self, self.controller?.isReturningToTop != true,
+                          self.webView?.isLoading == false else { return }
                     self.onScroll(distance, delta)
                 }
             }

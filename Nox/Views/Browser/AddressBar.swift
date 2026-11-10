@@ -219,7 +219,7 @@ extension VideoBrowserView {
     }
 
     func updateCollapsedState(for offset: CGFloat, delta: CGFloat) {
-        guard !addressFocused, !showingHome else { return }
+        guard !addressFocused, !showingHome, !parser.isLoading, !parser.isUserInitiatedLoad else { return }
         let collapsed: Bool
         if offset <= 8 { collapsed = false }
         else if delta > 3 && offset > 40 { collapsed = true }

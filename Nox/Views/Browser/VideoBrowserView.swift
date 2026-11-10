@@ -84,7 +84,8 @@ struct VideoBrowserView: View {
             let bar = isAddressBarHidden ? 0 : addressToolbarHeight
             BrowserFrostedBackdrop(
                 safeAreaHeight: top, addressBarHeight: bar,
-                topStrength: 1 - appState.browserSafeAreaTransparency
+                topStrength: 1 - appState.browserSafeAreaTransparency,
+                boundaryStrength: appState.browserBlurBoundaryStrength
             )
                 .frame(height: top + bar)
                 .offset(y: -top)

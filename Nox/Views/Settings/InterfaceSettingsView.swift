@@ -32,22 +32,34 @@ struct InterfaceSettingsView: View {
                         set: { appState.browserSafeAreaTransparency = 1 - $0 }
                     ), in: 0...1, step: 0.01)
                         .accessibilityLabel(L("顶部安全区模糊强度"))
+                    HStack {
+                        Text(L("安全区与地址栏交界模糊强度"))
+                        Spacer()
+                        Text(appState.browserBlurBoundaryStrength.formatted(
+                            .percent.precision(.fractionLength(0)).locale(AppLocale.current)
+                        ))
+                        .foregroundStyle(.secondary).monospacedDigit()
+                    }
+                    Slider(value: $appState.browserBlurBoundaryStrength, in: 0...1, step: 0.01)
+                        .accessibilityLabel(L("安全区与地址栏交界模糊强度"))
                     ZStack(alignment: .top) {
                         LinearGradient(colors: [.blue, .purple, .orange], startPoint: .leading, endPoint: .trailing)
                         BrowserFrostedBackdrop(safeAreaHeight: 32, addressBarHeight: 44,
-                                                topStrength: 1 - appState.browserSafeAreaTransparency)
+                                                topStrength: 1 - appState.browserSafeAreaTransparency,
+                                                boundaryStrength: appState.browserBlurBoundaryStrength)
                     }
                     .frame(height: 76)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .accessibilityLabel(L("透明度预览"))
                 }
             } footer: {
-                Text(L("安全区模糊从设置值平滑过渡至 10%，地址栏从 10% 线性过渡至 0%。"))
+                Text(L("安全区模糊从顶部强度平滑过渡至交界强度，地址栏从交界强度线性过渡至 0%。"))
             }
         }
         .navigationTitle(L("界面设置"))
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
+        .onChange(of: appState.browserBlurBoundaryStrength) { _, _ in appState.persist() }
         .onChange(of: appState.browserSafeAreaTransparency) { _, _ in appState.persist() }
     }
 }

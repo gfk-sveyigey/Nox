@@ -1,6 +1,63 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"安全区与地址栏交界模糊强度": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Blur at Address Bar Boundary"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Unschärfe am Übergang zur Adressleiste"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Flou à la jonction de la barre d’adresse"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "안전 영역과 주소 표시줄 경계 흐림 강도"
+      }
+    }
+  }
+},
+"安全区模糊从顶部强度平滑过渡至交界强度，地址栏从交界强度线性过渡至 0%。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Safe area blur eases from the top strength to the boundary strength. Address bar blur fades linearly from the boundary strength to 0%."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die Unschärfe geht im sicheren Bereich sanft vom oberen Wert zum Übergangswert über und nimmt in der Adressleiste linear auf 0 % ab."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Le flou passe progressivement de la valeur supérieure à celle de la jonction, puis diminue linéairement à 0 % dans la barre d’adresse."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "안전 영역의 흐림은 상단 강도에서 경계 강도로 부드럽게 변하고, 주소 표시줄에서는 경계 강도에서 0%까지 선형으로 줄어듭니다."
+      }
+    }
+  }
+},
+
 "顶部安全区模糊强度": {
   "localizations": {
     "en": {

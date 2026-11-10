@@ -6,12 +6,14 @@ struct BrowserFrostedBackdrop: UIViewRepresentable {
     let safeAreaHeight: CGFloat
     let addressBarHeight: CGFloat
     let topStrength: Double
+    let boundaryStrength: Double
 
     func makeUIView(context: Context) -> FrostedView { FrostedView() }
     func updateUIView(_ view: FrostedView, context: Context) {
         view.safeAreaHeight = safeAreaHeight
         view.addressBarHeight = addressBarHeight
         view.topStrength = topStrength
+        view.boundaryStrength = boundaryStrength
         view.setNeedsLayout()
     }
 
@@ -19,10 +21,11 @@ struct BrowserFrostedBackdrop: UIViewRepresentable {
         var safeAreaHeight: CGFloat = 0
         var addressBarHeight: CGFloat = 0
         var topStrength: Double = 0
+        var boundaryStrength: Double = 0.1
         private let gradient = CAGradientLayer()
 
         init() {
-            super.init(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+            super.init(effect: UIBlurEffect(style: .systemThickMaterial))
             isUserInteractionEnabled = false
             backgroundColor = .clear
             contentView.backgroundColor = .clear
@@ -40,12 +43,12 @@ struct BrowserFrostedBackdrop: UIViewRepresentable {
             if safeAreaHeight > 0 {
                 for index in 0...32 {
                     let progress = Double(index) / 32
-                    let strength = topStrength + (0.1 - topStrength) * Self.easeInOut(progress)
+                    let strength = topStrength + (boundaryStrength - topStrength) * Self.easeInOut(progress)
                     colors.append(UIColor.black.withAlphaComponent(min(1, max(0, strength))).cgColor)
                     locations.append(NSNumber(value: progress * Double(safeAreaHeight / total)))
                 }
             } else {
-                colors.append(UIColor.black.withAlphaComponent(0.1).cgColor)
+                colors.append(UIColor.black.withAlphaComponent(boundaryStrength).cgColor)
                 locations.append(0)
             }
             if addressBarHeight > 0 {
