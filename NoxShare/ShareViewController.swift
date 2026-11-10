@@ -246,7 +246,7 @@ final class ShareViewController: UIViewController {
             }
             // 临时副本不一定保留原文件名，用插件头再确认一次，避免把
             // 普通文件当成插件交给宿主 App。
-            guard self.isPluginName(url.lastPathComponent) || self.isPluginData(data) else {
+            guard provider.hasItemConformingToTypeIdentifier(Self.pluginTypeIdentifier) || self.isPluginName(provider.suggestedName) || self.isPluginName(url.lastPathComponent) else {
                 completion(nil)
                 return
             }
@@ -272,7 +272,7 @@ final class ShareViewController: UIViewController {
         }
 
         guard let data = data(from: item) else { return nil }
-        guard declaredPlugin || namedPlugin || isPluginData(data) else {
+        guard declaredPlugin || namedPlugin else {
             return nil
         }
         return data
@@ -377,14 +377,6 @@ final class ShareViewController: UIViewController {
             )
         }
         return data
-    }
-
-    private func isPluginData(_ data: Data) -> Bool {
-        guard let text = String(data: data, encoding: .utf8) else { return false }
-        let normalized = text
-            .replacingOccurrences(of: "\u{FEFF}", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return normalized.hasPrefix("/* ==NoxPlugin==")
     }
 
     private func loadSharedPageURL(completion: @escaping (URL?) -> Void) {

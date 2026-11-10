@@ -43,17 +43,6 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     @Published public private(set) var browserGeneration = 0
     /// 观察 `estimatedProgress`，把加载进度交给地址栏。
     private var progressObservation: NSKeyValueObservation?
-    private var themeObservation: NSKeyValueObservation?
-    private var pageBackgroundObservation: NSKeyValueObservation?
-    @Published public private(set) var browserThemeColor: UIColor = .systemBackground
-
-    private func updateBrowserTheme(from source: WKWebView) {
-        guard source === webView else { return }
-        let color = source.themeColor ?? source.underPageBackgroundColor ?? .systemBackground
-        if !browserThemeColor.isEqual(color) { browserThemeColor = color }
-        source.backgroundColor = color
-        source.scrollView.backgroundColor = color
-    }
     /// 接收页面里 SPA 换页上报的地址（见 pageURLUserScript）。
     private let pageURLBridge: PageURLBridge
     /// 接收页面里「同文档换页是否还在加载」的上报（见 pageURLUserScript）。
@@ -138,20 +127,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         webView.isOpaque = false
         webView.backgroundColor = .systemBackground
         webView.scrollView.backgroundColor = .systemBackground
-        // Leave underPageBackgroundColor automatic so WebKit derives it from
-        // html/body and updates it when the website changes its appearance.
-        themeObservation = webView.observe(\.themeColor, options: [.initial, .new]) { [weak self] source, _ in
-            Task { @MainActor [weak source] in
-                guard let source else { return }
-                self?.updateBrowserTheme(from: source)
-            }
-        }
-        pageBackgroundObservation = webView.observe(\.underPageBackgroundColor, options: [.initial, .new]) { [weak self] source, _ in
-            Task { @MainActor [weak source] in
-                guard let source else { return }
-                self?.updateBrowserTheme(from: source)
-            }
-        }
+
     }
 
     /// A new WebView discards the document and back-forward history, not cookies.
@@ -162,9 +138,6 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         old.removeFromSuperview()
         old.loadHTMLString("<html></html>", baseURL: nil)
         progressObservation?.invalidate()
-        themeObservation?.invalidate()
-        pageBackgroundObservation?.invalidate()
-        browserThemeColor = .systemBackground
         webView = WKWebView(frame: .zero, configuration: old.configuration)
         configureBrowser(desktopMode: desktopMode)
         SnifferBridge.shared.reset()
@@ -316,14 +289,12 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     /// 流程，只靠 `didFinish` 容易出现「回到上一页后解析入口不出现」。
     public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
         webView.alpha = 1
-        updateBrowserTheme(from: webView)
         currentURL = webView.url
         pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         webView.alpha = 1
-        updateBrowserTheme(from: webView)
         isLoading = false
         pageReady = true
         pageMatchesRule = activeParser(for: webView.url) != nil

@@ -78,7 +78,7 @@ struct VideoBrowserView: View {
             let bar = isAddressBarHidden ? 0 : addressToolbarHeight
             BrowserFrostedBackdrop(
                 safeAreaHeight: top, addressBarHeight: bar,
-                topStrength: 1 - appState.browserSafeAreaTransparency
+                topStrength: 1
             )
                 .frame(height: top + bar)
                 .offset(y: -top)
@@ -99,7 +99,6 @@ struct VideoBrowserView: View {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
                     WebViewContainer(
                         webView: parser.browserWebView,
-                        backgroundColor: parser.browserThemeColor,
                         addressBarInset: isAddressBarHidden ? 0 : addressToolbarHeight
                     ) { offset, delta in
                         updateCollapsedState(for: offset, delta: delta)
@@ -132,7 +131,9 @@ struct VideoBrowserView: View {
                             Spacer(minLength: 0)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                        .padding(16)
+                        .padding(.leading, 20)
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 16)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

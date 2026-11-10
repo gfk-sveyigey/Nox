@@ -33,22 +33,34 @@
         <key>NSExtensionAttributes</key>
         <dict>
             <key>NSExtensionActivationRule</key>
-            <dict>
-                <key>NSExtensionActivationSupportsText</key>
-                <true/>
-                <key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
-                <integer>1</integer>
-                <key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
-                <integer>1</integer>
-                <!-- 分享 .noxplugin 文件时扩展必须能拿到附件；是否插件由扩展按后缀判断。 -->
-                <key>NSExtensionActivationSupportsFileWithMaxCount</key>
-                <integer>4</integer>
-            </dict>
+            <string>SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $attachment, (ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url" AND NOT ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.file-url") OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.aholic.nox.plugin").@count == $item.attachments.@count AND $item.attachments.@count &gt; 0).@count == extensionItems.@count AND extensionItems.@count &gt; 0</string>
         </dict>
         <key>NSExtensionPointIdentifier</key>
         <string>com.apple.share-services</string>
         <key>NSExtensionPrincipalClass</key>
         <string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
     </dict>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.aholic.nox.plugin</string>
+			<key>UTTypeDescription</key>
+			<string>Nox Plugin</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>noxplugin</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/x-nox-plugin</string>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

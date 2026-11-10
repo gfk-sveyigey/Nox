@@ -11,7 +11,6 @@ import NoxBrowser
 
 struct WebViewContainer: UIViewControllerRepresentable {
     let webView: WKWebView
-    var backgroundColor: UIColor
     var addressBarInset: CGFloat
     /// Normalized distance from the top and actual scroll movement, excluding inset changes.
     var onScroll: (CGFloat, CGFloat) -> Void
@@ -37,7 +36,6 @@ struct WebViewContainer: UIViewControllerRepresentable {
         webView.scrollView.clipsToBounds = false
         webView.clipsToBounds = false
         let controller = BrowserContentController(webView: webView)
-        controller.pageBackgroundColor = backgroundColor
         controller.addressBarInset = addressBarInset
         context.coordinator.controller = controller
         context.coordinator.startObservingOffset()
@@ -46,7 +44,6 @@ struct WebViewContainer: UIViewControllerRepresentable {
 
     func updateUIViewController(_ controller: BrowserContentController, context: Context) {
         context.coordinator.onScroll = onScroll
-        controller.pageBackgroundColor = backgroundColor
         controller.setAddressBarInset(addressBarInset)
         controller.connectContentScrollView()
     }
@@ -101,9 +98,6 @@ struct WebViewContainer: UIViewControllerRepresentable {
 /// Register WebKit's nested scroll view with the native tab containers.
 final class BrowserContentController: UIViewController {
     private let webView: WKWebView
-    var pageBackgroundColor: UIColor = .systemBackground {
-        didSet { viewIfLoaded?.backgroundColor = pageBackgroundColor }
-    }
     var addressBarInset: CGFloat = 0
     private(set) var isUpdatingInset = false
     func setAddressBarInset(_ inset: CGFloat) {
@@ -122,7 +116,6 @@ final class BrowserContentController: UIViewController {
     required init?(coder: NSCoder) { fatalError() }
     override func loadView() {
         view = UIView()
-        view.backgroundColor = pageBackgroundColor
         view.clipsToBounds = true
         view.addSubview(webView)
     }

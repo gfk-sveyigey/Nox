@@ -112,14 +112,16 @@ struct SettingsView: View {
         }
 
         Section {
-            settingsLink(
-                L("界面设置"),
-                subtitle: L("调整外观和浏览界面透明度。"),
+            SettingsPickerRow(
+                title: L("主题"),
                 systemImage: "paintpalette",
-                iconColor: .pink
-            ) {
-                InterfaceSettingsView()
-            }
+                iconColor: .pink,
+                selection: $appState.appearanceMode,
+                options: AppearanceMode.allCases.map {
+                    SettingsPickerOption(value: $0, title: $0.title)
+                }
+            )
+            .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
 
             SettingsPickerRow(
                 title: L("语言"),

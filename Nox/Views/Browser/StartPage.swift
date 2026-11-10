@@ -31,6 +31,7 @@ extension VideoBrowserView {
                 } description: {
                     EmptyView()
                 }
+                .padding(.top, 44)
             } else {
                 List {
                     Section {

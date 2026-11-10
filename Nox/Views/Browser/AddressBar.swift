@@ -29,12 +29,14 @@ extension VideoBrowserView {
     var addressBar: some View {
         HStack(spacing: 8) {
             // 主页与书签各自是**独立**的悬浮按钮，不再塞进地址胶囊里。
-            barButton(
-                systemImage: "house",
-                label: L("返回首页"),
-                tint: .secondary,
-                action: goHome
-            )
+            if !showingHome {
+                barButton(
+                    systemImage: "house",
+                    label: L("返回首页"),
+                    tint: .secondary,
+                    action: goHome
+                )
+            }
 
             ZStack {
 
@@ -71,13 +73,15 @@ extension VideoBrowserView {
             .frame(height: barControlHeight)
             .browserGlassBar(cornerRadius: nil)
 
-            barButton(
-                systemImage: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
-                label: isCurrentPageBookmarked ? L("移除书签") : L("加入书签"),
-                tint: isCurrentPageBookmarked ? Color.accentColor : Color.secondary,
-                disabled: !canBookmarkCurrentPage,
-                action: toggleBookmark
-            )
+            if !showingHome {
+                barButton(
+                    systemImage: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
+                    label: isCurrentPageBookmarked ? L("移除书签") : L("加入书签"),
+                    tint: isCurrentPageBookmarked ? Color.accentColor : Color.secondary,
+                    disabled: !canBookmarkCurrentPage,
+                    action: toggleBookmark
+                )
+            }
         }
     }
 

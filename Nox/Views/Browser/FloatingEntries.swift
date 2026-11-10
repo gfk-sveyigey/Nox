@@ -61,25 +61,11 @@ extension VideoBrowserView {
     /// `.sheet` 挂在徽标上而不是外层 `VStack`：后者已挂了 `parseSheet`，
     /// 同一视图叠两个 `.sheet` 会互相干扰。
     var snifferBadge: some View {
-        Button {
+        NativeParseButton(title: L("已嗅探"), systemImage: "dot.radiowaves.left.and.right", isParsing: false) {
             showSniffer = true
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "dot.radiowaves.left.and.right")
-
-                Text(String(sniffer.items.count))
-                    .monospacedDigit()
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color.accentColor)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .browserGlassBar(cornerRadius: nil)
-        .zIndex(1)
-        .accessibilityLabel(L("已嗅探"))
+        .fixedSize()
+        .accessibilityValue(String(sniffer.items.count))
         .sheet(isPresented: $showSniffer) {
             SnifferSheet(
                 onRescan: {
@@ -104,6 +90,7 @@ struct BrowserMinimizationPreference: PreferenceKey {
 /// UIKit owns the glass rendering, interaction and accessibility.
 struct NativeParseButton: UIViewRepresentable {
     let title: String
+    var systemImage: String = "arrow.down.circle"
     let isParsing: Bool
     let action: () -> Void
 
@@ -122,18 +109,17 @@ struct NativeParseButton: UIViewRepresentable {
             configuration = .tinted()
         }
         configuration.cornerStyle = .capsule
-        configuration.title = title
-        configuration.image = UIImage(systemName: "arrow.down.circle")
-        configuration.imagePadding = 6
+        configuration.title = nil
+        configuration.image = UIImage(systemName: systemImage)
+        configuration.imagePadding = 0
         configuration.showsActivityIndicator = isParsing
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
         button.configuration = configuration
         button.accessibilityLabel = title
         button.invalidateIntrinsicContentSize()
     }
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIButton, context: Context) -> CGSize? {
-        let size = uiView.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: 44))
-        return CGSize(width: size.width, height: max(44, size.height))
+        return CGSize(width: 48, height: 48)
     }
     final class Coordinator: NSObject {
         var action: () -> Void
