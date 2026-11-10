@@ -114,7 +114,7 @@ extension VideoBrowserView {
     /// 统一的入队前准备：收起所有 sheet、取 Cookie、生成默认文件名、弹「选择文件名」。
     func prepareDownload(title: String, variant: VideoVariant, referer: URL?, parserName: String? = nil) {
         var metadata = variant.metadata ?? DownloadMetadata()
-        metadata.originalPageURL = metadata.originalPageURL ?? parser.lastLoadURL ?? referer
+        metadata.originalPageURL = metadata.originalPageURL ?? referer ?? parser.currentPageURL
         metadata.parserName = metadata.parserName ?? parserName
         showParseSheet = false
         showSniffer = false

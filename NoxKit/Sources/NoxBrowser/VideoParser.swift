@@ -231,7 +231,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         let parsed = try await siteParser.parse(page: page)
         let variants = parsed.map { variant in
             var metadata = variant.metadata ?? DownloadMetadata()
-            metadata.originalPageURL = lastLoadURL ?? pageURL
+            metadata.originalPageURL = pageURL
             metadata.parserName = siteParser.displayName
             return VideoVariant(id: variant.id, quality: variant.quality, format: variant.format,
                                 url: variant.url, metadata: metadata, suggestedTitle: variant.suggestedTitle)

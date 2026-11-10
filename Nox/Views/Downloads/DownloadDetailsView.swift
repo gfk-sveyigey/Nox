@@ -33,7 +33,7 @@ struct DownloadDetailsView: View {
                         if r.status == .failed { detail("失败原因", r.errorMessage) }
                     }
                     Section(L("来源与解析")) {
-                        detail("来源网页", r.metadata?.originalPageURL?.absoluteString ?? r.refererURL?.absoluteString)
+                        detail("来源网页", r.refererURL?.absoluteString ?? r.metadata?.originalPageURL?.absoluteString)
                         detail("解析脚本", r.metadata?.parserName)
                     }
                     Section(L("视频规格")) {
