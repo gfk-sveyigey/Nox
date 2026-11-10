@@ -45,7 +45,7 @@ extension VideoBrowserView {
     }
 
     var canOpenParsePanel: Bool {
-        !showingHome && !isParsing && (isParseBadgeVisible || isSnifferBadgeVisible)
+        !showingHome && parser.loadErrorMessage == nil && !parser.isUserInitiatedLoad\n            && !isParsing && (isParseBadgeVisible || isSnifferBadgeVisible)
     }
 
     func openParsePanel() {

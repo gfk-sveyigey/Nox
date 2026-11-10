@@ -135,7 +135,11 @@ final class BrowserContentController: UIViewController {
         let scroll = webView.scrollView
         let top = view.safeAreaInsets.top + addressBarInset
         let frame = CGRect(x: 0, y: top, width: view.bounds.width, height: max(0, view.bounds.height - top))
-        guard webView.frame != frame || scroll.contentInset.top != 0 else { return }
+        // Keep the last page content scrollable above the overlaid tab controls.
+        // This adds transparent scroll space without reducing the web viewport.
+        let bottom = view.safeAreaInsets.bottom + 16
+        guard webView.frame != frame || scroll.contentInset.top != 0
+                || abs(scroll.contentInset.bottom - bottom) > 0.5 else { return }
         isUpdatingInset = true
         defer { isUpdatingInset = false }
         // A real viewport origin, not a scroll inset: window.scrollTo(0, 0),
@@ -145,6 +149,10 @@ final class BrowserContentController: UIViewController {
         let preserveAnchor = oldFrame.width == frame.width
             && oldFrame.height > 0 && oldOffset.y > -scroll.adjustedContentInset.top + 1
         webView.frame = frame
+        var inset = scroll.contentInset
+        inset.top = 0
+        inset.bottom = bottom
+        scroll.contentInset = inset
         if preserveAnchor {
             // screenY = viewportOrigin + documentY - contentOffset.
             // Compensate the origin change instead of moving the page on screen.
@@ -153,13 +161,9 @@ final class BrowserContentController: UIViewController {
             let maximum = max(minimum, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
             scroll.setContentOffset(CGPoint(x: oldOffset.x, y: min(maximum, max(minimum, targetY))), animated: false)
         }
-        if scroll.contentInset.top != 0 {
-            var inset = scroll.contentInset
-            inset.top = 0
-            scroll.contentInset = inset
-        }
         var indicators = scroll.verticalScrollIndicatorInsets
         indicators.top = 0
+        indicators.bottom = bottom
         scroll.verticalScrollIndicatorInsets = indicators
     }
 

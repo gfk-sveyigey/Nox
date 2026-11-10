@@ -170,7 +170,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .background(ParseTabAvailability(isEnabled: browserCanParse))
+            .background(ParseTabAvailability(isEnabled: browserCanParse) { parseRequest = UUID() })
         } else {
             TabView(selection: tabSelection) {
                 browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
@@ -184,7 +184,7 @@ struct ContentView: View {
                         .tag(3)
                 }
             }
-            .background(ParseTabAvailability(isEnabled: browserCanParse))
+            .background(ParseTabAvailability(isEnabled: browserCanParse) { parseRequest = UUID() })
         }
     }
 
@@ -245,14 +245,49 @@ private struct NativeBrowserTabMinimization: ViewModifier {
 /// Keep the action tab's native disabled appearance and accessibility state in sync.
 private struct ParseTabAvailability: UIViewControllerRepresentable {
     let isEnabled: Bool
+    let onParse: () -> Void
     func makeUIViewController(context: Context) -> Controller { Controller() }
     func updateUIViewController(_ controller: Controller, context: Context) {
         controller.actionEnabled = isEnabled
+        controller.onParse = onParse
         controller.updateItem()
         DispatchQueue.main.async { controller.updateItem() }
     }
-    final class Controller: UIViewController {
+    static func dismantleUIViewController(_ controller: Controller, coordinator: ()) {
+        controller.restoreDelegate()
+    }
+    final class Controller: UIViewController, UITabBarControllerDelegate {
         var actionEnabled = false
+        var onParse: (() -> Void)?
+        private weak var observedTabs: UITabBarController?
+        private weak var originalDelegate: UITabBarControllerDelegate?
+
+        func restoreDelegate() {
+            if observedTabs?.delegate === self {
+                observedTabs?.delegate = originalDelegate
+            }
+        }
+
+        // A parse tap is an action, never a tab selection. Reject it before
+        // UIKit changes the selected controller or expands the minimized bar.
+        func tabBarController(_ tabBarController: UITabBarController,
+                              shouldSelect viewController: UIViewController) -> Bool {
+            if let controllers = tabBarController.viewControllers,
+               controllers.count == 4, controllers[3] === viewController {
+                if actionEnabled { onParse?() }
+                return false
+            }
+            return originalDelegate?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
+        }
+
+        override func responds(to selector: Selector!) -> Bool {
+            super.responds(to: selector) || originalDelegate?.responds(to: selector) == true
+        }
+
+        override func forwardingTarget(for selector: Selector!) -> Any? {
+            if originalDelegate?.responds(to: selector) == true { return originalDelegate }
+            return super.forwardingTarget(for: selector)
+        }
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
             updateItem()
@@ -272,7 +307,13 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
             var root: UIViewController = self
             while let parent = root.parent { root = parent }
             guard let tabs = findTabs(root), let items = tabs.tabBar.items, items.count == 4 else { return }
+            if tabs.delegate !== self {
+                originalDelegate = tabs.delegate
+                observedTabs = tabs
+                tabs.delegate = self
+            }
             items[3].isEnabled = actionEnabled
+            items[3].setTitleTextAttributes([.foregroundColor: UIColor.tertiaryLabel], for: .disabled)
         }
     }
 }
