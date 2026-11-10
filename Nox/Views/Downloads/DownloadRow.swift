@@ -212,7 +212,7 @@ struct DownloadRow: View {
         case .failed: return .red
         case .paused: return .gray
         case .queued, .notStarted, .legacyCancelled: return .secondary
-        case .downloading: return .accentColor
+        case .downloading: return .blue
         }
     }
 
@@ -222,7 +222,7 @@ struct DownloadRow: View {
         case .failed: return .red
         case .paused: return .secondary
         case .queued, .notStarted, .legacyCancelled: return .secondary
-        case .downloading: return .accentColor
+        case .downloading: return .blue
         }
     }
 

@@ -119,12 +119,12 @@ private final class ContinuedProcessingKeepAlive {
         do {
             try BGTaskScheduler.shared.submit(request)
             isLive = true
-            LogStore.shared.info("continued processing submitted")
+            LogStore.shared.info("[keepalive.continued] request submitted · app=active")
             startWatchdog?.cancel()
             startWatchdog = Task { @MainActor [weak self] in
                 try? await Task.sleep(for: Self.startTimeout)
                 guard let self, !Task.isCancelled, self.isLive, self.task == nil else { return }
-                LogStore.shared.warning("continued processing did not start in time")
+                LogStore.shared.warning("[keepalive.continued] start timeout · task=not-started")
                 self.isLive = false
                 BGTaskScheduler.shared.cancel(
                     taskRequestWithIdentifier: ContinuedProcessingBridge.identifier
@@ -140,6 +140,7 @@ private final class ContinuedProcessingKeepAlive {
 
     func stop() {
         guard isLive || task != nil else { return }
+        let wasRunning = task != nil
         isLive = false
         startWatchdog?.cancel()
         startWatchdog = nil
@@ -154,7 +155,7 @@ private final class ContinuedProcessingKeepAlive {
                 taskRequestWithIdentifier: ContinuedProcessingBridge.identifier
             )
         }
-        LogStore.shared.info("continued processing stopped")
+        LogStore.shared.info("[keepalive.continued] stopped · task=\(wasRunning ? "running" : "not-started")")
     }
 
     func updateProgress(_ fraction: Double) {
@@ -202,7 +203,7 @@ private final class ContinuedProcessingKeepAlive {
             self.task = nil
             self.isLive = false
         }
-        LogStore.shared.info("continued processing started")
+        LogStore.shared.info("[keepalive.continued] started · task=running")
     }
 
     private func expire() {
@@ -214,7 +215,7 @@ private final class ContinuedProcessingKeepAlive {
         heartbeat = nil
         task?.setTaskCompleted(success: false)
         task = nil
-        LogStore.shared.warning("continued processing expired")
+        LogStore.shared.warning("[keepalive.continued] expired · task=interrupted")
         onInterruption?()
     }
 }
