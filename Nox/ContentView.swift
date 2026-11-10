@@ -31,6 +31,7 @@ struct ContentView: View {
 
     var body: some View {
         mainTabs
+        .animation(.easeInOut(duration: 0.25), value: selectedTab == 0 && browserAllowsMinimization)
         .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserParseAvailability.self) { browserCanParse = $0 }
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
@@ -165,19 +166,25 @@ struct ContentView: View {
                 }
                 if selectedTab == 0 && browserAllowsMinimization {
                     Tab(value: 3, role: .search) { Color.clear } label: {
-                        Label(L("解析视频"), systemImage: "arrow.down.circle")
+                        Label(L("解析"), systemImage: "dot.radiowaves.left.and.right")
                     }
                 }
             }
             .background(ParseTabAvailability(isEnabled: browserCanParse))
         } else {
-            TabView(selection: $selectedTab) {
+            TabView(selection: tabSelection) {
                 browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
                 DownloadsView(appState: appState, manager: downloadManager)
                     .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }.tag(1)
                 SettingsView(manager: downloadManager)
                     .tabItem { Label(L("设置"), systemImage: "gearshape") }.tag(2)
+                if selectedTab == 0 && browserAllowsMinimization {
+                    Color.clear
+                        .tabItem { Label(L("解析"), systemImage: "dot.radiowaves.left.and.right") }
+                        .tag(3)
+                }
             }
+            .background(ParseTabAvailability(isEnabled: browserCanParse))
         }
     }
 

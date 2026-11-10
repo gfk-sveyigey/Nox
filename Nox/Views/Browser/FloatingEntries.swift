@@ -60,62 +60,12 @@ extension VideoBrowserView {
         }
     }
 
-    var browserParseButton: some View {
-        NativeParseButton(title: L("解析视频"), isParsing: isParsing, isEnabled: canOpenParsePanel) {
-            openParsePanel()
-        }
-        .fixedSize()
-    }
-
 }
 
 /// Home does not participate in the system's scroll-driven tab minimization.
 struct BrowserMinimizationPreference: PreferenceKey {
     static var defaultValue = false
     static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
-}
-
-/// UIKit owns the glass rendering, interaction and accessibility.
-struct NativeParseButton: UIViewRepresentable {
-    let title: String
-    var systemImage: String = "arrow.down.circle"
-    let isParsing: Bool
-    var isEnabled: Bool = true
-    let action: () -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator(action: action) }
-    func makeUIView(context: Context) -> UIButton {
-        let button = UIButton(type: .system)
-        button.addTarget(context.coordinator, action: #selector(Coordinator.activate), for: .touchUpInside)
-        return button
-    }
-    func updateUIView(_ button: UIButton, context: Context) {
-        context.coordinator.action = action
-        var configuration: UIButton.Configuration
-        if #available(iOS 26.0, *) {
-            configuration = .glass()
-        } else {
-            configuration = .tinted()
-        }
-        configuration.cornerStyle = .capsule
-        configuration.title = nil
-        configuration.image = UIImage(systemName: systemImage)
-        configuration.imagePadding = 0
-        configuration.showsActivityIndicator = isParsing
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
-        button.configuration = configuration
-        button.isEnabled = isEnabled
-        button.accessibilityLabel = title
-        button.invalidateIntrinsicContentSize()
-    }
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIButton, context: Context) -> CGSize? {
-        return CGSize(width: 48, height: 48)
-    }
-    final class Coordinator: NSObject {
-        var action: () -> Void
-        init(action: @escaping () -> Void) { self.action = action }
-        @objc func activate() { action() }
-    }
 }
 
 struct BrowserParseAvailability: PreferenceKey {

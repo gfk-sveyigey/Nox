@@ -210,7 +210,7 @@ extension VideoBrowserView {
                 Text(message)
             } actions: {
                 Button(L("重试")) { parser.retryLastLoad() }
-                    .buttonStyle(.borderedProminent)
+                    .browserGlassButton()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(.systemBackground))

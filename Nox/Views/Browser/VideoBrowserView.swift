@@ -120,15 +120,7 @@ struct VideoBrowserView: View {
                     if !showingHome {
                         webStateOverlay
 
-                        if #unavailable(iOS 26.0) {
-                            HStack {
-                                browserParseButton
-                                Spacer(minLength: 0)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                            .padding(.leading, 28)
-                            .padding(.bottom, 16)
-                        }
+
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
