@@ -162,28 +162,27 @@ struct ContentView: View {
     }
 
     private var contextActionImage: String {
-        selectedTab == 1 ? "chart.pie" : selectedTab == 2 ? "info.circle" : "dot.radiowaves.left.and.right"
+        selectedTab == 1 ? "square.grid.2x2" : selectedTab == 2 ? "info.circle" : "dot.radiowaves.left.and.right"
     }
 
-    private var contextActionEnabled: Bool {
-        switch selectedTab {
-        case 0: return browserAllowsMinimization && browserCanParse
-        case 1: return !appState.downloads.isEmpty
-        case 2: return true
-        default: return false
-        }
-    }
+    private var contextActionEnabled: Bool { true }
 
     private func activateContextAction() {
-        guard contextActionEnabled else {
-            actionNotice = selectedTab == 1 ? L("暂无任务可供查看。") : L("当前页面暂无可解析的内容。")
-            return
-        }
         switch selectedTab {
-        case 1: taskMenuRequest = UUID()
-        case 2: showingAbout = true
+        case 1:
+            guard !appState.downloads.isEmpty else {
+                actionNotice = L("暂无任务。")
+                return
+            }
+            taskMenuRequest = UUID()
+        case 2:
+            showingAbout = true
         default:
-            if contextActionEnabled { parseRequest = UUID() }
+            guard browserAllowsMinimization && browserCanParse else {
+                actionNotice = L("当前页面暂无可解析的内容。")
+                return
+            }
+            parseRequest = UUID()
         }
     }
 

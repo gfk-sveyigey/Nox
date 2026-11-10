@@ -1,6 +1,34 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"暂无任务。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "No tasks yet."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Noch keine Aufgaben."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Aucune tâche pour le moment."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "작업이 없습니다."
+      }
+    }
+  }
+},
 "当前页面暂无可解析的内容。": {
   "localizations": {
     "en": {

@@ -121,25 +121,9 @@ struct DownloadsView: View {
                 showingActionMenu = true
             }
             .sheet(isPresented: $showingActionMenu) {
-                NavigationStack {
-                    List {
-                        Section {
-                            DownloadOverviewCard(records: appState.downloads,
-                                                 transfers: manager.transfers,
-                                                 storageBlocked: manager.storageBlocked)
-                                .listRowSeparator(.hidden)
-                        }
-                    }
-                        .navigationTitle(L("任务总览"))
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button(L("完成")) { showingActionMenu = false }
-                            }
-                        }
-                }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                TaskOverviewView(records: appState.downloads,
+                                 transfers: manager.transfers,
+                                 storageBlocked: manager.storageBlocked)
             }
             .onChange(of: editMode) { _, newValue in
                 if !newValue.isEditing {
@@ -244,19 +228,6 @@ struct DownloadsView: View {
 
     @ViewBuilder
     var rows: some View {
-        if !appState.downloads.isEmpty {
-            Section {
-                DownloadOverviewCard(
-                    records: appState.downloads,
-                    transfers: manager.transfers,
-                    storageBlocked: manager.storageBlocked
-                )
-                .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
-                .listRowSeparator(.hidden)
-                .id("downloads-overview")
-            }
-        }
-
         ForEach(visibleRecords) { record in
             DownloadRow(
                 record: record,
@@ -323,173 +294,100 @@ struct DownloadsView: View {
         }
     }
 
-    struct DownloadOverviewCard: View {
+    struct TaskOverviewView: View {
+        let records: [DownloadRecord]
+        let transfers: [UUID: TransferStats]
+        let storageBlocked: Bool
+        @Environment(\.dismiss) private var dismiss
         @ObservedObject private var localization = LocalizationManager.shared
 
-        private struct StatusMetric: Identifiable {
+        private struct Metric: Identifiable {
             let title: String
             let count: Int
             let color: Color
             var id: String { title }
         }
 
-        let records: [DownloadRecord]
-        let transfers: [UUID: TransferStats]
-        let storageBlocked: Bool
-
-        private var activeCount: Int { records.filter { $0.status == .downloading }.count }
-        private var notStartedCount: Int {
-            records.filter {
-                $0.status == .notStarted
-            }.count
-        }
-        private var queuedCount: Int { records.filter { $0.status == .queued }.count }
-        private var pausedCount: Int {
-            records.filter { $0.status == .paused }.count
-        }
-        private var finishedCount: Int { records.filter { $0.status == .finished }.count }
-        private var failedCount: Int { records.filter { $0.status == .failed }.count }
-
-        private var statusMetrics: [StatusMetric] {
+        private var metrics: [Metric] {
             [
-                StatusMetric(title: "下载中", count: activeCount, color: .accentColor),
-                StatusMetric(title: "未开始", count: notStartedCount, color: .secondary),
-                StatusMetric(title: "排队中", count: queuedCount, color: .secondary),
-                StatusMetric(title: "已暂停", count: pausedCount, color: .orange),
-                StatusMetric(title: "已完成", count: finishedCount, color: .green),
-                StatusMetric(title: "失败", count: failedCount, color: .red)
+                Metric(title: "下载中", count: records.filter { $0.status == .downloading }.count, color: .accentColor),
+                Metric(title: "未开始", count: records.filter { $0.status == .notStarted }.count, color: .secondary),
+                Metric(title: "排队中", count: records.filter { $0.status == .queued }.count, color: .secondary),
+                Metric(title: "已暂停", count: records.filter { $0.status == .paused }.count, color: .orange),
+                Metric(title: "已完成", count: records.filter { $0.status == .finished }.count, color: .green),
+                Metric(title: "失败", count: records.filter { $0.status == .failed }.count, color: .red)
             ].filter { $0.count > 0 }
         }
 
-        private var statusGroups: [[StatusMetric]] {
-            let metrics = statusMetrics
-            guard metrics.count > 3 else { return metrics.isEmpty ? [] : [metrics] }
-            let splitIndex = (metrics.count + 1) / 2
-            return [Array(metrics[..<splitIndex]), Array(metrics[splitIndex...])]
-        }
-
-        private var animationKey: String {
-            [activeCount, notStartedCount, queuedCount, pausedCount, finishedCount, failedCount]
-                .map(String.init)
-                .joined(separator: ":")
-        }
-
-        private var totalSpeed: String {
-            let bytesPerSecond = records
-                .filter { $0.status == .downloading }
+        private var speed: String {
+            let total = records.filter { $0.status == .downloading }
                 .reduce(0.0) { $0 + (transfers[$1.id]?.bytesPerSecond ?? 0) }
-            guard bytesPerSecond > 0 else { return "0" }
-            return TransferStats(bytesPerSecond: bytesPerSecond).speedText
+            return total > 0 ? TransferStats(bytesPerSecond: total).speedText : "0"
         }
 
-        private var totalProgress: Double {
+        private var progress: Double {
             guard !records.isEmpty else { return 0 }
-            return records.reduce(0.0) { sum, record in
-                sum + (record.status == .finished ? 1 : min(max(record.progress, 0), 1))
+            return records.reduce(0.0) {
+                $0 + ($1.status == .finished ? 1 : min(max($1.progress, 0), 1))
             } / Double(records.count)
         }
 
         var body: some View {
-            GeometryReader { geometry in
-                let spacing: CGFloat = 8
-                let groups = statusGroups
-                let unitWidth = (geometry.size.width - spacing * CGFloat(groups.count))
-                    / (1.5 + CGFloat(groups.count))
-
-                ZStack(alignment: .topLeading) {
-                    HStack(alignment: .top, spacing: spacing) {
-                        metricsCard
-                            .frame(width: unitWidth * 1.5, height: 96, alignment: .leading)
-                        ForEach(groups.indices, id: \.self) { _ in
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color(.tertiarySystemGroupedBackground))
-                                .frame(width: unitWidth, height: 96)
-                                .transition(.opacity)
+            NavigationStack {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        HStack(spacing: 12) {
+                            valueCard(title: L("总速度"), value: speed)
+                            valueCard(title: L("总进度"),
+                                      value: progress.formatted(.percent.precision(.fractionLength(0)).locale(AppLocale.current)))
+                        }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 142), spacing: 10)], spacing: 10) {
+                            ForEach(metrics) { metric in
+                                HStack(spacing: 9) {
+                                    Text(metric.count.formatted(.number.locale(AppLocale.current)))
+                                        .font(.title3.monospacedDigit().weight(.semibold))
+                                        .foregroundStyle(metric.color)
+                                    Text(L(metric.title)).font(.body).foregroundStyle(.secondary)
+                                        .lineLimit(1).minimumScaleFactor(0.8)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.horizontal, 14)
+                                .frame(maxWidth: .infinity, minHeight: 64)
+                                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                            }
+                        }
+                        if storageBlocked {
+                            Label(L("储存空间不足"), systemImage: "externaldrive.fill.badge.exclamationmark")
+                                .font(.footnote.weight(.medium)).foregroundStyle(.orange)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-
-                    // Keep one identity per status even when it moves between cards.
-                    ForEach(statusMetrics) { item in
-                        let index = statusMetrics.firstIndex(where: { $0.id == item.id }) ?? 0
-                        let firstCount = groups.first?.count ?? 0
-                        let column = index < firstCount ? 0 : 1
-                        let row = column == 0 ? index : index - firstCount
-                        let count = groups[column].count
-                        let rowHeight: CGFloat = 22
-                        let rowSpacing: CGFloat = 10
-                        let contentHeight = CGFloat(count) * rowHeight + CGFloat(max(count - 1, 0)) * rowSpacing
-
-                        countMetric(item.title, count: item.count, color: item.color)
-                            .frame(width: max(unitWidth - 20, 0), height: rowHeight, alignment: .leading)
-                            .position(
-                                x: unitWidth * 1.5 + spacing + unitWidth / 2
-                                    + CGFloat(column) * (unitWidth + spacing),
-                                y: (96 - contentHeight) / 2 + rowHeight / 2
-                                    + CGFloat(row) * (rowHeight + rowSpacing)
-                            )
-                            .transition(.opacity)
+                    .padding(16)
+                    .animation(.easeInOut(duration: 0.24), value: metrics.map(\.count))
+                }
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle(L("任务总览"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(L("完成")) { dismiss() }
                     }
                 }
             }
-            .frame(height: 96)
-            .animation(.easeInOut(duration: 0.28), value: animationKey)
-            .animation(.easeInOut(duration: 0.26), value: storageBlocked)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
 
-        private var metricsCard: some View {
+        private func valueCard(title: String, value: String) -> some View {
             VStack(alignment: .leading, spacing: 8) {
-                VStack(alignment: .leading, spacing: 8) {
-                    metricValue(title: L("总速度"), value: totalSpeed)
-                    metricValue(
-                        title: L("总进度"),
-                        value: totalProgress.formatted(.percent.precision(.fractionLength(0)).locale(AppLocale.current))
-                    )
-                }
-
-                if storageBlocked {
-                    Label {
-                        Text(L("储存空间不足"))
-                            .font(.footnote.weight(.medium))
-                    } icon: {
-                        Image(systemName: "externaldrive.fill.badge.exclamationmark")
-                            .foregroundStyle(.orange)
-                    }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .transition(.opacity)
-                }
+                Text(title).font(.subheadline).foregroundStyle(.secondary)
+                Text(value).font(.title3.monospacedDigit().weight(.semibold))
+                    .lineLimit(1).minimumScaleFactor(0.75)
             }
-            .padding(.vertical, 8)
-            .padding(.leading, 18)
-            .padding(.trailing, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-
-        private func metricValue(title: String, value: String) -> some View {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(title)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                Text(value)
-                    .font(.body.monospacedDigit().weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-
-        private func countMetric(_ title: String, count: Int, color: Color) -> some View {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(count.formatted(.number.locale(AppLocale.current)))
-                    .font(.body.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(color)
-                Text(L(title))
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
+            .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
+            .padding(.horizontal, 16)
+            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         }
     }
 
