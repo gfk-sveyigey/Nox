@@ -14,7 +14,6 @@ struct ContentView: View {
     /// 把用户正在浏览的设置列表弹回顶部。
     @ObservedObject private var localization = LocalizationManager.shared
     @State private var selectedTab = 0
-    @StateObject private var browserChrome = BrowserChromeState()
     @State private var browserURL: URL?
     @State private var browserAllowsMinimization = false
     @State private var didLogSession = false
@@ -51,9 +50,6 @@ struct ContentView: View {
         }
         .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
-        .onPreferenceChange(BrowserActionPreference.self) { browserChrome.info = $0 }
-        .modifier(NativeBrowserParseOverlay(chrome: browserChrome, enabled: selectedTab == 0))
-        .environmentObject(browserChrome)
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

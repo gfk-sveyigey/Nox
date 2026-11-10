@@ -115,7 +115,6 @@ extension VideoBrowserView {
     /// Return home with a new, empty browsing session.
     func goHome() {
         addressFocused = false
-        browserChrome.compact = false
         // 回到首页时地址栏也要清空：否则会残留上一个网址，
         // 看起来像「首页其实还停在这个地址」。
         address = ""

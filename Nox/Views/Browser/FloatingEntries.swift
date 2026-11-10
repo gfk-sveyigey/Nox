@@ -45,8 +45,8 @@ extension VideoBrowserView {
     }
 
     /// 「解析视频」悬浮胶囊：与嗅探入口同样的样式，点击弹出半屏面板。
-    var legacyParseBadge: some View {
-        NativeParseButton(title: L("解析视频"), compact: false, diameter: 48, isParsing: isParsing) {
+    var parseBadge: some View {
+        NativeParseButton(title: L("解析视频"), isParsing: isParsing) {
             parsedVideo = nil
             parseError = nil
             showParseSheet = true
@@ -101,12 +101,9 @@ struct BrowserMinimizationPreference: PreferenceKey {
     static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }
 
-/// UIKit owns the glass rendering, interaction and accessibility. The compact
-/// configuration has no content insets, so its frame matches the native tab.
+/// UIKit owns the glass rendering, interaction and accessibility.
 struct NativeParseButton: UIViewRepresentable {
     let title: String
-    let compact: Bool
-    let diameter: CGFloat
     let isParsing: Bool
     let action: () -> Void
 
@@ -125,17 +122,16 @@ struct NativeParseButton: UIViewRepresentable {
             configuration = .tinted()
         }
         configuration.cornerStyle = .capsule
-        configuration.title = compact ? nil : title
+        configuration.title = title
         configuration.image = UIImage(systemName: "arrow.down.circle")
-        configuration.imagePadding = compact ? 0 : 6
+        configuration.imagePadding = 6
         configuration.showsActivityIndicator = isParsing
-        configuration.contentInsets = compact ? .zero : NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
         button.configuration = configuration
         button.accessibilityLabel = title
         button.invalidateIntrinsicContentSize()
     }
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIButton, context: Context) -> CGSize? {
-        if compact { return CGSize(width: diameter, height: diameter) }
         let size = uiView.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: 44))
         return CGSize(width: size.width, height: max(44, size.height))
     }
@@ -143,42 +139,5 @@ struct NativeParseButton: UIViewRepresentable {
         var action: () -> Void
         init(action: @escaping () -> Void) { self.action = action }
         @objc func activate() { action() }
-    }
-}
-
-
-struct BrowserActionInfo: Equatable {
-    var canParse = false
-    var isParsing = false
-}
-struct BrowserActionPreference: PreferenceKey {
-    static var defaultValue = BrowserActionInfo()
-    static func reduce(value: inout BrowserActionInfo, nextValue: () -> BrowserActionInfo) { value = nextValue() }
-}
-final class BrowserChromeState: ObservableObject {
-    @Published var info = BrowserActionInfo()
-    @Published var compact = false
-    @Published var parseRequest = 0
-}
-
-/// The parse action lives above TabView, so the tab content's safe-area clipping
-/// cannot prevent it from reaching the bottom-right dock.
-struct NativeBrowserParseOverlay: ViewModifier {
-    @ObservedObject var chrome: BrowserChromeState
-    let enabled: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ViewBuilder func body(content: Content) -> some View {
-        content.overlay(alignment: .bottomTrailing) {
-            if enabled && chrome.info.canParse {
-                NativeParseButton(title: L("解析视频"), compact: chrome.compact,
-                                  diameter: 48, isParsing: chrome.info.isParsing) {
-                    chrome.parseRequest += 1
-                }
-                .fixedSize()
-                .padding(.trailing, 16)
-                .padding(.bottom, chrome.compact ? 8 : 76)
-                .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: chrome.compact)
-            }
-        }
     }
 }

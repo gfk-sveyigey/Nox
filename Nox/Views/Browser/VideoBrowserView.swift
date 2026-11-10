@@ -10,7 +10,6 @@ import NoxBrowser
 
 struct VideoBrowserView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var browserChrome: BrowserChromeState
     @ObservedObject var localization = LocalizationManager.shared
 
     @StateObject var parser: VideoParser
@@ -128,23 +127,17 @@ struct VideoBrowserView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .bottomLeading) {
+                    if !showingHome && isParseBadgeVisible {
+                        parseBadge.padding(16)
+                    }
+                }
                 browserTopBackdrop.zIndex(1)
                 addressToolbar.zIndex(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(browserChromeBackground.ignoresSafeArea())
             .preference(key: BrowserMinimizationPreference.self, value: !showingHome)
-            .preference(key: BrowserActionPreference.self, value: BrowserActionInfo(
-                canParse: !showingHome && isParseBadgeVisible,
-                isParsing: isParsing
-            ))
-            .onChange(of: browserChrome.parseRequest) { _, _ in
-                guard !showingHome && isParseBadgeVisible else { return }
-                parsedVideo = nil
-                parseError = nil
-                showParseSheet = true
-                Task { await parse() }
-            }
             .sheet(isPresented: $showParseSheet) {
                 parseSheet.presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
