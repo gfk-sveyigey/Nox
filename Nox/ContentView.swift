@@ -17,7 +17,6 @@ struct ContentView: View {
     @State private var browserURL: URL?
     @State private var browserAllowsMinimization = false
     @State private var browserCanParse = false
-    @State private var taskFilterHasItems = false
     @State private var parseRequest = UUID()
     @State private var taskMenuRequest = UUID()
     @State private var aboutRequest = UUID()
@@ -37,7 +36,6 @@ struct ContentView: View {
         mainTabs
         .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserParseAvailability.self) { browserCanParse = $0 }
-        .onPreferenceChange(TaskFilterAvailabilityPreference.self) { taskFilterHasItems = $0 }
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
         .alert(L("提示"), isPresented: Binding(get: { actionNotice != nil }, set: { if !$0 { actionNotice = nil } })) {
             Button(L("确定"), role: .cancel) { actionNotice = nil }
@@ -158,16 +156,12 @@ struct ContentView: View {
     }
 
     private var contextActionEnabled: Bool {
-        selectedTab != 1 || taskFilterHasItems
+        true
     }
 
     private func activateContextAction() {
         switch selectedTab {
         case 1:
-            guard taskFilterHasItems else {
-                actionNotice = L("当前筛选类型没有任务。")
-                return
-            }
             taskMenuRequest = UUID()
         case 2:
             aboutRequest = UUID()

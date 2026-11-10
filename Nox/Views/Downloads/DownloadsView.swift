@@ -4,13 +4,6 @@ import NoxCore
 import NoxDownload
 import NoxState
 
-struct TaskFilterAvailabilityPreference: PreferenceKey {
-    static var defaultValue = false
-    static func reduce(value: inout Bool, nextValue: () -> Bool) {
-        value = value || nextValue()
-    }
-}
-
 struct DownloadsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var appState: AppState
@@ -104,7 +97,6 @@ struct DownloadsView: View {
             .toolbarBackground(pageBackgroundColor, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .environment(\.editMode, $editMode)
-            .preference(key: TaskFilterAvailabilityPreference.self, value: !visibleRecords.isEmpty)
             .toolbar {
                 if !appState.downloads.isEmpty { toolbarContent }
             }
@@ -138,13 +130,16 @@ struct DownloadsView: View {
                 DownloadDetailsView(taskID: record.id, appState: appState, manager: manager)
             }
             .onChange(of: menuRequest) { _, _ in
-                guard !visibleRecords.isEmpty, !editMode.isEditing else { return }
+                guard !editMode.isEditing else { return }
                 showingActionMenu = true
             }
             .sheet(isPresented: $showingActionMenu) {
                 TaskOverviewView(records: appState.downloads,
                                  transfers: manager.transfers,
                                  storageBlocked: manager.storageBlocked)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemGroupedBackground))
             }
             .onChange(of: editMode) { _, newValue in
                 if !newValue.isEditing {
@@ -434,8 +429,10 @@ struct DownloadsView: View {
                         .animation(.easeInOut(duration: 0.24), value: metrics.map(\.count))
                     }
                 }
-                .background(Color(.systemGroupedBackground))
+                .background(Color(.systemGroupedBackground).ignoresSafeArea())
                 .navigationTitle(L("任务总览"))
+                .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
@@ -443,8 +440,6 @@ struct DownloadsView: View {
                     }
                 }
             }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
         }
 
         private func summaryCard(title: String, value: String, icon: String, tint: Color) -> some View {
