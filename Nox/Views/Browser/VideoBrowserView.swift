@@ -35,7 +35,6 @@ struct VideoBrowserView: View {
     @State var filenameInput = ""
     /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
     @State var isScrolledDown = false
-    @State var previousScrollOffset: CGFloat = 0
     /// 地址栏加载底色的进度（0…1）与可见 / 呼吸状态（见 `addressLoadingTint`）。
     @State var progressFraction: Double = 0
     @State var isProgressVisible = false
@@ -86,8 +85,11 @@ struct VideoBrowserView: View {
                 // 有时会被 WKWebView 的图层抢先，导致点击穿透。
                 ZStack(alignment: .bottomTrailing) {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
-                    WebViewContainer(webView: parser.browserWebView) { offset in
-                        updateCollapsedState(for: offset)
+                    WebViewContainer(
+                        webView: parser.browserWebView,
+                        addressBarInset: isAddressBarHidden ? 0 : addressToolbarHeight
+                    ) { offset, delta in
+                        updateCollapsedState(for: offset, delta: delta)
                     }
                     .background(Color(.systemBackground))
                     .ignoresSafeArea(.container, edges: [.top, .bottom])

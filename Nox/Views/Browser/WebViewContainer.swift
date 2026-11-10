@@ -11,8 +11,9 @@ import NoxBrowser
 
 struct WebViewContainer: UIViewControllerRepresentable {
     let webView: WKWebView
-    /// 滚动偏移回调：供外层收缩地址栏。
-    var onScroll: (CGFloat) -> Void
+    var addressBarInset: CGFloat
+    /// Normalized distance from the top and actual scroll movement, excluding inset changes.
+    var onScroll: (CGFloat, CGFloat) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(webView: webView, onScroll: onScroll)
@@ -31,12 +32,16 @@ struct WebViewContainer: UIViewControllerRepresentable {
         }
 
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        let controller = BrowserContentController(webView: webView)
+        controller.addressBarInset = addressBarInset
+        context.coordinator.controller = controller
         context.coordinator.startObservingOffset()
-        return BrowserContentController(webView: webView)
+        return controller
     }
 
     func updateUIViewController(_ controller: BrowserContentController, context: Context) {
         context.coordinator.onScroll = onScroll
+        controller.setAddressBarInset(addressBarInset)
         controller.connectContentScrollView()
     }
 
@@ -44,9 +49,11 @@ struct WebViewContainer: UIViewControllerRepresentable {
         private weak var webView: WKWebView?
         private var observation: NSKeyValueObservation?
         private var offsetObservation: NSKeyValueObservation?
-        var onScroll: (CGFloat) -> Void
+        weak var controller: BrowserContentController?
+        private var previousOffset: CGFloat?
+        var onScroll: (CGFloat, CGFloat) -> Void
 
-        init(webView: WKWebView, onScroll: @escaping (CGFloat) -> Void) {
+        init(webView: WKWebView, onScroll: @escaping (CGFloat, CGFloat) -> Void) {
             self.webView = webView
             self.onScroll = onScroll
 
@@ -60,9 +67,15 @@ struct WebViewContainer: UIViewControllerRepresentable {
         func startObservingOffset() {
             guard offsetObservation == nil, let webView else { return }
 
-            // contentOffset 的 KVO 回调在主线程投递，直接转给闭包即可（省去每帧派发的开销）
+            // Ignore layout-driven offsets; defer SwiftUI state changes outside UIKit updates.
             offsetObservation = webView.scrollView.observe(\.contentOffset, options: [.new]) { [weak self] scrollView, _ in
-                self?.onScroll(scrollView.contentOffset.y + scrollView.adjustedContentInset.top)
+                guard let self else { return }
+                let offset = scrollView.contentOffset.y
+                let delta = offset - (self.previousOffset ?? offset)
+                self.previousOffset = offset
+                guard self.controller?.isUpdatingInset != true else { return }
+                let distance = offset + scrollView.adjustedContentInset.top
+                DispatchQueue.main.async { [weak self] in self?.onScroll(distance, delta) }
             }
         }
 
@@ -75,6 +88,18 @@ struct WebViewContainer: UIViewControllerRepresentable {
 /// Register WebKit's nested scroll view with the native tab containers.
 final class BrowserContentController: UIViewController {
     private let webView: WKWebView
+    var addressBarInset: CGFloat = 0
+    private(set) var isUpdatingInset = false
+
+    func setAddressBarInset(_ inset: CGFloat) {
+        guard abs(addressBarInset - inset) > 0.5 else { return }
+        addressBarInset = inset
+        guard isViewLoaded else { return }
+        UIView.animate(withDuration: 0.22, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
+            self.updateTopContentInset()
+        }
+    }
+
     init(webView: WKWebView) {
         self.webView = webView
         super.init(nibName: nil, bundle: nil)
@@ -90,14 +115,16 @@ final class BrowserContentController: UIViewController {
         updateTopContentInset()
     }
 
-    // At rest the first page pixel is below the status bar. Scrolling can
+    // At rest the first page pixel is below the visible address bar. Scrolling can
     // still carry page content behind the safe-area material.
     private func updateTopContentInset() {
         guard isViewLoaded else { return }
         let scroll = webView.scrollView
-        let top = view.safeAreaInsets.top
+        let top = view.safeAreaInsets.top + addressBarInset
         let previous = scroll.contentInset.top
         guard abs(top - previous) > 0.5 else { return }
+        isUpdatingInset = true
+        defer { isUpdatingInset = false }
         let wasAtTop = abs(scroll.contentOffset.y + previous) < 1
         var inset = scroll.contentInset
         inset.top = top

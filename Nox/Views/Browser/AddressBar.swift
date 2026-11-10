@@ -13,6 +13,9 @@ extension VideoBrowserView {
     // MARK: - 顶部地址栏
 
     /// A flat, full-width bar; scrolling hides it without changing its size.
+    var isAddressBarHidden: Bool { isScrolledDown && !addressFocused && !showingHome }
+    var addressToolbarHeight: CGFloat { controlHeight + 16 }
+
     var addressToolbar: some View {
         addressBar
             .padding(.horizontal, 10)
@@ -21,9 +24,9 @@ extension VideoBrowserView {
                 Rectangle().fill(.ultraThinMaterial)
                     .opacity(1 - appState.browserSafeAreaTransparency)
             }
-            .offset(y: isScrolledDown && !addressFocused && !showingHome ? -56 : 0)
-            .opacity(isScrolledDown && !addressFocused && !showingHome ? 0 : 1)
-            .allowsHitTesting(!isScrolledDown || addressFocused || showingHome)
+            .offset(y: isAddressBarHidden ? -addressToolbarHeight : 0)
+            .opacity(isAddressBarHidden ? 0 : 1)
+            .allowsHitTesting(!isAddressBarHidden)
             .animation(.easeInOut(duration: 0.22), value: isScrolledDown)
     }
 
@@ -70,6 +73,7 @@ extension VideoBrowserView {
                 .padding(.horizontal, 12)
             }
             .frame(height: barControlHeight)
+            .browserGlassBar(cornerRadius: nil)
 
             barButton(
                 systemImage: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
@@ -183,7 +187,8 @@ extension VideoBrowserView {
                 .frame(width: barControlHeight, height: barControlHeight)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonBorderShape(.circle)
+        .browserGlassButton()
         .disabled(disabled)
         .accessibilityLabel(label)
     }
@@ -216,9 +221,7 @@ extension VideoBrowserView {
         }
     }
 
-    func updateCollapsedState(for offset: CGFloat) {
-        let delta = offset - previousScrollOffset
-        previousScrollOffset = offset
+    func updateCollapsedState(for offset: CGFloat, delta: CGFloat) {
         guard !addressFocused, !showingHome else { return }
         let collapsed: Bool
         if offset <= 8 { collapsed = false }
