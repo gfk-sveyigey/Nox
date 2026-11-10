@@ -12,7 +12,6 @@ import NoxBrowser
 struct WebViewContainer: UIViewControllerRepresentable {
     let webView: WKWebView
     var addressBarInset: CGFloat
-    var topRequest: Int
     /// Normalized distance from the top and actual scroll movement, excluding inset changes.
     var onScroll: (CGFloat, CGFloat) -> Void
 
@@ -33,12 +32,11 @@ struct WebViewContainer: UIViewControllerRepresentable {
         }
 
         webView.scrollView.contentInsetAdjustmentBehavior = .never
-        webView.scrollView.scrollsToTop = false
+        webView.scrollView.scrollsToTop = true
         webView.scrollView.clipsToBounds = false
         webView.clipsToBounds = false
         let controller = BrowserContentController(webView: webView)
         controller.addressBarInset = addressBarInset
-        controller.lastTopRequest = topRequest
         context.coordinator.controller = controller
         context.coordinator.startObservingOffset()
         return controller
@@ -47,12 +45,7 @@ struct WebViewContainer: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: BrowserContentController, context: Context) {
         context.coordinator.onScroll = onScroll
         controller.setAddressBarInset(addressBarInset)
-        controller.scrollToTopIfNeeded(request: topRequest)
         controller.connectContentScrollView()
-    }
-
-    static func dismantleUIViewController(_ controller: BrowserContentController, coordinator: Coordinator) {
-        controller.cancelTopAlignment()
     }
 
     final class Coordinator {
@@ -70,7 +63,6 @@ struct WebViewContainer: UIViewControllerRepresentable {
             // 加载结束后收起刷新指示器，否则会一直转
             observation = webView.observe(\.isLoading, options: [.new]) { [weak self] webView, _ in
                 if webView.isLoading {
-                    self?.controller?.cancelTopAlignment()
                     return
                 }
                 webView.scrollView.refreshControl?.endRefreshing()
@@ -87,13 +79,11 @@ struct WebViewContainer: UIViewControllerRepresentable {
                 let delta = offset - (self.previousOffset ?? offset)
                 self.previousOffset = offset
                 guard self.controller?.isUpdatingInset != true,
-                      self.controller?.isReturningToTop != true,
                       !webView.isLoading,
                       scrollView.isDragging || scrollView.isDecelerating else { return }
                 let distance = offset + scrollView.adjustedContentInset.top
                 DispatchQueue.main.async { [weak self] in
-                    guard let self, self.controller?.isReturningToTop != true,
-                          self.webView?.isLoading == false else { return }
+                    guard let self, self.webView?.isLoading == false else { return }
                     self.onScroll(distance, delta)
                 }
             }
@@ -110,57 +100,6 @@ final class BrowserContentController: UIViewController {
     private let webView: WKWebView
     var addressBarInset: CGFloat = 0
     private(set) var isUpdatingInset = false
-    private(set) var isReturningToTop = false
-    var lastTopRequest = 0
-    private var topAnimation: UIViewPropertyAnimator?
-    private var keepTopAligned = false
-
-    @objc private func userStartedScrolling(_ gesture: UIPanGestureRecognizer) {
-        guard gesture.state == .began else { return }
-        cancelTopAlignment()
-    }
-
-    func cancelTopAlignment() {
-        keepTopAligned = false
-        topAnimation?.stopAnimation(true)
-        topAnimation = nil
-        isReturningToTop = false
-    }
-
-    private func alignToFinalTop() {
-        guard keepTopAligned, !isReturningToTop else { return }
-        isUpdatingInset = true
-        let scroll = webView.scrollView
-        scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: -scroll.adjustedContentInset.top), animated: false)
-        isUpdatingInset = false
-    }
-
-    func scrollToTopIfNeeded(request: Int) {
-        guard request != lastTopRequest else { return }
-        lastTopRequest = request
-        topAnimation?.stopAnimation(true)
-        isReturningToTop = true
-        keepTopAligned = true
-        view.setNeedsLayout()
-        view.layoutIfNeeded()
-        updateTopContentInset()
-        let animator = UIViewPropertyAnimator(duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.3, curve: .easeInOut) {
-            let scroll = self.webView.scrollView
-            scroll.contentOffset = CGPoint(x: scroll.contentOffset.x, y: -scroll.adjustedContentInset.top)
-        }
-        animator.addCompletion { [weak self] _ in
-            guard let self, self.lastTopRequest == request else { return }
-            self.view.layoutIfNeeded()
-            self.updateTopContentInset()
-            let scroll = self.webView.scrollView
-            scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: -scroll.adjustedContentInset.top), animated: false)
-            self.isReturningToTop = false
-            self.topAnimation = nil
-        }
-        topAnimation = animator
-        animator.startAnimation()
-    }
-
     func setAddressBarInset(_ inset: CGFloat) {
         guard abs(addressBarInset - inset) > 0.5 else { return }
         addressBarInset = inset
@@ -179,17 +118,14 @@ final class BrowserContentController: UIViewController {
         view = UIView()
         view.clipsToBounds = true
         view.addSubview(webView)
-        webView.scrollView.panGestureRecognizer.addTarget(self, action: #selector(userStartedScrolling(_:)))
     }
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateTopContentInset()
-        alignToFinalTop()
     }
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
         updateTopContentInset()
-        alignToFinalTop()
     }
 
     // At rest the first page pixel is below the visible address bar. Scrolling can
@@ -208,7 +144,6 @@ final class BrowserContentController: UIViewController {
         let oldOffset = scroll.contentOffset
         let preserveAnchor = oldFrame.width == frame.width
             && oldFrame.height > 0 && oldOffset.y > -scroll.adjustedContentInset.top + 1
-            && !isReturningToTop
         webView.frame = frame
         if preserveAnchor {
             // screenY = viewportOrigin + documentY - contentOffset.
@@ -239,8 +174,10 @@ final class BrowserContentController: UIViewController {
     }
     func connectContentScrollView() {
         guard #available(iOS 26.0, *) else { return }
-        // Do not register the web scroll view on ancestor navigation controllers:
-        // UIKit otherwise installs its own single-tap tab-reselection scroll.
-        setContentScrollView(webView.scrollView)
+        var controller: UIViewController? = self
+        while let current = controller, !(current is UITabBarController) {
+            current.setContentScrollView(webView.scrollView)
+            controller = current.parent
+        }
     }
 }

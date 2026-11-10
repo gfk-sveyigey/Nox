@@ -159,7 +159,6 @@ final class BrowserChromeState: ObservableObject {
     @Published var info = BrowserActionInfo()
     @Published var compact = false
     @Published var parseRequest = 0
-    var allowsNativeExpansion: Bool { compact }
 }
 
 /// The parse action lives above TabView, so the tab content's safe-area clipping

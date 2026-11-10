@@ -43,12 +43,10 @@ struct DownloadsView: View {
     /// 非多选态点按行时只闪一下，不留下持久选中。
     @State var tapFlashSelection = Set<UUID>()
     @State var tapFlashToken = UUID()
-    let scrollToTopToken: Int
 
-    init(appState: AppState, manager: DownloadManager, scrollToTopToken: Int = 0) {
+    init(appState: AppState, manager: DownloadManager) {
         self.appState = appState
         _manager = ObservedObject(wrappedValue: manager)
-        self.scrollToTopToken = scrollToTopToken
     }
 
     var body: some View {
@@ -181,7 +179,6 @@ struct DownloadsView: View {
             .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
             // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
             .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
-            .background(ScrollToPhysicalTop(token: scrollToTopToken))
     }
 
     /// 非多选态把行选中转成一次短暂高亮，随后自动清空；

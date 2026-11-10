@@ -13,10 +13,8 @@ struct SettingsView: View {
     @ObservedObject var localization = LocalizationManager.shared
     @ObservedObject var manager: DownloadManager
     @ObservedObject var registry = VideoSiteParserRegistry.shared
-    let scrollToTopToken: Int
 
-    init(manager: DownloadManager, scrollToTopToken: Int = 0) {
-        self.scrollToTopToken = scrollToTopToken
+    init(manager: DownloadManager) {
         _manager = ObservedObject(wrappedValue: manager)
     }
 
@@ -26,7 +24,6 @@ struct SettingsView: View {
                 settingsSections
             }
             .contentMargins(.top, 20, for: .scrollContent)
-            .background(ScrollToPhysicalTop(token: scrollToTopToken))
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
         }

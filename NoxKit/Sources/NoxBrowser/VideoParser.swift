@@ -51,6 +51,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         guard source === webView else { return }
         let color = source.themeColor ?? source.underPageBackgroundColor ?? .systemBackground
         if !browserThemeColor.isEqual(color) { browserThemeColor = color }
+        source.backgroundColor = color
+        source.scrollView.backgroundColor = color
     }
     /// 接收页面里 SPA 换页上报的地址（见 pageURLUserScript）。
     private let pageURLBridge: PageURLBridge

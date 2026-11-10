@@ -19,8 +19,6 @@ struct VideoBrowserView: View {
     @ObservedObject var registry = VideoSiteParserRegistry.shared
 
     @Binding var requestedURL: URL?
-    /// 由 ContentView 在双击「浏览」标签时递增。
-    let scrollToTopToken: Int
 
     @State var address = ""
     @State var parsedVideo: ParsedVideo?
@@ -36,7 +34,6 @@ struct VideoBrowserView: View {
     @State var filenameInput = ""
     /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
     @State var isScrolledDown = false
-    @State var browserTopRequest = 0
     /// 地址栏加载底色的进度（0…1）与可见 / 呼吸状态（见 `addressLoadingTint`）。
     @State var progressFraction: Double = 0
     @State var isProgressVisible = false
@@ -69,26 +66,21 @@ struct VideoBrowserView: View {
     init(
         appState: AppState,
         downloads: DownloadManager,
-        requestedURL: Binding<URL?>,
-        scrollToTopToken: Int
+        requestedURL: Binding<URL?>
     ) {
         _parser = StateObject(wrappedValue: VideoParser(sites: appState, desktopMode: appState.browserDesktopMode))
         _downloads = ObservedObject(wrappedValue: downloads)
         _requestedURL = requestedURL
-        self.scrollToTopToken = scrollToTopToken
     }
 
     var browserTopBackdrop: some View {
         GeometryReader { geometry in
             let top = geometry.safeAreaInsets.top
             let bar = isAddressBarHidden ? 0 : addressToolbarHeight
-            ZStack {
-                browserChromeBackground
-                BrowserFrostedBackdrop(
-                    safeAreaHeight: top, addressBarHeight: bar,
-                    topStrength: 1 - appState.browserSafeAreaTransparency
-                )
-            }
+            BrowserFrostedBackdrop(
+                safeAreaHeight: top, addressBarHeight: bar,
+                topStrength: 1 - appState.browserSafeAreaTransparency
+            )
                 .frame(height: top + bar)
                 .offset(y: -top)
         }
@@ -108,8 +100,7 @@ struct VideoBrowserView: View {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
                     WebViewContainer(
                         webView: parser.browserWebView,
-                        addressBarInset: isAddressBarHidden ? 0 : addressToolbarHeight,
-                        topRequest: browserTopRequest
+                        addressBarInset: isAddressBarHidden ? 0 : addressToolbarHeight
                     ) { offset, delta in
                         updateCollapsedState(for: offset, delta: delta)
                     }
@@ -175,9 +166,6 @@ struct VideoBrowserView: View {
             }
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()
-            }
-            .onChange(of: scrollToTopToken) { _, _ in
-                scrollBrowserToTop()
             }
             // 地址栏跟随 WebView 的实际地址：页面内点链接、重定向、后退/前进都会更新。
             .onChange(of: parser.currentURL) { _, newValue in

@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import QuartzCore
 import NoxCore
 import NoxDownload
 import NoxState
@@ -14,9 +13,7 @@ struct ContentView: View {
     /// 不要再给 `SettingsView` 套 `.id(language)`：那会重建整个 Form，
     /// 把用户正在浏览的设置列表弹回顶部。
     @ObservedObject private var localization = LocalizationManager.shared
-    /// 用 ObservableObject 包住选中项：TabView 在重复点击当前标签时，
-    /// 会把同一个值再写回绑定，借此可以拿到系统的「再次点击」事件。
-    @StateObject private var tabSelection = TabSelectionState()
+    @State private var selectedTab = 0
     @StateObject private var browserChrome = BrowserChromeState()
     @State private var browserURL: URL?
     @State private var browserAllowsMinimization = false
@@ -32,38 +29,30 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: tabSelection.binding) {
+        TabView(selection: $selectedTab) {
             VideoBrowserView(
                 appState: appState,
                 downloads: downloadManager,
-                requestedURL: $browserURL,
-                scrollToTopToken: tabSelection.browseDoubleTapCount
+                requestedURL: $browserURL
             )
                 .tabItem { Label(L("浏览"), systemImage: "safari") }
                 .tag(0)
 
             DownloadsView(
                 appState: appState,
-                manager: downloadManager,
-                scrollToTopToken: tabSelection.downloadsDoubleTapCount
+                manager: downloadManager
             )
                 .tabItem { Label(L("下载"), systemImage: "arrow.down.circle") }
                 .tag(1)
 
-            SettingsView(manager: downloadManager, scrollToTopToken: tabSelection.settingsDoubleTapCount)
+            SettingsView(manager: downloadManager)
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(2)
         }
-        .modifier(NativeBrowserTabMinimization(enabled: tabSelection.selection == 0 && browserAllowsMinimization))
+        .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
-        .onChange(of: browserChrome.compact) { _, _ in tabSelection.resetDoubleTap() }
         .onPreferenceChange(BrowserActionPreference.self) { browserChrome.info = $0 }
-        .modifier(NativeBrowserParseOverlay(chrome: browserChrome, enabled: tabSelection.selection == 0))
-        .background(TabReselectionInterceptor(
-            allowsBrowserExpansion: browserChrome.allowsNativeExpansion,
-            onBrowserExpand: { browserChrome.compact = false },
-            onReselect: { tabSelection.handleTabReselect($0) }
-        ))
+        .modifier(NativeBrowserParseOverlay(chrome: browserChrome, enabled: selectedTab == 0))
         .environmentObject(browserChrome)
         .environmentObject(appState)
         .environmentObject(pluginImport)
@@ -197,10 +186,10 @@ struct ContentView: View {
             }
         } else if IncomingLink.isDownloads(url) {
             LogStore.shared.info("handle incoming: downloads")
-            tabSelection.selection = 1
+            selectedTab = 1
         } else if let webURL = IncomingLink.webURL(from: url) {
             LogStore.shared.info("handle incoming: web url")
-            tabSelection.selection = 0
+            selectedTab = 0
             browserURL = webURL
         } else {
             LogStore.shared.info("handle incoming: file")
@@ -208,59 +197,6 @@ struct ContentView: View {
         }
     }
 
-}
-
-/// `TabView` 的 selection 包装，用重复写入的选中项识别双击当前标签。
-final class TabSelectionState: ObservableObject {
-    /// 两下之间允许的最长间隔。
-    static let doubleTapInterval: TimeInterval = 0.45
-
-    @Published var selection: Int = 0 {
-        didSet { resetDoubleTap() }
-    }
-
-    /// 重选事件只交给双击检测，不将相同值写回 TabView，避免系统单击回顶。
-    var binding: Binding<Int> {
-        Binding(
-            get: { self.selection },
-            set: { value in
-                if value == self.selection {
-                    // Browser reselection is handled only by the interceptor,
-                    // which can distinguish native expansion from a reselect.
-                    if value != 0 { self.handleTabReselect(value) }
-                } else {
-                    self.selection = value
-                }
-            }
-        )
-    }
-
-    /// 双击「浏览」的次数；浏览页观察它并滚回顶部。
-    @Published private(set) var browseDoubleTapCount = 0
-    @Published private(set) var downloadsDoubleTapCount = 0
-    @Published private(set) var settingsDoubleTapCount = 0
-
-    private var lastReselectAt = -Double.infinity
-
-    func handleTabReselect(_ tab: Int) {
-        let now = CACurrentMediaTime()
-
-        if now - lastReselectAt <= Self.doubleTapInterval {
-            resetDoubleTap()
-            switch tab {
-            case 0: browseDoubleTapCount += 1
-            case 1: downloadsDoubleTapCount += 1
-            case 2: settingsDoubleTapCount += 1
-            default: break
-            }
-        } else {
-            lastReselectAt = now
-        }
-    }
-
-    func resetDoubleTap() {
-        lastReselectAt = -Double.infinity
-    }
 }
 
 private struct NativeBrowserTabMinimization: ViewModifier {

@@ -32,20 +32,6 @@ extension VideoBrowserView {
         showingHome = false
     }
 
-    /// 双击底部「浏览」标签时回到网页顶部。
-    ///
-    /// 只看网页内容；首页的书签列表不在这里处理。`adjustedContentInset`
-    /// 用来兼容安全区 / 内容内边距，避免滚到 -0 而不是真正的顶部。
-    func scrollBrowserToTop() {
-        browserChrome.compact = false
-        isScrolledDown = false
-        guard !showingHome else { return }
-
-        // The container owns layout and scrolling so the target is never computed
-        // against the old, collapsed viewport.
-        browserTopRequest += 1
-    }
-
     func openAddress() {
         // 点击打开后收起键盘
         addressFocused = false
