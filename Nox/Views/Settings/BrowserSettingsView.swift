@@ -17,12 +17,7 @@ struct BrowserSettingsView: View {
                 NavigationLink {
                     CookiesView()
                 } label: {
-                    SettingsRowLabel(
-                        title: L("Cookie 管理"),
-                        subtitle: L("查看并清理各网站保存的 Cookie。"),
-                        systemImage: "shield",
-                        iconColor: .teal
-                    )
+                    Text(L("Cookie 管理"))
                 }
             }
         }

@@ -165,7 +165,7 @@ struct ContentView: View {
                     SettingsView(manager: downloadManager)
                 }
                 if selectedTab == 0 && browserAllowsMinimization {
-                    Tab(value: 3, role: .search) { Color.clear } label: {
+                    Tab(value: 3) { Color.clear } label: {
                         Label(L("解析"), systemImage: "dot.radiowaves.left.and.right")
                     }
                 }
@@ -261,6 +261,7 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
         var onParse: (() -> Void)?
         private weak var observedTabs: UITabBarController?
         private weak var originalDelegate: UITabBarControllerDelegate?
+        private var previousItemCount: Int?
 
         func restoreDelegate() {
             if observedTabs?.delegate === self {
@@ -306,12 +307,28 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
             }
             var root: UIViewController = self
             while let parent = root.parent { root = parent }
-            guard let tabs = findTabs(root), let items = tabs.tabBar.items, items.count == 4 else { return }
+            guard let tabs = findTabs(root), let items = tabs.tabBar.items else { return }
+            if let previousItemCount, previousItemCount != items.count,
+               !UIAccessibility.isReduceMotionEnabled {
+                // SwiftUI's animation transaction does not animate UIKit tab
+                // insertion. Animate the native bar's rendered layout change.
+                let transition = CATransition()
+                transition.type = .fade
+                transition.duration = 0.25
+                transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                tabs.tabBar.layer.add(transition, forKey: "parseTabVisibility")
+                UIView.animate(withDuration: 0.25, delay: 0,
+                               options: [.beginFromCurrentState, .curveEaseInOut]) {
+                    tabs.tabBar.layoutIfNeeded()
+                }
+            }
+            previousItemCount = items.count
             if tabs.delegate !== self {
                 originalDelegate = tabs.delegate
                 observedTabs = tabs
                 tabs.delegate = self
             }
+            guard items.count == 4 else { return }
             items[3].isEnabled = actionEnabled
             items[3].setTitleTextAttributes([.foregroundColor: UIColor.tertiaryLabel], for: .disabled)
         }
