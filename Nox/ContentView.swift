@@ -154,18 +154,24 @@ struct ContentView: View {
     }
 
     private var contextActionTitle: String {
-        selectedTab == 1 ? L("更多操作") : selectedTab == 2 ? L("关于") : L("解析")
+        selectedTab == 1 ? L("任务总览") : selectedTab == 2 ? L("关于") : L("解析")
     }
 
     private var contextActionImage: String {
-        selectedTab == 1 ? "ellipsis" : selectedTab == 2 ? "info.circle" : "dot.radiowaves.left.and.right"
+        selectedTab == 1 ? "chart.bar" : selectedTab == 2 ? "info.circle" : "dot.radiowaves.left.and.right"
     }
 
     private var contextActionEnabled: Bool {
-        selectedTab != 0 || (browserAllowsMinimization && browserCanParse)
+        switch selectedTab {
+        case 0: return browserAllowsMinimization && browserCanParse
+        case 1: return !appState.downloads.isEmpty
+        case 2: return true
+        default: return false
+        }
     }
 
     private func activateContextAction() {
+        guard contextActionEnabled else { return }
         switch selectedTab {
         case 1: taskMenuRequest = UUID()
         case 2: showingAbout = true
@@ -345,6 +351,7 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
             }
             guard items.count == 4 else { return }
             items[3].isEnabled = actionEnabled
+            items[3].setTitleTextAttributes([.foregroundColor: UIColor.secondaryLabel], for: .normal)
             items[3].setTitleTextAttributes([.foregroundColor: UIColor.tertiaryLabel], for: .disabled)
         }
     }

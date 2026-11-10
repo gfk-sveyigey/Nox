@@ -116,11 +116,21 @@ struct DownloadsView: View {
             .sheet(item: $detailsRecord) { record in
                 DownloadDetailsView(taskID: record.id, appState: appState, manager: manager)
             }
-            .onChange(of: menuRequest) { _, _ in showingActionMenu = true }
+            .onChange(of: menuRequest) { _, _ in
+                guard !appState.downloads.isEmpty, !editMode.isEditing else { return }
+                showingActionMenu = true
+            }
             .sheet(isPresented: $showingActionMenu) {
                 NavigationStack {
-                    List { taskMenuContents }
-                        .navigationTitle(L("更多操作"))
+                    List {
+                        Section {
+                            DownloadOverviewCard(records: appState.downloads,
+                                                 transfers: manager.transfers,
+                                                 storageBlocked: manager.storageBlocked)
+                                .listRowSeparator(.hidden)
+                        }
+                    }
+                        .navigationTitle(L("任务总览"))
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
@@ -508,13 +518,11 @@ struct DownloadsView: View {
                 .accessibilityLabel(L("筛选任务"))
             }
         }
-        if editMode.isEditing {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu { taskMenuContents } label: {
-                    Image(systemName: "ellipsis")
-                }
-                .accessibilityLabel(L("更多操作"))
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu { taskMenuContents } label: {
+                Image(systemName: "ellipsis")
             }
+            .accessibilityLabel(L("更多操作"))
         }
         if editMode.isEditing {
             ToolbarItemGroup(placement: .bottomBar) {
