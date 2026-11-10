@@ -112,13 +112,18 @@ extension VideoBrowserView {
         showingHome = false
     }
 
-    /// 回到首页。不卸载当前页面，从书签 / 地址栏再前进即可。
+    /// Return home with a new, empty browsing session.
     func goHome() {
         addressFocused = false
+        browserChrome.compact = false
         // 回到首页时地址栏也要清空：否则会残留上一个网址，
         // 看起来像「首页其实还停在这个地址」。
         address = ""
-        // Home is only an overlay. Preserve the document and its load/error state.
+        parser.resetBrowser(desktopMode: appState.browserDesktopMode)
+        parsedVideo = nil
+        parseError = nil
+        showParseSheet = false
+        showSniffer = false
         withAnimation(.easeInOut(duration: 0.2)) {
             isScrolledDown = false
             showingHome = true

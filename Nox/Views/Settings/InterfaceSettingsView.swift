@@ -20,33 +20,29 @@ struct InterfaceSettingsView: View {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text(L("顶部安全区透明度"))
+                        Text(L("顶部安全区模糊强度"))
                         Spacer()
-                        Text(appState.browserSafeAreaTransparency.formatted(
+                        Text((1 - appState.browserSafeAreaTransparency).formatted(
                             .percent.precision(.fractionLength(0)).locale(AppLocale.current)
                         ))
                         .foregroundStyle(.secondary).monospacedDigit()
                     }
-                    Slider(value: $appState.browserSafeAreaTransparency, in: 0...1, step: 0.01)
-                        .accessibilityLabel(L("顶部安全区透明度"))
+                    Slider(value: Binding(
+                        get: { 1 - appState.browserSafeAreaTransparency },
+                        set: { appState.browserSafeAreaTransparency = 1 - $0 }
+                    ), in: 0...1, step: 0.01)
+                        .accessibilityLabel(L("顶部安全区模糊强度"))
                     ZStack(alignment: .top) {
                         LinearGradient(colors: [.blue, .purple, .orange], startPoint: .leading, endPoint: .trailing)
-                        Rectangle().fill(.ultraThinMaterial)
-                            .mask {
-                                LinearGradient(
-                                    colors: [.black.opacity(max(0.8, 1 - appState.browserSafeAreaTransparency)),
-                                             .black.opacity(1 - appState.browserSafeAreaTransparency)],
-                                    startPoint: .top, endPoint: .bottom
-                                )
-                            }
-                            .frame(height: 40)
+                        BrowserFrostedBackdrop(safeAreaHeight: 32, addressBarHeight: 44,
+                                                topStrength: 1 - appState.browserSafeAreaTransparency)
                     }
                     .frame(height: 76)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .accessibilityLabel(L("透明度预览"))
                 }
             } footer: {
-                Text(L("数值越高越透明；同时调整地址栏和安全区下沿，安全区顶端保留模糊。"))
+                Text(L("安全区模糊从设置值平滑过渡至 10%，地址栏从 10% 线性过渡至 0%。"))
             }
         }
         .navigationTitle(L("界面设置"))

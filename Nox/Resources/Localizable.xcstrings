@@ -1,6 +1,63 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"顶部安全区模糊强度": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Top Safe Area Blur"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Unschärfe im oberen sicheren Bereich"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Flou de la zone de sécurité supérieure"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "상단 안전 영역 흐림 강도"
+      }
+    }
+  }
+},
+"安全区模糊从设置值平滑过渡至 10%，地址栏从 10% 线性过渡至 0%。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Safe area blur eases from this value to 10%. Address bar blur fades linearly from 10% to 0%."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die Unschärfe im sicheren Bereich geht sanft auf 10 % über. In der Adressleiste nimmt sie linear von 10 % auf 0 % ab."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Le flou de la zone de sécurité passe progressivement à 10 %. Celui de la barre d’adresse diminue linéairement de 10 % à 0 %."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "안전 영역의 흐림은 설정값에서 10%까지 부드럽게 변하고, 주소 표시줄은 10%에서 0%까지 선형으로 줄어듭니다."
+      }
+    }
+  }
+},
+
 "请求桌面版网站": {
   "localizations": {
     "en": {

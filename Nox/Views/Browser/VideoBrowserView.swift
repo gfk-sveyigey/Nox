@@ -78,25 +78,15 @@ struct VideoBrowserView: View {
         self.scrollToTopToken = scrollToTopToken
     }
 
-    var usesNativeParseAccessory: Bool {
-        if #available(iOS 26.1, *) { return true }
-        return false
-    }
-
     var browserTopBackdrop: some View {
         GeometryReader { geometry in
             let top = geometry.safeAreaInsets.top
             let bar = isAddressBarHidden ? 0 : addressToolbarHeight
-            Rectangle()
-                .fill(.regularMaterial)
-                .frame(height: top + bar + 12)
-                .mask {
-                    LinearGradient(stops: [
-                        .init(color: .black.opacity(max(0.85, 1 - appState.browserSafeAreaTransparency)), location: 0),
-                        .init(color: .black.opacity(1 - appState.browserSafeAreaTransparency), location: 0.85),
-                        .init(color: .clear, location: 1)
-                    ], startPoint: .top, endPoint: .bottom)
-                }
+            BrowserFrostedBackdrop(
+                safeAreaHeight: top, addressBarHeight: bar,
+                topStrength: 1 - appState.browserSafeAreaTransparency
+            )
+                .frame(height: top + bar)
                 .offset(y: -top)
         }
         .allowsHitTesting(false)
@@ -120,6 +110,7 @@ struct VideoBrowserView: View {
                     ) { offset, delta in
                         updateCollapsedState(for: offset, delta: delta)
                     }
+                    .id(parser.browserGeneration)
                     .background(Color(.systemBackground))
                     .ignoresSafeArea(.container, edges: [.top, .bottom])
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -134,9 +125,6 @@ struct VideoBrowserView: View {
                         webStateOverlay
 
                         VStack(alignment: .trailing, spacing: 10) {
-                            if !usesNativeParseAccessory && isParseBadgeVisible {
-                                legacyParseBadge
-                            }
                             if isSnifferBadgeVisible {
                                 snifferBadge
                                     .transition(.opacity)

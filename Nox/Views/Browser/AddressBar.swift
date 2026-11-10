@@ -225,6 +225,9 @@ extension VideoBrowserView {
         else if delta > 3 && offset > 40 { collapsed = true }
         else if delta < -5 { collapsed = false }
         else { return }
+        if #available(iOS 26.0, *), UIDevice.current.userInterfaceIdiom == .phone {
+            browserChrome.compact = collapsed
+        }
         guard collapsed != isScrolledDown else { return }
         withAnimation(.easeInOut(duration: 0.22)) { isScrolledDown = collapsed }
     }

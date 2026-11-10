@@ -162,40 +162,24 @@ final class BrowserChromeState: ObservableObject {
     var allowsNativeExpansion: Bool { compact }
 }
 
-struct NativeBrowserParseAccessory: ViewModifier {
+/// The parse action lives above TabView, so the tab content's safe-area clipping
+/// cannot prevent it from reaching the bottom-right dock.
+struct NativeBrowserParseOverlay: ViewModifier {
     @ObservedObject var chrome: BrowserChromeState
     let enabled: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ViewBuilder func body(content: Content) -> some View {
-        if #available(iOS 26.1, *) {
-            content.tabViewBottomAccessory(isEnabled: enabled && chrome.info.canParse) {
-                BrowserParseAccessory(chrome: chrome)
-            }
-        } else {
-            content
-        }
-    }
-}
-
-@available(iOS 26.1, *)
-private struct BrowserParseAccessory: View {
-    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
-    @ObservedObject var chrome: BrowserChromeState
-    var body: some View {
-        GeometryReader { geometry in
-            let compact = placement == .inline
-            HStack {
-                Spacer(minLength: 0)
-                NativeParseButton(title: L("解析视频"), compact: compact,
-                                  diameter: max(44, geometry.size.height), isParsing: chrome.info.isParsing) {
+        content.overlay(alignment: .bottomTrailing) {
+            if enabled && chrome.info.canParse {
+                NativeParseButton(title: L("解析视频"), compact: chrome.compact,
+                                  diameter: 48, isParsing: chrome.info.isParsing) {
                     chrome.parseRequest += 1
                 }
                 .fixedSize()
+                .padding(.trailing, 16)
+                .padding(.bottom, chrome.compact ? 8 : 76)
+                .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: chrome.compact)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
         }
-        .frame(height: 48)
-        .onAppear { chrome.compact = placement == .inline }
-        .onChange(of: placement) { _, value in chrome.compact = value == .inline }
-        .onDisappear { chrome.compact = false }
     }
 }

@@ -51,6 +51,10 @@ struct WebViewContainer: UIViewControllerRepresentable {
         controller.connectContentScrollView()
     }
 
+    static func dismantleUIViewController(_ controller: BrowserContentController, coordinator: Coordinator) {
+        controller.cancelTopAlignment()
+    }
+
     final class Coordinator {
         private weak var webView: WKWebView?
         private var observation: NSKeyValueObservation?

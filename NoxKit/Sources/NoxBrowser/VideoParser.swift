@@ -39,7 +39,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     /// 最近一次由用户发起的地址，供失败后的「重试」使用。
     public private(set) var lastLoadURL: URL?
 
-    private let webView: WKWebView
+    private var webView: WKWebView
+    @Published public private(set) var browserGeneration = 0
     /// 观察 `estimatedProgress`，把加载进度交给地址栏。
     private var progressObservation: NSKeyValueObservation?
     /// 接收页面里 SPA 换页上报的地址（见 pageURLUserScript）。
@@ -89,6 +90,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
+        pageURLBridge.isCurrentWebView = { [weak self] in self?.webView === $0 }
+        pageLoadingBridge.isCurrentWebView = { [weak self] in self?.webView === $0 }
         pageURLBridge.onURLChange = { [weak self] url in
             self?.currentURL = url
         }
@@ -96,10 +99,17 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
             self?.isSameDocumentLoading = loading
         }
 
+        configureBrowser(desktopMode: desktopMode)
+    }
+
+    private func configureBrowser(desktopMode: Bool) {
         // `estimatedProgress` 的 KVO 回调不保证在主线程投递，显式跳回主线程再改状态。
         progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] webView, _ in
             let value = webView.estimatedProgress
-            Task { @MainActor in self?.loadProgress = value }
+            Task { @MainActor [weak webView] in
+                guard let self, self.webView === webView else { return }
+                self.loadProgress = value
+            }
         }
 
         // 用完整的移动版 Safari UA。
@@ -118,6 +128,29 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         webView.backgroundColor = .systemBackground
         webView.scrollView.backgroundColor = .systemBackground
         webView.underPageBackgroundColor = .systemBackground
+    }
+
+    /// A new WebView discards the document and back-forward history, not cookies.
+    public func resetBrowser(desktopMode: Bool) {
+        let old = webView
+        old.navigationDelegate = nil
+        old.stopLoading()
+        old.removeFromSuperview()
+        old.loadHTMLString("<html></html>", baseURL: nil)
+        progressObservation?.invalidate()
+        webView = WKWebView(frame: .zero, configuration: old.configuration)
+        configureBrowser(desktopMode: desktopMode)
+        SnifferBridge.shared.reset()
+        isLoading = false
+        pageReady = false
+        pageMatchesRule = false
+        isUserInitiatedLoad = false
+        isSameDocumentLoading = false
+        loadProgress = 0
+        loadErrorMessage = nil
+        currentURL = nil
+        lastLoadURL = nil
+        browserGeneration += 1
     }
 
     public func setDesktopMode(_ enabled: Bool, reload: Bool = true) {

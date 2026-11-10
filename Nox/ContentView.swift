@@ -58,9 +58,10 @@ struct ContentView: View {
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
         .onChange(of: browserChrome.compact) { _, _ in tabSelection.resetDoubleTap() }
         .onPreferenceChange(BrowserActionPreference.self) { browserChrome.info = $0 }
-        .modifier(NativeBrowserParseAccessory(chrome: browserChrome, enabled: tabSelection.selection == 0))
+        .modifier(NativeBrowserParseOverlay(chrome: browserChrome, enabled: tabSelection.selection == 0))
         .background(TabReselectionInterceptor(
             allowsBrowserExpansion: browserChrome.allowsNativeExpansion,
+            onBrowserExpand: { browserChrome.compact = false },
             onReselect: { tabSelection.handleTabReselect($0) }
         ))
         .environmentObject(browserChrome)
