@@ -37,7 +37,7 @@ struct SettingsView: View {
                             }
                         }
                 }
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color(.systemGroupedBackground))
             }
