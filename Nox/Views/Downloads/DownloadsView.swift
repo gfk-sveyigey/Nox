@@ -172,6 +172,7 @@ struct DownloadsView: View {
     var list: some View {
         List(selection: listSelection) { rows }
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .contentMargins(.top, 20, for: .scrollContent)
             .listSectionSpacing(12)
             .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }

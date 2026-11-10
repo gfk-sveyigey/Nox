@@ -1,6 +1,63 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"调整外观和浏览界面透明度。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Customize appearance and browser transparency."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Darstellung und Transparenz des Browsers anpassen."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Personnalisez l’apparence et la transparence du navigateur."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "화면 스타일과 브라우저 투명도를 조절합니다."
+      }
+    }
+  }
+},
+"数值越高越透明；同时调整地址栏和安全区下沿，安全区顶端保留模糊。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Higher values increase transparency for the address bar and the bottom of the safe area. The top remains blurred."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Höhere Werte machen die Adressleiste und den unteren Rand des sicheren Bereichs transparenter. Oben bleibt der Hintergrund weichgezeichnet."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Une valeur élevée rend la barre d’adresse et le bas de la zone de sécurité plus transparents. Le haut reste flouté."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "값이 높을수록 주소 표시줄과 안전 영역 하단이 투명해집니다. 상단에는 흐림 효과가 유지됩니다."
+      }
+    }
+  }
+},
+
   "界面设置": {
     "localizations": {
       "en": {

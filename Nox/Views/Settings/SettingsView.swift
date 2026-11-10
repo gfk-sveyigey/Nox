@@ -117,7 +117,7 @@ struct SettingsView: View {
         Section {
             settingsLink(
                 L("界面设置"),
-                subtitle: L("调整外观、液态玻璃和浏览安全区。"),
+                subtitle: L("调整外观和浏览界面透明度。"),
                 systemImage: "paintpalette",
                 iconColor: .pink
             ) {

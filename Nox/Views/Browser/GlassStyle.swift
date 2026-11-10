@@ -11,9 +11,8 @@ extension View {
 }
 
 private struct BrowserGlassButtonStyle: ViewModifier {
-    @EnvironmentObject private var appState: AppState
     @ViewBuilder func body(content: Content) -> some View {
-        if #available(iOS 26.0, *), appState.liquidGlassEnabled {
+        if #available(iOS 26.0, *) {
             content.buttonStyle(.glass)
         } else {
             content.buttonStyle(.bordered)
@@ -22,10 +21,9 @@ private struct BrowserGlassButtonStyle: ViewModifier {
 }
 
 private struct BrowserGlassBarStyle: ViewModifier {
-    @EnvironmentObject private var appState: AppState
     let cornerRadius: CGFloat?
     @ViewBuilder func body(content: Content) -> some View {
-        if #available(iOS 26.0, *), appState.liquidGlassEnabled {
+        if #available(iOS 26.0, *) {
             if let cornerRadius {
                 content.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
             } else {

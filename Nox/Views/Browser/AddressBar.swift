@@ -12,35 +12,19 @@ import NoxBrowser
 extension VideoBrowserView {
     // MARK: - 顶部地址栏
 
-    /// 地址栏：中间是胶囊形输入框，主页与书签按钮各自独立浮在两侧。
-    /// 页面向下滚动时高度收缩，回到顶部再展开；加载进度直接用输入框底色表达。
+    /// A flat, full-width bar; scrolling hides it without changing its size.
     var addressToolbar: some View {
-        Group {
-            if isScrolledDown && !addressFocused && !showingHome {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.22)) { isScrolledDown = false }
-                    addressFocused = true
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "globe").font(.caption2)
-                        Text(parser.currentPageURL?.host ?? address)
-                            .font(.subheadline.weight(.medium)).lineLimit(1)
-                        if showsLoadingIndicator { ProgressView().controlSize(.mini) }
-                    }
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 16).frame(height: 30)
-                    .browserGlassBar(cornerRadius: nil)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L("输入网页地址"))
-                .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .top)))
-            } else {
-                addressBar.transition(.opacity)
+        addressBar
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background {
+                Rectangle().fill(.ultraThinMaterial)
+                    .opacity(1 - appState.browserSafeAreaTransparency)
             }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, isScrolledDown && !addressFocused ? 3 : 8)
-        .animation(.easeInOut(duration: 0.22), value: isScrolledDown)
+            .offset(y: isScrolledDown && !addressFocused && !showingHome ? -56 : 0)
+            .opacity(isScrolledDown && !addressFocused && !showingHome ? 0 : 1)
+            .allowsHitTesting(!isScrolledDown || addressFocused || showingHome)
+            .animation(.easeInOut(duration: 0.22), value: isScrolledDown)
     }
 
     var addressBar: some View {
@@ -54,7 +38,6 @@ extension VideoBrowserView {
             )
 
             ZStack {
-                addressLoadingTint
 
                 HStack(spacing: 6) {
                     TextField(L("输入网页地址"), text: $address)
@@ -87,7 +70,6 @@ extension VideoBrowserView {
                 .padding(.horizontal, 12)
             }
             .frame(height: barControlHeight)
-            .browserGlassBar(cornerRadius: nil)
 
             barButton(
                 systemImage: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
@@ -203,7 +185,6 @@ extension VideoBrowserView {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-        .browserGlassBar(cornerRadius: nil)
         .accessibilityLabel(label)
     }
 

@@ -18,7 +18,7 @@ extension VideoBrowserView {
     /// 不会出现「整个浏览区域还是白底」的问题。
     var homeScreen: some View {
         ZStack {
-            homeBackgroundColor
+            homeBackgroundColor.ignoresSafeArea()
 
             if appState.bookmarks.isEmpty {
                 ContentUnavailableView {
@@ -54,6 +54,7 @@ extension VideoBrowserView {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

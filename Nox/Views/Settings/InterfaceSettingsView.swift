@@ -6,11 +6,6 @@ struct InterfaceSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var localization = LocalizationManager.shared
 
-    private var supportsLiquidGlass: Bool {
-        if #available(iOS 26.0, *) { return true }
-        return false
-    }
-
     var body: some View {
         Form {
             Section {
@@ -21,17 +16,6 @@ struct InterfaceSettingsView: View {
                         SettingsPickerOption(value: $0, title: $0.title)
                     }
                 )
-            }
-            Section {
-                Toggle(L("启用液态玻璃效果"), isOn: Binding(
-                    get: { supportsLiquidGlass && appState.liquidGlassEnabled },
-                    set: { appState.liquidGlassEnabled = $0 }
-                ))
-                .disabled(!supportsLiquidGlass)
-            } footer: {
-                Text(L(supportsLiquidGlass
-                    ? "仅影响应用自定义悬浮组件，系统标签栏和菜单仍由 iOS 控制。"
-                    : "液态玻璃需要 iOS 26 或更高版本，当前使用兼容材质。"))
             }
             Section {
                 VStack(alignment: .leading, spacing: 12) {
@@ -48,7 +32,13 @@ struct InterfaceSettingsView: View {
                     ZStack(alignment: .top) {
                         LinearGradient(colors: [.blue, .purple, .orange], startPoint: .leading, endPoint: .trailing)
                         Rectangle().fill(.ultraThinMaterial)
-                            .opacity(1 - appState.browserSafeAreaTransparency)
+                            .mask {
+                                LinearGradient(
+                                    colors: [.black.opacity(max(0.8, 1 - appState.browserSafeAreaTransparency)),
+                                             .black.opacity(1 - appState.browserSafeAreaTransparency)],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                            }
                             .frame(height: 40)
                     }
                     .frame(height: 76)
@@ -56,13 +46,12 @@ struct InterfaceSettingsView: View {
                     .accessibilityLabel(L("透明度预览"))
                 }
             } footer: {
-                Text(L("数值越高越透明；仅调整浏览页顶部安全区，不改变网页位置。"))
+                Text(L("数值越高越透明；同时调整地址栏和安全区下沿，安全区顶端保留模糊。"))
             }
         }
         .navigationTitle(L("界面设置"))
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
-        .onChange(of: appState.liquidGlassEnabled) { _, _ in appState.persist() }
         .onChange(of: appState.browserSafeAreaTransparency) { _, _ in appState.persist() }
     }
 }

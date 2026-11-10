@@ -128,14 +128,16 @@ struct VideoBrowserView: View {
                     // Only this layer extends into the status-bar safe area.
                     Rectangle()
                         .fill(.ultraThinMaterial)
-                        .opacity(1 - appState.browserSafeAreaTransparency)
                         .frame(height: geometry.safeAreaInsets.top + 12)
                         .mask {
-                            VStack(spacing: 0) {
-                                Color.black
-                                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                                    .frame(height: 12)
-                            }
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black.opacity(max(0.8, 1 - appState.browserSafeAreaTransparency)), location: 0),
+                                    .init(color: .black.opacity(1 - appState.browserSafeAreaTransparency), location: 0.85),
+                                    .init(color: .clear, location: 1)
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
                         }
                         .offset(y: -geometry.safeAreaInsets.top)
                 }
