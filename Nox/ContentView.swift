@@ -56,6 +56,7 @@ struct ContentView: View {
         }
         .modifier(NativeBrowserTabMinimization(enabled: tabSelection.selection == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
+        .onChange(of: browserChrome.compact) { _, _ in tabSelection.resetDoubleTap() }
         .onPreferenceChange(BrowserActionPreference.self) { browserChrome.info = $0 }
         .modifier(NativeBrowserParseAccessory(chrome: browserChrome, enabled: tabSelection.selection == 0))
         .background(TabReselectionInterceptor(
@@ -256,7 +257,7 @@ final class TabSelectionState: ObservableObject {
         }
     }
 
-    private func resetDoubleTap() {
+    func resetDoubleTap() {
         lastReselectAt = -Double.infinity
     }
 }
