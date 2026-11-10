@@ -54,17 +54,22 @@ struct DownloadsView: View {
             ZStack {
                 list
                 if visibleRecords.isEmpty {
-                    ContentUnavailableView {
-                        Label {
-                            Text(L("暂无下载"))
-                                .font(.title2.weight(.regular))
-                        } icon: {
-                            Image(systemName: "arrow.down.circle")
+                    GeometryReader { geometry in
+                        ContentUnavailableView {
+                            Label {
+                                Text(L("无任务"))
+                                    .font(.title2.weight(.regular))
+                            } icon: {
+                                Image(systemName: "arrow.down.circle")
+                            }
+                        } description: {
+                            EmptyView()
                         }
-                    } description: {
-                        EmptyView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        // The available area excludes the navigation and tab bars.
+                        // Restore the full-screen center using the actual safe-area insets.
+                        .offset(y: (geometry.safeAreaInsets.bottom - geometry.safeAreaInsets.top) / 2)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .allowsHitTesting(false)
                 }
             }

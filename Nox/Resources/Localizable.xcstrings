@@ -1,6 +1,118 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"无任务": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "No Tasks"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Keine Aufgaben"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Aucune tâche"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "작업 없음"
+      }
+    }
+  }
+},
+"浏览设置": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Browsing"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Browser-Einstellungen"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Navigation"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "브라우징 설정"
+      }
+    }
+  }
+},
+"设置网站显示方式和管理 Cookie。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Choose how websites are displayed and manage cookies."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Darstellung von Websites und Cookies verwalten."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Personnalisez l’affichage des sites et gérez les cookies."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "웹사이트 표시 방식과 쿠키를 관리합니다."
+      }
+    }
+  }
+},
+"选择浅色、深色或跟随系统。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Use light mode, dark mode, or your system setting."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Hell, dunkel oder Systemeinstellung verwenden."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Choisissez le mode clair, sombre ou celui du système."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "라이트 모드, 다크 모드 또는 시스템 설정을 선택합니다."
+      }
+    }
+  }
+},
 "主题": {
   "localizations": {
     "en": {

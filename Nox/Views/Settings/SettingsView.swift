@@ -73,6 +73,15 @@ struct SettingsView: View {
             }
         }
         Section {
+            settingsLink(
+                L("浏览设置"),
+                subtitle: L("设置网站显示方式和管理 Cookie。"),
+                systemImage: "safari",
+                iconColor: .blue
+            ) {
+                BrowserSettingsView()
+            }
+
             NavigationLink {
                 SiteSettingsView()
             } label: {
@@ -93,15 +102,6 @@ struct SettingsView: View {
             }
 
             settingsLink(
-                L("Cookie 管理"),
-                subtitle: L("查看并清理各网站保存的 Cookie。"),
-                systemImage: "shield",
-                iconColor: .teal
-            ) {
-                CookiesView()
-            }
-
-            settingsLink(
                 L("日志"),
                 subtitle: L("查看运行日志，帮助定位问题。"),
                 systemImage: "doc.text",
@@ -114,6 +114,7 @@ struct SettingsView: View {
         Section {
             SettingsPickerRow(
                 title: L("主题"),
+                subtitle: L("选择浅色、深色或跟随系统。"),
                 systemImage: "paintpalette",
                 iconColor: .pink,
                 selection: $appState.appearanceMode,
