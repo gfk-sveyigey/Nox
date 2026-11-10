@@ -402,6 +402,10 @@ struct DownloadsView: View {
                                             .frame(maxWidth: .infinity, minHeight: 66)
                                             .background(Color(.tertiarySystemGroupedBackground),
                                                         in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                            .overlay {
+                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.75)
+                                            }
                                             .transition(.opacity.combined(with: .scale(scale: 0.96)))
                                         }
                                     }
@@ -455,6 +459,10 @@ struct DownloadsView: View {
             .padding(.horizontal, 13)
             .background(Color(.tertiarySystemGroupedBackground),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.75)
+            }
         }
 
         private func icon(for title: String) -> String {

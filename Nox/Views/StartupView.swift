@@ -25,29 +25,18 @@ struct StartupView: View {
                 endRadius: 300
             )
 
-            VStack(spacing: 18) {
-                Image("AppIconPreview")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 136, height: 136)
-                    .clipShape(RoundedRectangle(cornerRadius: 31, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 31, style: .continuous)
-                            .stroke(Color.primary.opacity(0.10), lineWidth: 0.5)
-                    }
-                    .shadow(color: Color.primary.opacity(0.14), radius: 34)
-
-                Text(verbatim: "Nox")
-                    .font(Font(UIFont(name: "SFProDisplay-Medium", size: 44)
-                        ?? UIFont.systemFont(ofSize: 44, weight: .medium)))
-                    .foregroundStyle(Color.primary.opacity(0.92))
-                    .tracking(3.2)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                .padding(.horizontal, 32)
-            }
-            .scaleEffect(appeared ? 1 : 0.94)
-            .opacity(appeared ? 1 : 0)
+            Image("AppIconPreview")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 136, height: 136)
+                .clipShape(RoundedRectangle(cornerRadius: 31, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 31, style: .continuous)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 0.5)
+                }
+                .shadow(color: Color.primary.opacity(0.14), radius: 34)
+                .scaleEffect(appeared ? 1 : 0.94)
+                .opacity(appeared ? 1 : 0)
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
