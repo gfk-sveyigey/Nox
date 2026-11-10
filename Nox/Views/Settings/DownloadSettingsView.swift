@@ -29,17 +29,6 @@ struct DownloadSettingsView: View {
                 .onChange(of: appState.maxConcurrentDownloads) { _, _ in
                     appState.persist()
                 }
-
-                SettingsPickerRow(
-                    title: L("下载清晰度"),
-                    selection: $appState.preferredQuality,
-                    options: PreferredQuality.allCases.map {
-                        SettingsPickerOption(value: $0, title: $0.title)
-                    }
-                )
-                .onChange(of: appState.preferredQuality) { _, _ in
-                    appState.persist()
-                }
             }
 
             Section {

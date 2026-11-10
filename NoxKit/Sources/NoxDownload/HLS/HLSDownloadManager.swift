@@ -71,14 +71,24 @@ extension DownloadManager {
                 playlistURL: record.sourceURL,
                 referer: record.refererURL,
                 cookieHeader: record.cookieHeader,
-                userAgent: nil,
-                quality: store.preferredQuality
+                userAgent: nil
             ) { [weak self] progress in
                 // 只记录，不在回调里算速度：分片常成批完成，
                 // 由 1 秒定时器统一计算，速度才稳。
                 Task { @MainActor in
                     guard let self, self.isCurrentRun(id, token: token) else { return }
                     self.hlsProgress[id] = progress
+                    // Persist the manifest's segment count as soon as it is known,
+                    // even before the first segment has finished downloading.
+                    if progress.total > 0,
+                       var live = self.store.downloads.first(where: { $0.id == id }),
+                       live.segmentCount != progress.total {
+                        live.segmentCount = progress.total
+                        if progress.estimatedTotalBytes > 0 {
+                            live.totalBytes = progress.estimatedTotalBytes
+                        }
+                        self.store.updateDownload(live)
+                    }
                     self.publishProgressIfNeeded()
                 }
             }
@@ -136,7 +146,7 @@ extension DownloadManager {
         }
 
         guard var record = store.downloads.first(where: { $0.id == recordID }) else { return }
-        guard record.status != .cancelled, record.status != .finished else {
+        guard record.status != .paused, record.status != .notStarted, record.status != .finished else {
             // 已经完成（另一路 run 先收尾）：合并结果不再需要，清掉暂存。
             if record.status == .finished {
                 try? FileManager.default.removeItem(
@@ -177,6 +187,7 @@ extension DownloadManager {
                 record.progress = 1
                 record.errorMessage = nil
                 record.receivedBytes = mergedSize
+                record.totalBytes = mergedSize
             }
         } catch {
             record.status = .failed

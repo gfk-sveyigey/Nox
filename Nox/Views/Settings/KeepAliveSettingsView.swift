@@ -30,6 +30,16 @@ struct KeepAliveSettingsView: View {
                     }
                 )
 
+                if appState.keepAliveMode == .continuedProcessing {
+                    Toggle(isOn: Binding(
+                        get: { appState.customLiveActivityDuringContinuedProcessing },
+                        set: { manager.setCustomLiveActivityDuringContinuedProcessing($0) }
+                    )) {
+                        Text(L("持续处理时同时显示自定义实时活动"))
+                    }
+                    .disabled(!appState.customLiveActivityEnabled)
+                }
+
                 // 只有画中画才有悬浮窗，其它保活方式下这个滑块没有意义。
                 if appState.keepAliveMode == .pictureInPicture {
                     VStack(alignment: .leading, spacing: 6) {
@@ -112,19 +122,7 @@ struct KeepAliveSettingsView: View {
                 }
             }
 
-            // 详细日志只影响画中画保活的诊断输出，不改变保活行为。
-            if appState.keepAliveMode == .pictureInPicture {
-                Section {
-                    Toggle(isOn: Binding(
-                        get: { appState.pipVerboseLogging },
-                        set: { manager.setPiPVerboseLogging($0) }
-                    )) {
-                        Text(L("详细日志"))
-                    }
-                } footer: {
-                    Text(L("开启后记录画中画启动、就绪判断、重试及系统回调等诊断信息，日志量会明显增加；排查完成后建议关闭。"))
-                }
-            }
+
         }
         .navigationTitle(L("后台下载"))
         .navigationBarTitleDisplayMode(.inline)
@@ -136,6 +134,6 @@ struct KeepAliveSettingsView: View {
     }
 }
 
-/// 「解析来源」开关的二级页（各视频站点 + Sniffer）。
+/// 「解析规则」开关的二级页（各视频站点 + Sniffer）。
 ///
 /// 站点数量增长后，这里会自动变长，不用改设置主页的结构。

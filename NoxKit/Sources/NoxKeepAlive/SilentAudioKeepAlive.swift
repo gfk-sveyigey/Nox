@@ -35,10 +35,14 @@ final class SilentAudioKeepAlive: KeepAliveStrategy {
             queue: .main
         ) { [weak self] notification in
             let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-            guard raw == AVAudioSession.InterruptionType.ended.rawValue else { return }
-            Task { @MainActor in self?.onInterruption?() }
+            Task { @MainActor in
+                LogStore.shared.info("[keepalive.audio] interruption · type=\(raw.map { String($0) } ?? "unknown")")
+                guard raw == AVAudioSession.InterruptionType.ended.rawValue else { return }
+                self?.onInterruption?()
+            }
         }
 
+        LogStore.shared.info("[keepalive.audio] started · playing=\(player.isPlaying)")
         startHealthMonitor()
     }
 
@@ -46,6 +50,7 @@ final class SilentAudioKeepAlive: KeepAliveStrategy {
     var isLive: Bool { player?.isPlaying ?? false }
 
     func stop() {
+        if isActive { LogStore.shared.info("[keepalive.audio] stopped") }
         healthTask?.cancel()
         healthTask = nil
         player?.stop()
@@ -84,14 +89,14 @@ final class SilentAudioKeepAlive: KeepAliveStrategy {
                 guard let self, self.isActive, !Task.isCancelled else { return }
                 guard self.player?.isPlaying != true else { continue }
 
-                LogStore.shared.warning("silent audio stopped; restarting")
+                LogStore.shared.warning("[keepalive.audio] playback stopped; restarting")
                 do {
                     self.player?.stop()
                     self.player = try self.makePlayer()
                 } catch {
                     self.isActive = false
                     LogStore.shared.warning(
-                        "silent audio restart failed · \(error.localizedDescription)"
+                        "[keepalive.audio] restart failed · \(error.localizedDescription)"
                     )
                     self.onInterruption?()
                     return

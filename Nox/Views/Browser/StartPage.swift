@@ -18,18 +18,22 @@ extension VideoBrowserView {
     /// 不会出现「整个浏览区域还是白底」的问题。
     var homeScreen: some View {
         ZStack {
-            homeBackgroundColor
+            homeBackgroundColor.ignoresSafeArea()
 
             if appState.bookmarks.isEmpty {
-                ContentUnavailableView {
-                    Label {
-                        Text(L("无书签"))
-                            .font(.title2.weight(.regular))
-                    } icon: {
-                        Image(systemName: "book")
+                GeometryReader { geometry in
+                    ContentUnavailableView {
+                        Label {
+                            Text(L("无书签"))
+                                .font(.title2.weight(.regular))
+                        } icon: {
+                            Image(systemName: "book")
+                        }
+                    } description: {
+                        EmptyView()
                     }
-                } description: {
-                    EmptyView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .offset(y: (geometry.safeAreaInsets.bottom - geometry.safeAreaInsets.top) / 2)
                 }
             } else {
                 List {
@@ -54,6 +58,7 @@ extension VideoBrowserView {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -107,17 +112,24 @@ extension VideoBrowserView {
     func openBookmark(_ bookmark: Bookmark) {
         addressFocused = false
         address = bookmark.url.absoluteString
-        showingHome = false
         parser.load(bookmark.url)
+        showingHome = false
     }
 
-    /// 回到首页。不卸载当前页面，从书签 / 地址栏再前进即可。
+    /// Return home with a new, empty browsing session.
     func goHome() {
         addressFocused = false
         // 回到首页时地址栏也要清空：否则会残留上一个网址，
         // 看起来像「首页其实还停在这个地址」。
         address = ""
-        parser.clearLoadError()
-        withAnimation(.easeInOut(duration: 0.2)) { showingHome = true }
+        parser.resetBrowser(desktopMode: appState.browserDesktopMode)
+        parsedVideo = nil
+        parseError = nil
+        showParseSheet = false
+        showSniffer = false
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isScrolledDown = false
+            showingHome = true
+        }
     }
 }

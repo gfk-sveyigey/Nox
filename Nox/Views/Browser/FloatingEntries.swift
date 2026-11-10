@@ -44,79 +44,32 @@ extension VideoBrowserView {
         parser.canParseCurrentPage && !isUsingGenericSniffer
     }
 
-    /// 「解析视频」悬浮胶囊：与嗅探入口同样的样式，点击弹出半屏面板。
-    var parseBadge: some View {
-        Button {
+    var canOpenParsePanel: Bool {
+        !showingHome && parser.loadErrorMessage == nil && !parser.isUserInitiatedLoad
+            && !isParsing && (isParseBadgeVisible || isSnifferBadgeVisible)
+    }
+
+    func openParsePanel() {
+        guard canOpenParsePanel else { return }
+        if isSnifferBadgeVisible {
+            showSniffer = true
+        } else {
             parsedVideo = nil
             parseError = nil
             showParseSheet = true
             Task { await parse() }
-        } label: {
-            HStack(spacing: 6) {
-                if isParsing {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Image(systemName: "arrow.down.circle")
-                }
-
-                Text(L("解析视频"))
-                    .lineLimit(1)
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color.accentColor)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .browserGlassBar(cornerRadius: nil)
-        .zIndex(1)
-        .accessibilityLabel(L("解析视频"))
-        .sheet(isPresented: $showParseSheet) {
-            parseSheet
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
     }
 
-    /// 悬浮胶囊：显示当前已嗅探到的资源数。
-    ///
-    /// 用 `contentShape(Capsule())` 把命中区域收敛到胶囊本身，
-    /// 否则外层留白会落到 WebView 上（表现为「点按钮顺带点了页面」）。
-    /// `.sheet` 挂在徽标上而不是外层 `VStack`：后者已挂了 `parseSheet`，
-    /// 同一视图叠两个 `.sheet` 会互相干扰。
-    var snifferBadge: some View {
-        Button {
-            showSniffer = true
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "dot.radiowaves.left.and.right")
+}
 
-                Text(String(sniffer.items.count))
-                    .monospacedDigit()
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color.accentColor)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .browserGlassBar(cornerRadius: nil)
-        .zIndex(1)
-        .accessibilityLabel(L("已嗅探"))
-        .sheet(isPresented: $showSniffer) {
-            SnifferSheet(
-                onRescan: {
-                    await parser.rescanPage()
-                },
-                onDownload: { item in
-                    download(item)
-                }
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-        }
-    }
+/// Home does not participate in the system's scroll-driven tab minimization.
+struct BrowserMinimizationPreference: PreferenceKey {
+    static var defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
+struct BrowserParseAvailability: PreferenceKey {
+    static var defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }

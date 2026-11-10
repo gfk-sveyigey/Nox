@@ -48,6 +48,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     var lastProgressPublishTime: TimeInterval = 0
     /// 限频检查整机剩余空间，避免每秒都读文件系统。
     var lastStorageCheck = Date.distantPast
+    var lastDiagnosticSnapshotAt = Date.distantPast
 
     /// 后台保活：有活跃下载时启动，全部结束 / 取消时停止。
     let keepAlive: KeepAliveCoordinator
@@ -217,7 +218,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         keepAlive.onInterruption = { [weak self] in
             self?.pauseForKeepAliveInterruption()
         }
-        keepAlive.piPVerboseLogging = store.pipVerboseLogging
+        keepAlive.verboseLogging = store.verboseLogging
         keepAlive.preferredMode = store.keepAliveMode
         keepAlive.piPCoexistenceFallback = store.pipCoexistenceFallback
         keepAlive.lifetime = store.keepAliveLifetime
@@ -263,6 +264,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
+                self?.refreshMissingFiles()
                 self?.keepAlive.didEnterForeground()
                 self?.reconcileTaskQueue(reason: "active")
             }
@@ -395,11 +397,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         keepAlive.pipWindowHeight = height
     }
 
-    /// 设置页切换「画中画详细日志」。
-    public func setPiPVerboseLogging(_ enabled: Bool) {
-        store.pipVerboseLogging = enabled
+    /// 日志页切换全局详细诊断。
+    public func setVerboseLogging(_ enabled: Bool) {
+        store.verboseLogging = enabled
         store.persist()
-        keepAlive.piPVerboseLogging = enabled
+        keepAlive.verboseLogging = enabled
     }
 
     // MARK: - 对外接口
@@ -434,7 +436,8 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         variant: VideoVariant,
         referer: URL?,
         cookieHeader: String? = nil,
-        filename: String? = nil
+        filename: String? = nil,
+        metadata: DownloadMetadata? = nil
     ) {
         let record = DownloadRecord(
             title: title,
@@ -443,15 +446,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
             sourceURL: variant.url,
             refererURL: referer,
             cookieHeader: cookieHeader,
-            desiredFilename: filename
+            desiredFilename: filename,
+            metadata: metadata
         )
 
         store.addDownload(record)
-
-        // 历史在这里（真正入队下载时）记录，而不是解析时：
-        // 解析了但没下载、或下载被取消，都不该在历史里留下痕迹。
-        // 历史标题用文件名（去扩展名），而不是页面标题。
-        store.addHistory(title: record.displayTitle, url: referer ?? record.sourceURL)
 
         LogStore.shared.info("enqueue \(record.displayFilename) [\(record.quality)/\(record.format)] <- \(referer?.absoluteString ?? record.sourceURL.absoluteString)")
 
@@ -467,7 +466,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     /// 重试即「继续」：已下载的分片会保留，从断点开始。
     public func retry(_ record: DownloadRecord) {
         guard let live = store.downloads.first(where: { $0.id == record.id }),
-              live.status == .failed || live.status == .cancelled else {
+              live.status == .failed || live.status == .paused || live.status == .notStarted else {
             return
         }
 
@@ -488,8 +487,6 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
         store.updateDownload(updated)
 
-        // 取消后历史会保留，这里只是把它重新排到最前（addHistory 按页面去重）。
-        store.addHistory(title: updated.displayTitle, url: updated.refererURL ?? updated.sourceURL)
         LogStore.shared.info("retry \(updated.displayFilename)")
 
         // 重新开始：丢弃旧采样，速度从头累积。
@@ -516,9 +513,14 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
             return
         }
 
-        performCancel(live)
+        performPause(live)
         discardPartialArtifacts(for: live.id)
         if var cancelled = store.downloads.first(where: { $0.id == live.id }) {
+            cancelled.status = .notStarted
+            cancelled.errorMessage = nil
+            cancelled.threadCount = nil
+            cancelled.fileName = nil
+            cancelled.fileURL = nil
             cancelled.receivedBytes = 0
             cancelled.progress = 0
             cancelled.totalBytes = nil
@@ -528,13 +530,12 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         reconcileTaskQueue(reason: "cancel")
         LogStore.shared.info("cancel \(live.displayFilename)")
 
-        // 取消后保留历史记录：取消只是想停下来，不代表这次访问没发生过。
-        // 真正要清掉历史时，用下载页 / 历史页的「清空」或左滑删除。
+
     }
 
     /// 只修改单个任务的状态并释放槽位；多个任务批量暂停时由调用方统一
     /// `reconcileTaskQueue`，避免每暂停一个就把后面的排队任务拉起来一次。
-    func performCancel(_ record: DownloadRecord, errorMessage: String? = nil) {
+    func performPause(_ record: DownloadRecord, errorMessage: String? = nil) {
         // 先让当前 run 失效：之后的探测结果、分片回调、合并结果都不会再写状态。
         invalidateRun(for: record.id)
 
@@ -544,7 +545,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         let stats = transfers[record.id]
 
         var updated = record
-        updated.status = .cancelled
+        updated.status = .paused
         updated.errorMessage = errorMessage
 
         if let stats, stats.bytesReceived > 0 {
@@ -561,7 +562,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     }
 
     public func pause(_ record: DownloadRecord) {
-        cancelAll(ids: [record.id])
+        pauseAll(ids: [record.id])
     }
 
     public func discardAll(ids: Set<UUID>) {
@@ -571,15 +572,15 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
 
     /// 批量暂停（多选时用）。只处理排队中 / 下载中的任务。
     ///
-    /// 暂停复用 `cancel`：已下载分片留在磁盘上，状态记为 `.cancelled`，
-    /// 之后可以「继续下载」。先快照再处理，避免边遍历边修改 downloads。
-    public func cancelAll(ids: Set<UUID>) {
+    /// 已下载分片留在磁盘上，状态记为 `.paused`，之后可以继续。
+    /// 先快照再处理，避免边遍历边修改 downloads。
+    public func pauseAll(ids: Set<UUID>) {
         let targets = store.downloads.filter {
             ids.contains($0.id) && ($0.status == .queued || $0.status == .downloading)
         }
 
         for record in targets {
-            performCancel(record)
+            performPause(record)
         }
         reconcileTaskQueue(reason: "cancel batch")
     }
@@ -589,7 +590,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         let removable = store.downloads.filter {
             $0.status == .finished ||
             $0.status == .failed ||
-            $0.status == .cancelled
+            $0.status == .paused || $0.status == .notStarted
         }
 
         for record in removable {
@@ -658,7 +659,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         releaseSlotWithoutPump(record.id)
     }
 
-    /// 取消会保留任务记录，但丢弃断点续传数据；暂停则只调用 `performCancel` 并保留这些文件。
+    /// 取消会保留任务记录，但丢弃断点续传数据；暂停则只调用 `performPause` 并保留这些文件。
     private func discardPartialArtifacts(for id: UUID) {
         try? FileManager.default.removeItem(at: DownloadStorage.partsDirectory(for: id))
         try? FileManager.default.removeItem(at: DownloadStorage.stagingDirectory(for: id))

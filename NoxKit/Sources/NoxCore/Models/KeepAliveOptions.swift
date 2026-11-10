@@ -32,11 +32,11 @@ public enum KeepAliveMode: String, CaseIterable, Identifiable, Codable {
         case .foregroundOnly:
             return L("不使用后台下载，也不启动保活。切到后台时暂停任务，回到前台后自动继续。")
         case .continuedProcessing:
-            return L("App 在前台使用普通下载会话开始下载后，系统授予后台执行时间，并强制在其自带的锁屏 / 灵动岛面板显示进度与取消按钮；该面板无法替换为自定义实时活动。")
+            return L("App 在前台开始下载后，系统会授予后台执行时间，并在系统锁屏或灵动岛面板显示进度和取消按钮；该面板无法替换为自定义实时活动。")
         case .silentAudio:
-            return L("循环播放极低电平静音，让 App 保持运行并继续前台下载、刷新进度。可能打断其他 App 正在播放的音频。")
+            return L("循环播放极低音量的静音音频，让 App 保持运行并更新下载进度。可能打断其他 App 的音频播放。")
         case .pictureInPicture:
-            return L("用系统画中画保活，让 App 保持运行并继续前台下载、刷新进度。不占用音频会话，也尽量减少与其他画中画的互相挤占。")
+            return L("使用系统画中画保持 App 运行并更新下载进度。不占用音频会话，也尽量避免与其他画中画冲突。")
         }
     }
 

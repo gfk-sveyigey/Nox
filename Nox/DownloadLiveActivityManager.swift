@@ -10,7 +10,7 @@ import NoxState
 /// 把下载状态投射到锁屏 / 灵动岛的 Live Activity。
 ///
 /// 与保活方式解耦：系统下载、仅前台、静音音频、画中画都使用这里创建的活动；
-/// 持续处理默认由系统展示自己的活动；用户可在通知设置中允许同时显示自定义活动。
+/// 持续处理默认由系统展示自己的活动；用户可在后台下载设置中允许同时显示自定义活动。
 @MainActor
 final class DownloadLiveActivityManager {
     private let appState: AppState
@@ -20,6 +20,7 @@ final class DownloadLiveActivityManager {
     private var activity: Activity<DownloadActivityAttributes>?
     private var lastState: DownloadActivityAttributes.ContentState?
     private var lastUpdateAt = Date.distantPast
+    private var lastDiagnosticAt = Date.distantPast
     /// 结束旧活动的清理任务；新建活动前要先等它完成，
     /// 否则旧的 ended / stale 活动仍会和新的抢灵动岛。
     private var cleanupTask: Task<Void, Never>?
@@ -76,7 +77,8 @@ final class DownloadLiveActivityManager {
             .store(in: &cancellables)
 
         // 进入后台前做一次最终同步；之后能否继续更新取决于保活方式。
-        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+        NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)
+            .merge(with: NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification))
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 Task { @MainActor in self?.refresh(force: true) }
@@ -159,6 +161,7 @@ final class DownloadLiveActivityManager {
         }
 
         let usable = existing.filter { isUsable($0) }
+            .sorted { $0.attributes.startedAt > $1.attributes.startedAt }
         let obsolete = existing.filter { item in
             !usable.contains { $0.id == item.id }
         }
@@ -168,7 +171,7 @@ final class DownloadLiveActivityManager {
             lastState = nil
             lastUpdateAt = .distantPast
             LogStore.shared.info(
-                "live activity adopted · usable \(usable.count) · stale \(obsolete.count)"
+                "[activity] adopted · usable \(usable.count) · stale \(obsolete.count)"
             )
             enqueueCleanup(existing.filter { $0.id != adopted.id })
         } else {
@@ -177,8 +180,10 @@ final class DownloadLiveActivityManager {
     }
 
     private func isUsable(_ activity: Activity<DownloadActivityAttributes>) -> Bool {
-        guard activity.activityState == .active else { return false }
-        return Date().timeIntervalSince(activity.attributes.startedAt)
+        // A stale activity can be refreshed in the background; ending it there
+        // would prevent replacement until the app returns to the foreground.
+        guard activity.activityState == .active || activity.activityState == .stale else { return false }
+        return !canRequestActivity || Date().timeIntervalSince(activity.attributes.startedAt)
             < Self.maximumActivityAge
     }
 
@@ -187,7 +192,7 @@ final class DownloadLiveActivityManager {
     private func enqueueCleanup(_ activities: [Activity<DownloadActivityAttributes>]) {
         let scheduled = activities.filter { cleaningIDs.insert($0.id).inserted }
         guard !scheduled.isEmpty else { return }
-        LogStore.shared.info("live activity cleanup · ending \(scheduled.count)")
+        LogStore.shared.info("[activity] cleanup · ending \(scheduled.count)")
 
         let previous = cleanupTask
         cleanupTask = Task { @MainActor [scheduled] in
@@ -257,7 +262,9 @@ final class DownloadLiveActivityManager {
             self.startupTask = nil
             guard self.activity == nil,
                   self.canRequestActivity,
-                  self.downloadManager.activeKeepAliveMode != .continuedProcessing,
+                  self.appState.customLiveActivityEnabled,
+                  (self.downloadManager.activeKeepAliveMode != .continuedProcessing
+                    || self.appState.customLiveActivityDuringContinuedProcessing),
                   let latest = self.makeState() else { return }
             self.requestActivity(with: latest)
         }
@@ -281,11 +288,11 @@ final class DownloadLiveActivityManager {
             lastState = state
             lastUpdateAt = .now
             LogStore.shared.info(
-                "live activity started · app=\(UIApplication.shared.applicationState.rawValue)"
+                "[activity] started · app=\(UIApplication.shared.applicationState.rawValue)"
             )
         } catch {
             LogStore.shared.warning(
-                "live activity start failed · \(error.localizedDescription)"
+                "[activity] start failed · \(error.localizedDescription)"
             )
         }
     }
@@ -297,7 +304,7 @@ final class DownloadLiveActivityManager {
         guard let activity else { return }
 
         let now = Date()
-        if !force {
+        if !force && activity.activityState != .stale {
             guard now.timeIntervalSince(lastUpdateAt) >= Self.minimumUpdateInterval else {
                 return
             }
@@ -318,6 +325,10 @@ final class DownloadLiveActivityManager {
             staleDate: now.addingTimeInterval(Self.staleInterval),
             relevanceScore: 100
         )
+        if appState.verboseLogging, force || now.timeIntervalSince(lastDiagnosticAt) >= 15 {
+            lastDiagnosticAt = now
+            LogStore.shared.info("[activity.diag] update requested · id=\(activity.id) state=\(activity.activityState) app=\(UIApplication.shared.applicationState.rawValue) progress=\(state.progress) tasks=\(state.activeCount)")
+        }
         Task { await activity.update(content) }
     }
 
@@ -339,6 +350,6 @@ final class DownloadLiveActivityManager {
                 dismissalPolicy: .after(Date().addingTimeInterval(3))
             )
         }
-        LogStore.shared.info("live activity ended")
+        LogStore.shared.info("[activity] ended")
     }
 }

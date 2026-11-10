@@ -45,17 +45,6 @@ public enum NoxDefaults {
     ]
     public static let defaultMinFreeDiskSpace: Int64 = gigabyte
 
-    /// 历史保留「无限制」的取值
-    public static let unlimitedHistory = 0
-    /// 历史「按条数」保留的可选上限（0 = 无限制）
-    public static let historyCountOptions = [20, 50, 100, 200, 500, unlimitedHistory]
-    /// 历史「按条数」保留的默认上限
-    public static let defaultHistoryCount = 50
-    /// 历史「按时间」保留的可选天数（0 = 无限制）
-    public static let historyDayOptions = [1, 3, 7, 30, 90, unlimitedHistory]
-    /// 历史「按时间」保留的默认天数
-    public static let defaultHistoryDays = 30
-
     /// 画中画窗口高度可选范围：0（最小/隐藏）… 最大可见小窗。
     public static let pipWindowHeightRange: ClosedRange<Double> = 0...225
     /// 默认最小化：不影响操作。

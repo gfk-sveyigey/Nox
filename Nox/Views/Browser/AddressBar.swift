@@ -12,27 +12,34 @@ import NoxBrowser
 extension VideoBrowserView {
     // MARK: - 顶部地址栏
 
-    /// 地址栏：中间是胶囊形输入框，主页与书签按钮各自独立浮在两侧。
-    /// 页面向下滚动时高度收缩，回到顶部再展开；加载进度直接用输入框底色表达。
+    /// A flat, full-width bar; scrolling hides it without changing its size.
+    var isAddressBarHidden: Bool { isScrolledDown && !addressFocused && !showingHome }
+    var addressToolbarHeight: CGFloat { controlHeight + 16 }
+
     var addressToolbar: some View {
         addressBar
             .padding(.horizontal, 10)
-            .padding(.vertical, isScrolledDown ? 3 : 8)
-            .animation(.easeInOut(duration: 0.2), value: isScrolledDown)
+            .padding(.vertical, 8)
+            .offset(y: isAddressBarHidden ? -addressToolbarHeight : 0)
+            .opacity(isAddressBarHidden ? 0 : 1)
+            .allowsHitTesting(!isAddressBarHidden)
+            .animation(.easeInOut(duration: 0.22), value: isScrolledDown)
     }
 
     var addressBar: some View {
         HStack(spacing: 8) {
             // 主页与书签各自是**独立**的悬浮按钮，不再塞进地址胶囊里。
-            barButton(
-                systemImage: "house",
-                label: L("返回首页"),
-                tint: .secondary,
-                action: goHome
-            )
+            if !showingHome {
+                barButton(
+                    systemImage: "house",
+                    label: L("返回首页"),
+                    tint: .secondary,
+                    action: goHome
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.85)))
+            }
 
             ZStack {
-                addressLoadingTint
 
                 HStack(spacing: 6) {
                     TextField(L("输入网页地址"), text: $address)
@@ -67,14 +74,18 @@ extension VideoBrowserView {
             .frame(height: barControlHeight)
             .browserGlassBar(cornerRadius: nil)
 
-            barButton(
-                systemImage: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
-                label: isCurrentPageBookmarked ? L("移除书签") : L("加入书签"),
-                tint: isCurrentPageBookmarked ? Color.accentColor : Color.secondary,
-                disabled: !canBookmarkCurrentPage,
-                action: toggleBookmark
-            )
+            if !showingHome {
+                barButton(
+                    systemImage: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
+                    label: isCurrentPageBookmarked ? L("移除书签") : L("加入书签"),
+                    tint: isCurrentPageBookmarked ? Color.accentColor : Color.secondary,
+                    disabled: !canBookmarkCurrentPage,
+                    action: toggleBookmark
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.85)))
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: showingHome)
     }
 
     /// 是否在地址栏上显示加载提示。
@@ -157,11 +168,11 @@ extension VideoBrowserView {
             }
         }
     }
-    
+
 
     /// 地址栏展开 / 收起时，三个控件共用的高度。
     var barControlHeight: CGFloat {
-        isScrolledDown ? collapsedControlHeight : controlHeight
+        controlHeight
     }
 
     /// 地址栏两侧独立的圆形按钮（主页 / 书签）。
@@ -174,14 +185,15 @@ extension VideoBrowserView {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: barControlHeight, height: barControlHeight)
+                .frame(width: 30, height: 30)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .controlSize(.small)
+        .buttonBorderShape(.circle)
+        .browserGlassButton()
         .disabled(disabled)
-        .browserGlassBar(cornerRadius: nil)
         .accessibilityLabel(label)
     }
 
@@ -198,7 +210,7 @@ extension VideoBrowserView {
                 Text(message)
             } actions: {
                 Button(L("重试")) { parser.retryLastLoad() }
-                    .buttonStyle(.borderedProminent)
+                    .browserGlassButton()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(.systemBackground))
@@ -213,12 +225,14 @@ extension VideoBrowserView {
         }
     }
 
-    func updateCollapsedState(for offset: CGFloat) {
-        let collapsed = offset > 24
+    func updateCollapsedState(for offset: CGFloat, delta: CGFloat) {
+        guard !addressFocused, !showingHome, !parser.isLoading, !parser.isUserInitiatedLoad else { return }
+        let collapsed: Bool
+        if offset <= 8 { collapsed = false }
+        else if delta > 3 && offset > 40 { collapsed = true }
+        else if delta < -5 { collapsed = false }
+        else { return }
         guard collapsed != isScrolledDown else { return }
-
-        withAnimation(.easeInOut(duration: 0.2)) {
-            isScrolledDown = collapsed
-        }
+        withAnimation(.easeInOut(duration: 0.22)) { isScrolledDown = collapsed }
     }
 }

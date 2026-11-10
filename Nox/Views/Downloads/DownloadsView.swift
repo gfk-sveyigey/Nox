@@ -4,18 +4,54 @@ import NoxCore
 import NoxDownload
 import NoxState
 
-
 struct DownloadsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var appState: AppState
     @ObservedObject var manager: DownloadManager
     @ObservedObject var localization = LocalizationManager.shared
 
+    var menuRequest: UUID
+    @State private var showingActionMenu = false
+
     @State var showingClearConfirmation = false
+    @State private var detailsRecord: DownloadRecord?
     @State var shareFailureMessage: String?
     @State var showShareFailureAlert = false
 
     @State var editMode: EditMode = .inactive
     @State var selection = Set<UUID>()
+    @State private var statusFilter: DownloadStatus?
+
+    private let filterStatuses: [DownloadStatus] = [.notStarted, .queued, .downloading, .paused, .finished, .failed]
+
+    var visibleRecords: [DownloadRecord] {
+        appState.downloads.filter { statusFilter == nil || $0.status == statusFilter }
+    }
+
+    func statusTitle(_ status: DownloadStatus?) -> String {
+        switch status {
+        case .notStarted: return L("未开始")
+        case .queued: return L("排队中")
+        case .downloading: return L("下载中")
+        case .paused: return L("已暂停")
+        case .finished: return L("已完成")
+        case .failed: return L("失败")
+        default: return L("全部")
+        }
+    }
+
+    var emptyStateTitle: String {
+        guard let statusFilter else { return L("无任务") }
+        switch statusFilter {
+        case .notStarted: return L("无未开始任务")
+        case .queued: return L("无排队中任务")
+        case .downloading: return L("无进行中任务")
+        case .paused: return L("无已暂停任务")
+        case .finished: return L("无已完成任务")
+        case .failed: return L("无失败任务")
+        @unknown default: return L("无任务")
+        }
+    }
     /// 可见行的全局坐标，双指滑动时据此把路径映射到具体任务。
     @State var rowFrames: [UUID: CGRect] = [:]
     @State var showingDeleteConfirmation = false
@@ -23,32 +59,47 @@ struct DownloadsView: View {
     /// 非多选态点按行时只闪一下，不留下持久选中。
     @State var tapFlashSelection = Set<UUID>()
     @State var tapFlashToken = UUID()
-    let scrollToTopToken: Int
 
-    init(appState: AppState, manager: DownloadManager, scrollToTopToken: Int = 0) {
+    init(appState: AppState, manager: DownloadManager, menuRequest: UUID) {
+        self.menuRequest = menuRequest
         self.appState = appState
         _manager = ObservedObject(wrappedValue: manager)
-        self.scrollToTopToken = scrollToTopToken
     }
 
     var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
                 list
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if editMode.isEditing {
-                    selectionFloatingActions
+                if visibleRecords.isEmpty {
+                    GeometryReader { geometry in
+                        ContentUnavailableView {
+                            Label {
+                                Text(emptyStateTitle)
+                                    .font(.title2.weight(.regular))
+                            } icon: {
+                                Image(systemName: "arrow.down.circle")
+                            }
+                        } description: {
+                            EmptyView()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        // The available area excludes the navigation and tab bars.
+                        // Restore the full-screen center using the actual safe-area insets.
+                        .offset(y: (geometry.safeAreaInsets.bottom - geometry.safeAreaInsets.top) / 2)
+                    }
+                    .allowsHitTesting(false)
                 }
             }
             // 空列表时也把顶部安全区铺满分组背景，避免导航栏上方露出一条浅色空白。
             .background(pageBackgroundColor.ignoresSafeArea())
-            .navigationTitle(L("下载"))
+            .navigationTitle(L("任务"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(pageBackgroundColor, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .environment(\.editMode, $editMode)
-            .toolbar { toolbarContent }
+            .toolbar {
+                if !appState.downloads.isEmpty { toolbarContent }
+            }
             // 多选时隐藏底部标签栏，避免与悬浮操作按钮抢位置。
             .toolbar(editMode.isEditing ? .hidden : .visible, for: .tabBar)
             .alert(L("清空下载？"), isPresented: $showingClearConfirmation) {
@@ -75,6 +126,21 @@ struct DownloadsView: View {
             } message: {
                 Text(shareFailureMessage ?? L("无法分享此文件"))
             }
+            .sheet(item: $detailsRecord) { record in
+                DownloadDetailsView(taskID: record.id, appState: appState, manager: manager)
+            }
+            .onChange(of: menuRequest) { _, _ in
+                guard !editMode.isEditing else { return }
+                showingActionMenu = true
+            }
+            .sheet(isPresented: $showingActionMenu) {
+                TaskOverviewView(records: appState.downloads,
+                                 transfers: manager.transfers,
+                                 storageBlocked: manager.storageBlocked)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemGroupedBackground))
+            }
             .onChange(of: editMode) { _, newValue in
                 if !newValue.isEditing {
                     selection.removeAll()
@@ -82,14 +148,26 @@ struct DownloadsView: View {
                     tapFlashSelection.removeAll()
                 }
             }
-            .onAppear { isVisible = true }
+            .onChange(of: statusFilter) { _, _ in
+                finishSelection()
+                tapFlashSelection.removeAll()
+                rowFrames.removeAll()
+            }
+            .onChange(of: visibleRecords.map(\.id)) { _, ids in
+                selection.formIntersection(Set(ids))
+                if ids.isEmpty { finishSelection() }
+            }
+            .onAppear {
+                isVisible = true
+                manager.refreshMissingFiles()
+            }
             .onDisappear {
                 isVisible = false
                 tapFlashSelection.removeAll()
             }
             // 双指滑动：进入多选，并按滑过的路径选中任务。
             .twoFingerPanToSelect(
-                isEnabled: isVisible,
+                isEnabled: isVisible && !visibleRecords.isEmpty,
                 onBegin: { beginTwoFingerSelection() },
                 onPath: { selectRows(in: $0) }
             )
@@ -98,12 +176,18 @@ struct DownloadsView: View {
 
     /// 与设置页保持一致，空页面也使用分组列表背景色。
     var pageBackgroundColor: Color {
-        Color(.systemGroupedBackground)
+        resolvedColor(.systemGroupedBackground)
+    }
+
+    private func resolvedColor(_ color: UIColor) -> Color {
+        Color(uiColor: color.resolvedColor(with: UITraitCollection(
+            userInterfaceStyle: colorScheme == .dark ? .dark : .light
+        )))
     }
 
     /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。
     func beginTwoFingerSelection() {
-        guard !editMode.isEditing else { return }
+        guard !visibleRecords.isEmpty, !editMode.isEditing else { return }
         withAnimation { editMode = .active }
     }
 
@@ -118,7 +202,7 @@ struct DownloadsView: View {
 
     /// 删除或其它操作完成后清理选择并退出多选。
     ///
-    /// 退出时不要包在 `withAnimation` 里：标签栏重新出现、底部 `safeAreaInset`
+    /// 退出时不要包在 `withAnimation` 里：标签栏重新出现、底部工具栏
     /// 同时收起时，两者的过渡会短暂叠出一块比页面更浅的背景。
     func finishSelection() {
         selection.removeAll()
@@ -127,20 +211,15 @@ struct DownloadsView: View {
     }
 
     var list: some View {
-        ScrollViewReader { proxy in
-            List(selection: listSelection) { rows }
-                .listStyle(.insetGrouped)
-                .contentMargins(.top, 20, for: .scrollContent)
-                .listSectionSpacing(12)
-                .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
-                // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
-                .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
-                .onChange(of: scrollToTopToken) { _, _ in
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo("downloads-overview", anchor: .top)
-                    }
-                }
-        }
+        List(selection: listSelection) { rows }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .foregroundStyle(resolvedColor(.label))
+            .contentMargins(.top, 20, for: .scrollContent)
+            .listSectionSpacing(12)
+            .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
+            // 空间不足提示随可用空间出现/消失，用淡入淡出而不是列表默认的行插入动画。
+            .animation(.easeInOut(duration: 0.26), value: manager.storageBlocked)
     }
 
     /// 非多选态把行选中转成一次短暂高亮，随后自动清空；
@@ -172,33 +251,7 @@ struct DownloadsView: View {
 
     @ViewBuilder
     var rows: some View {
-        Section {
-            DownloadOverviewCard(
-                records: appState.downloads,
-                transfers: manager.transfers,
-                storageBlocked: manager.storageBlocked
-            )
-            .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
-            .listRowSeparator(.hidden)
-            .id("downloads-overview")
-        }
-
-        if appState.downloads.isEmpty {
-            ContentUnavailableView {
-                Label {
-                    Text(L("暂无下载"))
-                        .font(.title2.weight(.regular))
-                } icon: {
-                    Image(systemName: "arrow.down.circle")
-                }
-            } description: {
-                EmptyView()
-            }
-            .frame(maxWidth: .infinity, minHeight: 280)
-            .listRowBackground(Color.clear)
-        }
-
-        ForEach(appState.downloads) { record in
+        ForEach(visibleRecords) { record in
             DownloadRow(
                 record: record,
                 stats: manager.transfers[record.id],
@@ -213,6 +266,7 @@ struct DownloadsView: View {
                 },
                 onPause: { record in manager.pause(record); finishSelection() },
                 onDelete: { record in manager.deleteFile(for: record); finishSelection() },
+                onDetails: { detailsRecord = $0 },
                 onCancel: { record in
                     manager.cancel(record)
                     finishSelection()
@@ -226,10 +280,17 @@ struct DownloadsView: View {
                     )
                 }
             }
+            .listRowBackground(resolvedColor(.secondarySystemGroupedBackground))
             .tag(record.id)
             // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
             // 左侧红色减号按钮，与悬浮删除按钮重复。
             // swipeActions 在编辑态自动失效，不影响多选。
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button { detailsRecord = record } label: {
+                    Label(L("详细信息"), systemImage: "info.circle")
+                }
+                .tint(.blue)
+            }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button(role: .destructive) {
                     manager.deleteFile(for: record)
@@ -237,383 +298,358 @@ struct DownloadsView: View {
                 } label: {
                     Label(L("删除"), systemImage: "trash")
                 }
-                Button { manager.cancel(record) } label: {
-                    Label(L("取消下载"), systemImage: "xmark.circle")
+                if record.status != .finished {
+                    if record.status != .notStarted && record.status != .legacyCancelled {
+                        Button { manager.cancel(record) } label: {
+                            Label(L("取消"), systemImage: "xmark.circle")
+                        }
+                        .tint(.orange)
+                    }
+                    Button {
+                        if record.status == .queued || record.status == .downloading {
+                            manager.pause(record)
+                        } else { manager.retry(record) }
+                    } label: {
+                        Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
+                    }
+                    .tint(.blue)
                 }
-                .tint(.orange)
-                .disabled(record.status == .finished)
-                Button {
-                    if record.status == .queued || record.status == .downloading {
-                        manager.pause(record)
-                    } else { manager.retry(record) }
-                } label: {
-                    Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续下载"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
-                }
-                .tint(.blue)
-                .disabled(record.status == .finished)
             }
         }
     }
 
-    struct DownloadOverviewCard: View {
-        @Namespace private var statusAnimation
+    struct TaskOverviewView: View {
+        let records: [DownloadRecord]
+        let transfers: [UUID: TransferStats]
+        let storageBlocked: Bool
+        @Environment(\.dismiss) private var dismiss
+        @ObservedObject private var localization = LocalizationManager.shared
 
-        private struct StatusMetric: Identifiable {
+        private struct Metric: Identifiable {
             let title: String
             let count: Int
             let color: Color
             var id: String { title }
         }
 
-        let records: [DownloadRecord]
-        let transfers: [UUID: TransferStats]
-        let storageBlocked: Bool
-
-        private var activeCount: Int { records.filter { $0.status == .downloading }.count }
-        private var queuedCount: Int { records.filter { $0.status == .queued }.count }
-        private var pausedCount: Int {
-            records.filter { $0.status == .cancelled && ($0.receivedBytes ?? 0) > 0 }.count
-        }
-        private var cancelledCount: Int {
-            records.filter { $0.status == .cancelled && ($0.receivedBytes ?? 0) == 0 }.count
-        }
-        private var finishedCount: Int { records.filter { $0.status == .finished }.count }
-        private var failedCount: Int { records.filter { $0.status == .failed }.count }
-
-        private var statusMetrics: [StatusMetric] {
+        private var metrics: [Metric] {
             [
-                StatusMetric(title: L("进行中"), count: activeCount, color: .accentColor),
-                StatusMetric(title: L("等待中"), count: queuedCount, color: .secondary),
-                StatusMetric(title: L("已暂停"), count: pausedCount, color: .orange),
-                StatusMetric(title: L("已完成"), count: finishedCount, color: .green),
-                StatusMetric(title: L("失败"), count: failedCount, color: .red),
-                StatusMetric(title: L("已取消"), count: cancelledCount, color: .secondary)
+                Metric(title: "下载中", count: records.filter { $0.status == .downloading }.count, color: .accentColor),
+                Metric(title: "未开始", count: records.filter { $0.status == .notStarted }.count, color: .secondary),
+                Metric(title: "排队中", count: records.filter { $0.status == .queued }.count, color: .secondary),
+                Metric(title: "已暂停", count: records.filter { $0.status == .paused }.count, color: .orange),
+                Metric(title: "已完成", count: records.filter { $0.status == .finished }.count, color: .green),
+                Metric(title: "失败", count: records.filter { $0.status == .failed }.count, color: .red)
             ].filter { $0.count > 0 }
         }
 
-        private var statusGroups: [[StatusMetric]] {
-            let metrics = statusMetrics
-            guard metrics.count > 3 else { return metrics.isEmpty ? [] : [metrics] }
-            let splitIndex = 3
-            return [Array(metrics[..<splitIndex]), Array(metrics[splitIndex...])]
-        }
-
-        private var animationKey: String {
-            [activeCount, queuedCount, pausedCount, finishedCount, failedCount, cancelledCount]
-                .map(String.init)
-                .joined(separator: ":")
-        }
-
-        private var totalSpeed: String {
-            let bytesPerSecond = records
-                .filter { $0.status == .downloading }
+        private var speed: String {
+            let total = records.filter { $0.status == .downloading }
                 .reduce(0.0) { $0 + (transfers[$1.id]?.bytesPerSecond ?? 0) }
-            return TransferStats(bytesPerSecond: bytesPerSecond).speedText
+            return total > 0 ? TransferStats(bytesPerSecond: total).speedText : "0"
         }
 
-        private var totalProgress: Double {
+        private var progress: Double {
             guard !records.isEmpty else { return 0 }
-            return records.reduce(0.0) { sum, record in
-                sum + (record.status == .finished ? 1 : min(max(record.progress, 0), 1))
+            return records.reduce(0.0) {
+                $0 + ($1.status == .finished ? 1 : min(max($1.progress, 0), 1))
             } / Double(records.count)
         }
 
+        private var totalCount: String {
+            records.count.formatted(.number.locale(AppLocale.current))
+        }
+
         var body: some View {
-            GeometryReader { geometry in
-                let spacing: CGFloat = 8
-                let groups = statusGroups
-                let unitWidth = (geometry.size.width - spacing * CGFloat(groups.count))
-                    / (1.5 + CGFloat(groups.count))
+            NavigationStack {
+                GeometryReader { geometry in
+                    let spacing: CGFloat = 10
+                    let horizontalPadding: CGFloat = 16
+                    let availableWidth = max(0, geometry.size.width - horizontalPadding * 2)
+                    let columns = max(1, Int((availableWidth + spacing) / (152 + spacing)))
+                    let rows = (metrics.count + columns - 1) / columns
 
-                HStack(alignment: .top, spacing: spacing) {
-                    metricsCard
-                        .frame(width: unitWidth * 1.5, height: 96, alignment: .leading)
-                    ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                        statusCard(group)
-                            .frame(width: unitWidth, height: 96, alignment: .topLeading)
-                            .transition(.opacity)
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            HStack(spacing: 10) {
+                                summaryCard(title: L("任务总数"), value: totalCount,
+                                            icon: "square.stack.3d.up.fill", tint: .indigo)
+                                summaryCard(title: L("总速度"), value: speed,
+                                            icon: "speedometer", tint: .blue)
+                                summaryCard(title: L("总进度"),
+                                            value: progress.formatted(.percent.precision(.fractionLength(0)).locale(AppLocale.current)),
+                                            icon: "chart.pie.fill", tint: .green)
+                            }
+
+                            VStack(spacing: spacing) {
+                                ForEach(0..<rows, id: \.self) { row in
+                                    let start = row * columns
+                                    let end = min(start + columns, metrics.count)
+                                    HStack(spacing: spacing) {
+                                        ForEach(Array(metrics[start..<end])) { metric in
+                                            HStack(spacing: 11) {
+                                                Image(systemName: icon(for: metric.title))
+                                                    .font(.system(size: 18, weight: .semibold))
+                                                    .foregroundStyle(metric.color)
+                                                    .frame(width: 30, height: 30)
+                                                VStack(alignment: .leading, spacing: 3) {
+                                                    Text(L(metric.title))
+                                                        .font(.subheadline)
+                                                        .foregroundStyle(.secondary)
+                                                    Text(metric.count.formatted(.number.locale(AppLocale.current)))
+                                                        .font(.title3.monospacedDigit().weight(.semibold))
+                                                        .foregroundStyle(.primary)
+                                                }
+                                                Spacer(minLength: 0)
+                                            }
+                                            .padding(.horizontal, 13)
+                                            .frame(maxWidth: .infinity, minHeight: 66)
+                                            .background(Color(.secondarySystemGroupedBackground),
+                                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                            .overlay {
+                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.75)
+                                            }
+                                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                                        }
+                                    }
+                                }
+                            }
+
+                            if storageBlocked {
+                                Label(L("储存空间不足"), systemImage: "externaldrive.fill.badge.exclamationmark")
+                                    .font(.footnote.weight(.medium)).foregroundStyle(.orange)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.top, 14)
+                        .padding(.bottom, 16)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .animation(.easeInOut(duration: 0.24), value: metrics.map(\.count))
+                    }
+                }
+                .background(Color(.systemGroupedBackground).ignoresSafeArea())
+                .navigationTitle(L("任务总览"))
+                .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(L("完成")) { dismiss() }
                     }
                 }
             }
-            .frame(height: 96)
-            .animation(.easeInOut(duration: 0.28), value: animationKey)
-            .animation(.easeInOut(duration: 0.26), value: storageBlocked)
         }
 
-        private var metricsCard: some View {
-            VStack(alignment: .leading, spacing: 8) {
-                VStack(alignment: .leading, spacing: 8) {
-                    metricValue(title: L("总速度"), value: totalSpeed)
-                    metricValue(
-                        title: L("总进度"),
-                        value: "\(Int((totalProgress * 100).rounded()))%"
-                    )
+        private func summaryCard(title: String, value: String, icon: String, tint: Color) -> some View {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: icon)
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(tint)
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
-
-                if storageBlocked {
-                    Label {
-                        Text(L("储存空间不足"))
-                            .font(.footnote.weight(.medium))
-                    } icon: {
-                        Image(systemName: "externaldrive.fill.badge.exclamationmark")
-                            .foregroundStyle(.orange)
-                    }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .transition(.opacity)
-                }
-            }
-            .padding(.vertical, 8)
-            .padding(.leading, 18)
-            .padding(.trailing, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-
-        private func statusCard(_ metrics: [StatusMetric]) -> some View {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(metrics) { item in
-                    countMetric(item.title, count: item.count, color: item.color)
-                        .matchedGeometryEffect(id: item.id, in: statusAnimation)
-                        .transition(.opacity)
-                }
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-
-        private func metricValue(title: String, value: String) -> some View {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(title)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
                 Text(value)
-                    .font(.body.monospacedDigit().weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .font(.title2.monospacedDigit().weight(.bold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1).minimumScaleFactor(0.75)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
+            .padding(.horizontal, 13)
+            .background(Color(.secondarySystemGroupedBackground),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.75)
+            }
         }
 
-        private func countMetric(_ title: String, count: Int, color: Color) -> some View {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(count)")
-                    .font(.body.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(color)
-                Text(title)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+        private func icon(for title: String) -> String {
+            switch title {
+            case "下载中": return "arrow.down.circle.fill"
+            case "未开始": return "circle.dashed"
+            case "排队中": return "list.number"
+            case "已暂停": return "pause.circle.fill"
+            case "已完成": return "checkmark.circle.fill"
+            default: return "exclamationmark.circle.fill"
             }
         }
     }
 
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarLeading) {
-            if !appState.downloads.isEmpty {
-                if editMode.isEditing {
-                    // 主题色对号 = 完成，和系统「照片」的多选一致。
-                    Button {
-                        finishSelection()
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .fontWeight(.semibold)
-                    }
-                    .accessibilityLabel(L("完成"))
-                } else {
-                    Button(L("选择")) {
-                        withAnimation { editMode = .active }
-                    }
-                }
-            }
-        }
-
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            if !appState.downloads.isEmpty {
-                // 普通态与多选态都把多功能菜单放在右上角。
-                multiFunctionMenu
-            }
-        }
-    }
-
-    /// 下载页右上角的多功能菜单。
-    ///
-    /// 非多选态提供「全部继续 / 全部暂停 / 清空」这类全局操作；
-    /// 多选态整合针对选中项的批量操作。
-    /// 菜单本身始终可用，即使没有选中项也会展开，只是不适用的操作置灰。
-    @ViewBuilder
-    var multiFunctionMenu: some View {
-        Menu {
+        ToolbarItem(placement: .topBarLeading) {
             if editMode.isEditing {
                 Button {
-                    manager.retryAll(ids: Set(retryableRecords.map(\.id)))
                     finishSelection()
                 } label: {
-                    Label(retryActionTitle, systemImage: "arrow.clockwise")
+                    Image(systemName: "checkmark")
+                        .fontWeight(.semibold)
                 }
-                .disabled(retryableRecords.isEmpty)
-
-                Button {
-                    manager.cancelAll(ids: Set(pausableRecords.map(\.id)))
-                    finishSelection()
-                } label: {
-                    Label(L("暂停"), systemImage: "pause.circle")
-                }
-                .disabled(pausableRecords.isEmpty)
-
-                Divider()
-
-                Button {
-                    shareSelected()
-                } label: {
-                    Label(L("分享"), systemImage: "square.and.arrow.up")
-                }
-                .disabled(shareableRecords.isEmpty)
+                .accessibilityLabel(L("完成"))
             } else {
-                Button {
-                    manager.retryAll(ids: Set(globalRetryableRecords.map(\.id)))
+                Menu {
+                    Picker(L("任务状态"), selection: $statusFilter) {
+                        Text(L("全部")).tag(Optional<DownloadStatus>.none)
+                        ForEach(filterStatuses, id: \.self) { status in
+                            Text(statusTitle(status)).tag(Optional(status))
+                        }
+                    }
                 } label: {
-                    Label(L("全部继续"), systemImage: "arrow.clockwise")
+                    Label(statusTitle(statusFilter), systemImage: "line.3.horizontal.decrease")
                 }
-                .disabled(globalRetryableRecords.isEmpty)
-
-                Button {
-                    manager.cancelAll(ids: Set(globalPausableRecords.map(\.id)))
-                } label: {
-                    Label(L("全部暂停"), systemImage: "pause.circle")
-                }
-                .disabled(globalPausableRecords.isEmpty)
+                .accessibilityLabel(L("筛选任务"))
             }
-
-            Divider()
-            Button {
-                let targets = editMode.isEditing ? selectedRecords : appState.downloads
-                manager.discardAll(ids: Set(targets.map(\.id)))
-                finishSelection()
-            } label: {
-                Label(L("取消下载"), systemImage: "xmark.circle")
-            }
-            .disabled((editMode.isEditing ? selectedRecords : appState.downloads).allSatisfy { $0.status == .finished })
-            Button(role: .destructive) {
-                if !editMode.isEditing { selection = Set(appState.downloads.map(\.id)) }
-                showingDeleteConfirmation = true
-            } label: {
-                Label(L("删除"), systemImage: "trash")
-            }
-            .disabled(editMode.isEditing ? selection.isEmpty : appState.downloads.isEmpty)
-        } label: {
-            Image(systemName: "ellipsis.circle")
         }
-        .accessibilityLabel(L("更多操作"))
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu { taskMenuContents } label: {
+                Image(systemName: "ellipsis")
+            }
+            .accessibilityLabel(L("更多操作"))
+            .disabled(visibleRecords.isEmpty)
+        }
+        if editMode.isEditing {
+            ToolbarItemGroup(placement: .bottomBar) {
+                Button(allSelected ? L("取消全选") : L("全选")) {
+                    withAnimation {
+                        if allSelected {
+                            selection.removeAll()
+                        } else {
+                            selection = Set(visibleRecords.map(\.id))
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Button(role: .destructive) {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .disabled(selection.isEmpty)
+                .accessibilityLabel(L("删除"))
+            }
+        }
     }
 
-    // MARK: - 全局批量操作（非多选态）
-
-    /// 失败 / 已暂停的全部任务，可一键继续。
-    var globalRetryableRecords: [DownloadRecord] {
-        appState.downloads.filter { $0.status == .failed || $0.status == .cancelled }
+    /// All batch actions are scoped to the current filter and, in selection mode, selected rows.
+    var actionRecords: [DownloadRecord] {
+        editMode.isEditing ? selectedRecords : visibleRecords
     }
 
-    /// 排队中 / 下载中的全部任务，可一键暂停。
-    var globalPausableRecords: [DownloadRecord] {
-        appState.downloads.filter { $0.status == .queued || $0.status == .downloading }
+    var menuStatuses: Set<DownloadStatus> {
+        Set(visibleRecords.map(\.status))
+    }
+
+    @ViewBuilder
+    var taskMenuContents: some View {
+            if !editMode.isEditing {
+                Section {
+                    Button {
+                        showingActionMenu = false
+                        withAnimation { editMode = .active }
+                    } label: {
+                        Label(L("选择"), systemImage: "checkmark.circle")
+                    }
+                    .disabled(visibleRecords.isEmpty)
+                }
+            }
+
+            Section {
+                if !menuStatuses.isDisjoint(with: [.notStarted, .paused, .failed]) {
+                    Button {
+                        showingActionMenu = false
+                        manager.retryAll(ids: Set(actionRecords.filter {
+                            [.notStarted, .paused, .failed].contains($0.status)
+                        }.map(\.id)))
+                        finishSelection()
+                    } label: {
+                        Label(L(editMode.isEditing ? "继续" : "全部继续"), systemImage: "arrow.clockwise")
+                    }
+                    .disabled(!actionRecords.contains { [.notStarted, .paused, .failed].contains($0.status) })
+                }
+                if !menuStatuses.isDisjoint(with: [.queued, .downloading]) {
+                    Button {
+                        showingActionMenu = false
+                        manager.pauseAll(ids: Set(actionRecords.filter {
+                            [.queued, .downloading].contains($0.status)
+                        }.map(\.id)))
+                        finishSelection()
+                    } label: {
+                        Label(L(editMode.isEditing ? "暂停" : "全部暂停"), systemImage: "pause.circle")
+                    }
+                    .disabled(!actionRecords.contains { [.queued, .downloading].contains($0.status) })
+                }
+                if !menuStatuses.isDisjoint(with: [.queued, .downloading, .paused, .failed]) {
+                    Button {
+                        showingActionMenu = false
+                        manager.discardAll(ids: Set(actionRecords.filter {
+                            [.queued, .downloading, .paused, .failed].contains($0.status)
+                        }.map(\.id)))
+                        finishSelection()
+                    } label: {
+                        Label(L(editMode.isEditing ? "取消" : "全部取消"), systemImage: "xmark.circle")
+                    }
+                    .disabled(!actionRecords.contains { [.queued, .downloading, .paused, .failed].contains($0.status) })
+                }
+            }
+
+            if editMode.isEditing && menuStatuses.contains(.finished) {
+                Section {
+                    Button {
+                        showingActionMenu = false
+                        shareSelected()
+                    } label: {
+                        Label(L("分享"), systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(shareableRecords.isEmpty)
+                }
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    showingActionMenu = false
+                    if !editMode.isEditing { selection = Set(visibleRecords.map(\.id)) }
+                    showingDeleteConfirmation = true
+                } label: {
+                    Label(L(editMode.isEditing ? "删除" : "清空"), systemImage: "trash")
+                }
+                .disabled(actionRecords.isEmpty)
+            }
+
     }
 
     // MARK: - 多选批量操作
 
     var selectedRecords: [DownloadRecord] {
-        appState.downloads.filter { selection.contains($0.id) }
-    }
-
-    /// 失败 / 已暂停的任务可以重试或继续。
-    var retryableRecords: [DownloadRecord] {
-        selectedRecords.filter { $0.status == .failed || $0.status == .cancelled }
-    }
-
-    /// 排队中 / 下载中的任务可以暂停；分片已落盘，之后可继续。
-    var pausableRecords: [DownloadRecord] {
-        selectedRecords.filter { $0.status == .queued || $0.status == .downloading }
+        visibleRecords.filter { selection.contains($0.id) }
     }
 
     /// 已完成且本地文件仍在的任务可以分享。
     var shareableRecords: [DownloadRecord] {
-        selectedRecords.filter {
+        actionRecords.filter {
             $0.status == .finished &&
             !manager.missingFileIDs.contains($0.id) &&
             manager.shareableFileURL(for: $0) != nil
         }
     }
 
-    /// 全部选中项都已有下载进度时才写「继续下载」，否则写「重试」。
-    var retryActionTitle: String {
-        let records = retryableRecords
-        guard !records.isEmpty else { return L("重试") }
-        return records.allSatisfy { ($0.receivedBytes ?? 0) > 0 } ? L("继续下载") : L("重试")
-    }
-
     var allSelected: Bool {
-        !appState.downloads.isEmpty && selection.count == appState.downloads.count
+        !visibleRecords.isEmpty && selection == Set(visibleRecords.map(\.id))
     }
 
     var hasClearableDownloads: Bool {
         appState.downloads.contains {
             $0.status == .finished ||
             $0.status == .failed ||
-            $0.status == .cancelled
+            $0.status == .paused || $0.status == .notStarted
         }
-    }
-
-    /// 多选态悬浮操作：左下角全选 / 取消全选，右下角删除。
-    var selectionFloatingActions: some View {
-        HStack(alignment: .center) {
-            Button {
-                withAnimation {
-                    if allSelected {
-                        selection.removeAll()
-                    } else {
-                        selection = Set(appState.downloads.map(\.id))
-                    }
-                }
-            } label: {
-                Text(allSelected ? L("取消全选") : L("全选"))
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.primary)
-                    .padding(.horizontal, 20)
-                    .frame(height: 52)
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .modifier(GlassCapsuleBackground())
-            .accessibilityLabel(allSelected ? L("取消全选") : L("全选"))
-
-            Spacer(minLength: 0)
-
-            Button(role: .destructive) {
-                showingDeleteConfirmation = true
-            } label: {
-                circleLabel("trash", color: .red)
-                    .opacity(selection.isEmpty ? 0.4 : 1)
-            }
-            .buttonStyle(.plain)
-            .disabled(selection.isEmpty)
-            .modifier(GlassCircleBackground())
-            .accessibilityLabel(L("删除"))
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-    }
-
-    func circleLabel(_ systemImage: String, color: Color) -> some View {
-        Image(systemName: systemImage)
-            .font(.system(size: 18, weight: .semibold))
-            .foregroundStyle(color)
-            .frame(width: 52, height: 52)
-            .contentShape(Circle())
     }
 
     /// 批量分享：只带上文件仍在的已完成记录。
@@ -649,38 +685,6 @@ struct DownloadsView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             SharePresenter.present(items: [url])
-        }
-    }
-}
-
-/// 多选态文字按钮：与圆形玻璃按钮一致的液态玻璃效果，但使用胶囊形。
-private struct GlassCapsuleBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            content
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-                }
-                .shadow(color: Color.black.opacity(0.15), radius: 10, y: 3)
-        }
-    }
-}
-
-/// 多选态圆形按钮：iOS 26 使用系统液态玻璃，低版本回退到材质 + 描边。
-private struct GlassCircleBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Circle())
-        } else {
-            content
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay {
-                    Circle().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-                }
-                .shadow(color: Color.black.opacity(0.15), radius: 10, y: 3)
         }
     }
 }

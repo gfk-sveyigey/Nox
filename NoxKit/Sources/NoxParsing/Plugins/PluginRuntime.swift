@@ -569,7 +569,8 @@ final class PluginRuntime: NSObject {
             return VideoVariant(
                 quality: item["quality"] as? String ?? "",
                 format: item["format"] as? String ?? "",
-                url: url
+                url: url,
+                suggestedTitle: (object["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
             )
         }
 

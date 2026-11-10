@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import QuartzCore
 import NoxCore
 import NoxDownload
 import NoxState
@@ -14,10 +13,14 @@ struct ContentView: View {
     /// 不要再给 `SettingsView` 套 `.id(language)`：那会重建整个 Form，
     /// 把用户正在浏览的设置列表弹回顶部。
     @ObservedObject private var localization = LocalizationManager.shared
-    /// 用 ObservableObject 包住选中项：TabView 在重复点击当前标签时，
-    /// 会把同一个值再写回绑定，借此可以拿到系统的「再次点击」事件。
-    @StateObject private var tabSelection = TabSelectionState()
+    @State private var selectedTab = 0
     @State private var browserURL: URL?
+    @State private var browserAllowsMinimization = false
+    @State private var browserCanParse = false
+    @State private var parseRequest = UUID()
+    @State private var taskMenuRequest = UUID()
+    @State private var aboutRequest = UUID()
+    @State private var actionNotice: String?
     @State private var didLogSession = false
     @State private var startupFinished = false
     @State private var didPrepareStartup = false
@@ -30,40 +33,13 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: tabSelection.binding) {
-            VideoBrowserView(
-                appState: appState,
-                downloads: downloadManager,
-                requestedURL: $browserURL,
-                scrollToTopToken: tabSelection.browseDoubleTapCount
-            )
-                .tabItem { Label(L("浏览"), systemImage: "safari") }
-                .tag(0)
-
-            DownloadsView(
-                appState: appState,
-                manager: downloadManager,
-                scrollToTopToken: tabSelection.downloadsDoubleTapCount
-            )
-                .tabItem { Label(L("下载"), systemImage: "arrow.down.circle") }
-                .tag(1)
-
-            HistoryView(
-                scrollToTopToken: tabSelection.historyDoubleTapCount
-            ) { url in
-                browserURL = url
-                tabSelection.selection = 0
-            }
-                .tabItem { Label(L("历史"), systemImage: "clock") }
-                .tag(2)
-
-            SettingsView(
-                manager: downloadManager,
-                scrollToTopToken: tabSelection.settingsDoubleTapCount
-            )
-                .tabItem { Label(L("设置"), systemImage: "gearshape") }
-                .tag(3)
-        }
+        mainTabs
+        .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
+        .onPreferenceChange(BrowserParseAvailability.self) { browserCanParse = $0 }
+        .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
+        .alert(L("提示"), isPresented: Binding(get: { actionNotice != nil }, set: { if !$0 { actionNotice = nil } })) {
+            Button(L("确定"), role: .cancel) { actionNotice = nil }
+        } message: { Text(actionNotice ?? "") }
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -108,14 +84,14 @@ struct ContentView: View {
 
             // 冷启动时 `scenePhase` 的 onChange 不一定触发，这里补一次前台处理，
             // 让「启动即常驻」模式在首次进入界面时就能拉起保活。
-            downloadManager.handleScenePhase(isActive: scenePhase == .active)
+            downloadManager.handleScenePhase(isActive: scenePhase == .active, isBackground: scenePhase == .background)
             guard !didLogSession else { return }
             didLogSession = true
             LogStore.shared.recordSessionStart()
         }
         // 回到前台：重置速度采样（后台期间定时器不触发），并让后台保活自愈。
         .onChange(of: scenePhase) { _, phase in
-            downloadManager.handleScenePhase(isActive: phase == .active)
+            downloadManager.handleScenePhase(isActive: phase == .active, isBackground: phase == .background)
 
             if phase == .active {
                 incomingURL.sceneDidBecomeActive()
@@ -167,6 +143,87 @@ struct ContentView: View {
         }
     }
 
+    private func selectTab(_ value: Int) {
+        selectedTab = value
+    }
+
+    private var contextActionTitle: String {
+        selectedTab == 1 ? L("任务总览") : selectedTab == 2 ? L("关于") : L("解析")
+    }
+
+    private var contextActionImage: String {
+        selectedTab == 1 ? "square.grid.2x2" : selectedTab == 2 ? "info.circle" : "dot.radiowaves.left.and.right"
+    }
+
+    private var contextActionEnabled: Bool {
+        true
+    }
+
+    private func activateContextAction() {
+        switch selectedTab {
+        case 1:
+            taskMenuRequest = UUID()
+        case 2:
+            aboutRequest = UUID()
+        default:
+            guard browserAllowsMinimization else {
+                actionNotice = L("当前页面暂无可解析的内容。")
+                return
+            }
+            guard browserCanParse else {
+                actionNotice = L("解析未完成。")
+                return
+            }
+            parseRequest = UUID()
+        }
+    }
+
+    private var tabSelection: Binding<Int> {
+        Binding(get: { selectedTab }, set: { value in
+            if value == 3 {
+                activateContextAction()
+            } else {
+                selectTab(value)
+            }
+        })
+    }
+
+    private var browser: some View {
+        VideoBrowserView(appState: appState, downloads: downloadManager,
+                         requestedURL: $browserURL, parseRequest: parseRequest)
+    }
+
+    @ViewBuilder
+    private var mainTabs: some View {
+        if #available(iOS 26.0, *) {
+            TabView(selection: tabSelection) {
+                Tab(L("浏览"), systemImage: "safari", value: 0) { browser }
+                Tab(L("任务"), systemImage: "arrow.down.circle", value: 1) {
+                    DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
+                }
+                Tab(L("设置"), systemImage: "gearshape", value: 2) {
+                    SettingsView(manager: downloadManager, aboutRequest: aboutRequest)
+                }
+                Tab(value: 3, role: .search) { Color.clear } label: {
+                        Label(contextActionTitle, systemImage: contextActionImage)
+                    }
+            }
+            .background(ParseTabAvailability(isEnabled: true) { activateContextAction() })
+        } else {
+            TabView(selection: tabSelection) {
+                browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
+                DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
+                    .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }.tag(1)
+                SettingsView(manager: downloadManager, aboutRequest: aboutRequest)
+                    .tabItem { Label(L("设置"), systemImage: "gearshape") }.tag(2)
+                Color.clear
+                    .tabItem { Label(contextActionTitle, systemImage: contextActionImage) }
+                    .tag(3)
+            }
+            .background(ParseTabAvailability(isEnabled: true) { activateContextAction() })
+        }
+    }
+
     @MainActor
     private func prepareStartupIfNeeded() {
         guard !didPrepareStartup else { return }
@@ -196,10 +253,10 @@ struct ContentView: View {
             }
         } else if IncomingLink.isDownloads(url) {
             LogStore.shared.info("handle incoming: downloads")
-            tabSelection.selection = 1
+            selectTab(1)
         } else if let webURL = IncomingLink.webURL(from: url) {
             LogStore.shared.info("handle incoming: web url")
-            tabSelection.selection = 0
+            selectTab(0)
             browserURL = webURL
         } else {
             LogStore.shared.info("handle incoming: file")
@@ -209,65 +266,91 @@ struct ContentView: View {
 
 }
 
-/// `TabView` 的 selection 包装，用重复写入的选中项识别双击当前标签。
-final class TabSelectionState: ObservableObject {
-    /// 两下之间允许的最长间隔。
-    static let doubleTapInterval: TimeInterval = 0.45
-
-    @Published var selection: Int = 0 {
-        didSet {
-            guard oldValue == selection else {
-                // 正常的标签切换不是「再次点击」，并清掉切换前残留的候选，
-                // 避免换到别的标签再回来后被拼成一次双击。
-                resetDoubleTap()
-                return
-            }
-
-            // 重复点击当前标签才会走到这里。
-            handleTabReselect(selection)
-        }
-    }
-
-    /// 重选事件只交给双击检测，不将相同值写回 TabView，避免系统单击回顶。
-    var binding: Binding<Int> {
-        Binding(
-            get: { self.selection },
-            set: { value in
-                if value == self.selection {
-                    self.handleTabReselect(value)
-                } else {
-                    self.selection = value
-                }
-            }
-        )
-    }
-
-    /// 双击「浏览」的次数；浏览页观察它并滚回顶部。
-    @Published private(set) var browseDoubleTapCount = 0
-    @Published private(set) var downloadsDoubleTapCount = 0
-    @Published private(set) var historyDoubleTapCount = 0
-    @Published private(set) var settingsDoubleTapCount = 0
-
-    private var lastReselectAt = -Double.infinity
-
-    private func handleTabReselect(_ tab: Int) {
-        let now = CACurrentMediaTime()
-
-        if now - lastReselectAt <= Self.doubleTapInterval {
-            resetDoubleTap()
-            switch tab {
-            case 0: browseDoubleTapCount += 1
-            case 1: downloadsDoubleTapCount += 1
-            case 2: historyDoubleTapCount += 1
-            case 3: settingsDoubleTapCount += 1
-            default: break
-            }
+private struct NativeBrowserTabMinimization: ViewModifier {
+    let enabled: Bool
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(enabled ? .onScrollDown : .never)
         } else {
-            lastReselectAt = now
+            content
         }
     }
+}
 
-    private func resetDoubleTap() {
-        lastReselectAt = -Double.infinity
+/// Keep the action tab's native disabled appearance and accessibility state in sync.
+private struct ParseTabAvailability: UIViewControllerRepresentable {
+    let isEnabled: Bool
+    let onParse: () -> Void
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.actionEnabled = isEnabled
+        controller.onParse = onParse
+        controller.updateItem()
+        DispatchQueue.main.async { controller.updateItem() }
+    }
+    static func dismantleUIViewController(_ controller: Controller, coordinator: ()) {
+        controller.restoreDelegate()
+    }
+    final class Controller: UIViewController, UITabBarControllerDelegate {
+        var actionEnabled = false
+        var onParse: (() -> Void)?
+        private weak var observedTabs: UITabBarController?
+        private weak var originalDelegate: UITabBarControllerDelegate?
+        func restoreDelegate() {
+            if observedTabs?.delegate === self {
+                observedTabs?.delegate = originalDelegate
+            }
+        }
+
+        // A parse tap is an action, never a tab selection. Reject it before
+        // UIKit changes the selected controller or expands the minimized bar.
+        func tabBarController(_ tabBarController: UITabBarController,
+                              shouldSelect viewController: UIViewController) -> Bool {
+            if let controllers = tabBarController.viewControllers,
+               controllers.count == 4, controllers[3] === viewController {
+                if actionEnabled { onParse?() }
+                return false
+            }
+            return originalDelegate?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
+        }
+
+        override func responds(to selector: Selector!) -> Bool {
+            super.responds(to: selector) || originalDelegate?.responds(to: selector) == true
+        }
+
+        override func forwardingTarget(for selector: Selector!) -> Any? {
+            if originalDelegate?.responds(to: selector) == true { return originalDelegate }
+            return super.forwardingTarget(for: selector)
+        }
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            updateItem()
+        }
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            updateItem()
+        }
+        func updateItem() {
+            func findTabs(_ controller: UIViewController) -> UITabBarController? {
+                if let tabs = controller as? UITabBarController { return tabs }
+                for child in controller.children {
+                    if let tabs = findTabs(child) { return tabs }
+                }
+                return nil
+            }
+            var root: UIViewController = self
+            while let parent = root.parent { root = parent }
+            guard let tabs = findTabs(root), let items = tabs.tabBar.items else { return }
+            if tabs.delegate !== self {
+                originalDelegate = tabs.delegate
+                observedTabs = tabs
+                tabs.delegate = self
+            }
+            guard items.count == 4 else { return }
+            items[3].isEnabled = actionEnabled
+            items[3].setTitleTextAttributes([.foregroundColor: UIColor.secondaryLabel], for: .normal)
+            items[3].setTitleTextAttributes([.foregroundColor: UIColor.tertiaryLabel], for: .disabled)
+        }
     }
 }

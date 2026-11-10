@@ -104,7 +104,12 @@ extension DownloadManager {
     }
 
     /// 场景切换：回前台重算速度采样，并让保活自愈（例如 PiP 被系统结束后重建）。
-    public func handleScenePhase(isActive: Bool) {
+    public func handleScenePhase(isActive: Bool, isBackground: Bool = true) {
+        if store.verboseLogging {
+            LogStore.shared.info("[lifecycle] scene=\(isActive ? "active" : (isBackground ? "background" : "inactive")) app=\(UIApplication.shared.applicationState.rawValue) mode=\(store.keepAliveMode.rawValue) active=\(keepAlive.currentMode.rawValue) tasks=\(activeIDs.count) session=\(store.keepAliveMode.usesBackgroundDownloadSession ? "background" : "default")")
+        }
+        // 控制中心、任务总览及 PiP 转场也会失活，只有确实进入后台才执行后台策略。
+        guard isActive || isBackground else { return }
         guard isActive else {
             // 「仅前台下载」不依赖系统继续执行：进后台前主动停下，
             // 已下载分片留在磁盘上，回前台后从断点继续。
@@ -131,6 +136,7 @@ extension DownloadManager {
             )
             self.backgroundTransitionGrace = nil
         }
+        refreshMissingFiles()
         resetSpeedSamples()
         keepAlive.didEnterForeground()
         resumeAfterForegroundOnly()
@@ -151,7 +157,7 @@ extension DownloadManager {
             guard let live = store.downloads.first(where: { $0.id == record.id }),
                   live.status == .queued || live.status == .downloading else { continue }
             foregroundPausedIDs.insert(live.id)
-            performCancel(live)
+            performPause(live)
         }
         reconcileTaskQueue(reason: "foreground only")
     }
@@ -165,7 +171,7 @@ extension DownloadManager {
 
         for id in ids {
             guard let record = store.downloads.first(where: { $0.id == id }),
-                  record.status == .cancelled else { continue }
+                  record.status == .paused else { continue }
             retry(record)
         }
     }

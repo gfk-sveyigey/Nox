@@ -13,6 +13,7 @@ struct DownloadRow: View {
     let onRetry: (DownloadRecord) -> Void
     let onPause: (DownloadRecord) -> Void
     let onDelete: (DownloadRecord) -> Void
+    let onDetails: (DownloadRecord) -> Void
     let onCancel: (DownloadRecord) -> Void
 
     /// 编辑态下行内的按钮要收起来，否则点击会被按钮吃掉、选不中行
@@ -28,8 +29,10 @@ struct DownloadRow: View {
         onRetry: @escaping (DownloadRecord) -> Void,
         onPause: @escaping (DownloadRecord) -> Void,
         onDelete: @escaping (DownloadRecord) -> Void,
+        onDetails: @escaping (DownloadRecord) -> Void,
         onCancel: @escaping (DownloadRecord) -> Void
     ) {
+        self.onDetails = onDetails
         self.record = record
         self.stats = stats
         self.isMissingFile = isMissingFile
@@ -49,6 +52,8 @@ struct DownloadRow: View {
             HStack(spacing: 10) {
                 Image(systemName: iconName)
                     .foregroundStyle(iconColor)
+                    .font(.system(size: 22))
+                    .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 3) {
                     // 显示实际文件名（而非标题）—— 这才是「文件」App 里看到的名字。
@@ -87,9 +92,9 @@ struct DownloadRow: View {
         .padding(.vertical, 5)
         .contentShape(Rectangle())
         .contextMenu {
-            // 标题被截断成一行，长按时先把完整标题展示出来；
-            // 下面原有的菜单项保持不动。
-            Text(record.displayFilename)
+            Button { onDetails(record) } label: {
+                Label(L("详细信息"), systemImage: "info.circle")
+            }
 
             Divider()
 
@@ -98,11 +103,11 @@ struct DownloadRow: View {
                     onPause(record)
                 } else { onRetry(record) }
             } label: {
-                Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续下载"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
+                Label(L(record.status == .queued || record.status == .downloading ? "暂停" : "继续"), systemImage: record.status == .queued || record.status == .downloading ? "pause" : "play")
             }
             .disabled(record.status == .finished)
             Button { onCancel(record) } label: {
-                Label(L("取消下载"), systemImage: "xmark.circle")
+                Label(L("取消"), systemImage: "xmark.circle")
             }
             .disabled(record.status == .finished)
             Button(role: .destructive) { onDelete(record) } label: {
@@ -119,46 +124,73 @@ struct DownloadRow: View {
         }
     }
 
-    /// 暂停过就写「继续下载」，否则写「重试」
-    var retryTitle: String {
-        (record.receivedBytes ?? 0) > 0 ? L("继续下载") : L("重试")
-    }
-
     @ViewBuilder
     var statusLine: some View {
         if record.status == .finished, isMissingFile {
             // 文件被系统清理或用户删除后，条目还在：明确提示缺失
-            Label(L("文件缺失"), systemImage: "exclamationmark.triangle")
-                .font(.footnote)
-                .foregroundStyle(.red)
-                .lineLimit(1)
-        } else if record.status == .queued {
-            Text(L("排队中 · 等待空闲下载位"))
-                .font(.footnote)
+            Text(L("文件缺失"))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-        } else if record.status == .downloading {
-            Text(stats?.displayText ?? TransferStats().displayText)
-                .font(.footnote)
+        } else if record.status == .queued {
+            let size = TransferStats(bytesReceived: record.receivedBytes ?? 0, totalBytes: record.totalBytes ?? 0).sizeText
+            Text(String(format: L("排队中 · %@"), size))
+                .font(.subheadline)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-        } else if record.status == .failed, let message = record.errorMessage {
-            Text(verbatim: message)
-                .font(.footnote)
-                .foregroundStyle(.red)
-                .lineLimit(2)
-        } else if record.status == .cancelled, let received = record.receivedBytes, received > 0 {
-            Text(String(format: L("已暂停 · 已下载 %@，重试可继续"), TransferStats.formattedSize(received)))
-                .font(.footnote)
+        } else if record.status == .downloading {
+            let currentStats = stats ?? TransferStats()
+            Text(String(format: L("下载中 · %@ · %@"), currentStats.sizeText, speedText(currentStats.bytesPerSecond)))
+                .font(.subheadline)
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-        } else if record.status == .cancelled {
-            Text(L("下载尚未开始"))
-                .font(.footnote)
+        } else if record.status == .failed {
+            Text(String(format: L("失败 · %@"), shortFailureReason))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else if record.status == .finished {
+            Text(String(format: L("已完成 · %@"), TransferStats.formattedSize(record.receivedBytes ?? record.totalBytes ?? 0)))
+                .font(.subheadline)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else if record.status == .paused {
+            let received = record.receivedBytes ?? 0
+            let total = record.totalBytes ?? 0
+            let size = total > 0
+                ? TransferStats(bytesReceived: received, totalBytes: total).sizeText
+                : TransferStats.formattedSize(received)
+            Text(String(format: L("已暂停 · %@"), size))
+                .font(.subheadline)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else if record.status == .notStarted || record.status == .legacyCancelled {
+            Text(L("未开始"))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
+    }
+
+    private var shortFailureReason: String {
+        guard let message = record.errorMessage, !message.isEmpty else { return L("未知错误") }
+        let localizedPrefix = L("下载失败：%@").components(separatedBy: "%@").first ?? ""
+        let prefixes = [localizedPrefix, "Download failed: ", "Download fehlgeschlagen: ", "Échec du téléchargement : ", "다운로드 실패: "]
+        let prefix = prefixes.first { !$0.isEmpty && message.hasPrefix($0) }
+        let reason = prefix.map { String(message.dropFirst($0.count)) } ?? message
+        let withoutStatus = reason
+            .replacingOccurrences(of: #"[（(]\s*HTTP\s*[:：]?\s*\d{3}\s*[）)]"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)\bHTTP\s*[:：]?\s*\d{3}\b"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ":：·-")))
+        return withoutStatus.isEmpty ? L("未知错误") : withoutStatus
+    }
+
+    private func speedText(_ bytesPerSecond: Double) -> String {
+        return TransferStats(bytesPerSecond: bytesPerSecond).speedText
     }
 
     var displayProgress: Double {
@@ -167,9 +199,9 @@ struct DownloadRow: View {
             return 1
         case .failed:
             return max(record.progress, 0.05)
-        case .cancelled:
+        case .paused:
             return max(record.progress, 0)
-        case .queued, .downloading:
+        case .queued, .downloading, .notStarted, .legacyCancelled:
             return record.progress
         }
     }
@@ -178,9 +210,9 @@ struct DownloadRow: View {
         switch record.status {
         case .finished: return .green
         case .failed: return .red
-        case .cancelled: return .gray
-        case .queued: return .secondary
-        case .downloading: return .accentColor
+        case .paused: return .gray
+        case .queued, .notStarted, .legacyCancelled: return .secondary
+        case .downloading: return .blue
         }
     }
 
@@ -188,9 +220,9 @@ struct DownloadRow: View {
         switch record.status {
         case .finished: return .green
         case .failed: return .red
-        case .cancelled: return .secondary
-        case .queued: return .secondary
-        case .downloading: return .accentColor
+        case .paused: return .secondary
+        case .queued, .notStarted, .legacyCancelled: return .secondary
+        case .downloading: return .blue
         }
     }
 
@@ -198,11 +230,13 @@ struct DownloadRow: View {
         switch record.status {
         case .finished: return "checkmark.circle.fill"
         case .failed: return "exclamationmark.circle.fill"
-        case .cancelled: return "arrow.clockwise.circle"
-        case .queued: return "clock"
-        case .downloading: return "arrow.down.circle"
+        case .paused: return "pause.circle.fill"
+        case .notStarted, .legacyCancelled: return "circle"
+        case .queued: return "clock.fill"
+        case .downloading: return "arrow.down.circle.fill"
         }
     }
+
 }
 
 /// 从当前最上层视图控制器弹出系统分享面板。

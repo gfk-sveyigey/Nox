@@ -62,7 +62,7 @@ extension DownloadManager {
 
         let message = L("储存空间不足，下载已暂停。释放空间后会继续排队任务。")
         for record in targets {
-            performCancel(record, errorMessage: message)
+            performPause(record, errorMessage: message)
         }
         pendingQueue.removeAll { id in
             guard let record = store.downloads.first(where: { $0.id == id }) else {

@@ -5,8 +5,12 @@ public struct VideoVariant: Identifiable, Codable, Hashable {
     public let quality: String
     public let format: String
     public let url: URL
+    public let suggestedTitle: String?
+    public let metadata: DownloadMetadata?
 
-    public init(id: UUID = UUID(), quality: String, format: String, url: URL) {
+    public init(id: UUID = UUID(), quality: String, format: String, url: URL, metadata: DownloadMetadata? = nil, suggestedTitle: String? = nil) {
+        self.suggestedTitle = suggestedTitle
+        self.metadata = metadata
         self.id = id
         self.quality = quality
         self.format = format

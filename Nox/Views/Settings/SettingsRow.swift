@@ -29,7 +29,7 @@ struct SettingsRowLabel: View {
             }
         }
         // 普通 Picker 的 label 不能再强制占满整行，否则系统当前值会被挤到下一行。
-        // 只有行尾有覆盖内容（解析来源计数）时才需要撑满，才能把覆盖内容对齐到行尾。
+        // 只有行尾有覆盖内容（解析规则计数）时才需要撑满，才能把覆盖内容对齐到行尾。
         .frame(maxWidth: centeredTrailing == nil ? nil : .infinity, alignment: .leading)
         .overlay(alignment: .trailing) {
             if let centeredTrailing {

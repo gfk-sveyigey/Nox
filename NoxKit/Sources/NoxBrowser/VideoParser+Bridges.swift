@@ -12,13 +12,15 @@ import NoxParsing
 final class PageURLBridge: NSObject, WKScriptMessageHandler {
     static let handlerName = "noxPageURL"
 
+    var isCurrentWebView: ((WKWebView) -> Bool)?
     var onURLChange: ((URL) -> Void)?
 
     func userContentController(
         _ controller: WKUserContentController,
         didReceive message: WKScriptMessage
     ) {
-        guard message.name == Self.handlerName else { return }
+        guard message.name == Self.handlerName,
+              let source = message.webView, isCurrentWebView?(source) != false else { return }
         guard let raw = message.body as? String, let url = URL(string: raw) else { return }
         onURLChange?(url)
     }
@@ -32,13 +34,15 @@ final class PageURLBridge: NSObject, WKScriptMessageHandler {
 final class PageLoadingBridge: NSObject, WKScriptMessageHandler {
     static let handlerName = "noxPageLoading"
 
+    var isCurrentWebView: ((WKWebView) -> Bool)?
     var onLoadingChange: ((Bool) -> Void)?
 
     func userContentController(
         _ controller: WKUserContentController,
         didReceive message: WKScriptMessage
     ) {
-        guard message.name == Self.handlerName else { return }
+        guard message.name == Self.handlerName,
+              let source = message.webView, isCurrentWebView?(source) != false else { return }
 
         // 脚本里 postMessage 的是 0 / 1；两种类型都接住，避免平台差异导致静默失效。
         if let number = message.body as? NSNumber {

@@ -154,6 +154,9 @@ private final class NoxNotificationDelegate: NSObject, UNUserNotificationCenterD
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([.banner, .sound, .list])
+        let showInForeground = UserDefaults.standard.object(
+            forKey: "Nox.foregroundNotificationsEnabled"
+        ) as? Bool ?? true
+        completionHandler(showInForeground ? [.banner, .sound, .list] : [])
     }
 }

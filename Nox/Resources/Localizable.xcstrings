@@ -1,6 +1,1447 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"暂无任务。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "No tasks yet."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Noch keine Aufgaben."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Aucune tâche pour le moment."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "작업이 없습니다."
+      }
+    }
+  }
+},
+"当前页面暂无可解析的内容。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "No downloadable media is available on this page."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Auf dieser Seite sind keine herunterladbaren Medien verfügbar."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Aucun média à télécharger sur cette page."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "현재 페이지에 분석할 미디어가 없습니다."
+      }
+    }
+  }
+},
+"解析未完成。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Parsing is not complete yet."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die Analyse ist noch nicht abgeschlossen."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "L’analyse n’est pas encore terminée."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "분석이 아직 완료되지 않았습니다."
+      }
+    }
+  }
+},
+"暂无任务可供查看。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "There are no tasks to view."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Keine Aufgaben vorhanden."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Aucune tâche à afficher."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "표시할 작업이 없습니다."
+      }
+    }
+  }
+},
+"主要功能": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Features"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Funktionen"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Fonctionnalités"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "주요 기능"
+      }
+    }
+  }
+},
+"作者": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Developer"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Entwickler"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Développeur"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "개발자"
+      }
+    }
+  }
+},
+"项目地址": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Project on GitHub"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Projekt auf GitHub"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Projet sur GitHub"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "GitHub 프로젝트"
+      }
+    }
+  }
+},
+"浏览、发现，保存你喜欢的视频。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Browse, discover, and save videos you love."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Videos entdecken und speichern."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Explorez et enregistrez vos vidéos préférées."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "웹을 탐색하고 마음에 드는 동영상을 저장하세요."
+      }
+    }
+  }
+},
+"使用内置浏览器访问网站并收藏常用网页。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Browse websites and bookmark your favorites."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Websites besuchen und als Lesezeichen speichern."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Parcourez le Web et ajoutez vos sites favoris."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "내장 브라우저로 웹사이트를 방문하고 북마크를 저장하세요."
+      }
+    }
+  }
+},
+"通过解析插件或资源嗅探发现可下载内容。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Find downloadable media with plugins and resource detection."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Medien mit Plugins und Ressourcenerkennung finden."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Trouvez des médias à télécharger grâce aux plugins et à la détection de ressources."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "플러그인과 리소스 감지로 다운로드할 미디어를 찾으세요."
+      }
+    }
+  }
+},
+"管理下载任务，支持暂停、继续和后台下载。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Manage tasks with pause, resume, and background downloading."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Downloads verwalten, pausieren und im Hintergrund fortsetzen."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Gérez les téléchargements, mettez-les en pause et reprenez-les en arrière-plan."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "작업을 관리하고 다운로드를 일시 정지하거나 백그라운드에서 계속하세요."
+      }
+    }
+  }
+},
+"解析": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Parse"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Analysieren"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Analyser"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "분석"
+      }
+    }
+  }
+},
+"恢复后会重新显示随 App 分发的单文件插件。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "This will restore the single-file plugins bundled with the app."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die mit der App gelieferten Einzeldatei-Plugins werden wieder angezeigt."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Les plugins à fichier unique fournis avec l’app seront de nouveau affichés."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "앱에 기본 제공되는 단일 파일 플러그인이 다시 표시됩니다."
+      }
+    }
+  }
+},
+"无任务": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "No Tasks"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Keine Aufgaben"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Aucune tâche"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "작업 없음"
+      }
+    }
+  }
+},
+"无未开始任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No unstarted tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine ausstehenden Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche non démarrée" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "시작 전 작업 없음" } }
+  }
+},
+"无排队中任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No queued tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine Aufgaben in der Warteschlange" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche en attente" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "대기 중인 작업 없음" } }
+  }
+},
+"无进行中任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No active tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine aktiven Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche en cours" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "진행 중인 작업 없음" } }
+  }
+},
+"无已暂停任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No paused tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine pausierten Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche en pause" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "일시 정지된 작업 없음" } }
+  }
+},
+"无已完成任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No completed tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine abgeschlossenen Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche terminée" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "완료된 작업 없음" } }
+  }
+},
+"无失败任务": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No failed tasks" } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine fehlgeschlagenen Aufgaben" } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche échouée" } },
+    "ko": { "stringUnit": { "state": "translated", "value": "실패한 작업 없음" } }
+  }
+},
+"当前筛选类型没有任务。": {
+  "localizations": {
+    "en": { "stringUnit": { "state": "translated", "value": "No tasks match this filter." } },
+    "de": { "stringUnit": { "state": "translated", "value": "Keine Aufgaben entsprechen diesem Filter." } },
+    "fr": { "stringUnit": { "state": "translated", "value": "Aucune tâche ne correspond à ce filtre." } },
+    "ko": { "stringUnit": { "state": "translated", "value": "이 필터에 해당하는 작업이 없습니다." } }
+  }
+},
+"浏览设置": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Browsing"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Browser-Einstellungen"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Navigation"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "브라우징 설정"
+      }
+    }
+  }
+},
+"设置网站显示方式和管理 Cookie。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Choose how websites are displayed and manage cookies."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Darstellung von Websites und Cookies verwalten."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Personnalisez l’affichage des sites et gérez les cookies."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "웹사이트 표시 방식과 쿠키를 관리합니다."
+      }
+    }
+  }
+},
+"选择浅色、深色或跟随系统。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Use light mode, dark mode, or your system setting."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Hell, dunkel oder Systemeinstellung verwenden."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Choisissez le mode clair, sombre ou celui du système."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "라이트 모드, 다크 모드 또는 시스템 설정을 선택합니다."
+      }
+    }
+  }
+},
+"主题": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Theme"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Design"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Thème"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "테마"
+      }
+    }
+  }
+},
+"模糊从顶部强度缓入至安全区中部的一半强度，再缓出至底部的 0%。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Blur eases in to half strength at the middle of the safe area, then eases out to 0% at the bottom."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die Unschärfe nimmt bis zur Mitte des sicheren Bereichs sanft auf die Hälfte ab und klingt am unteren Rand auf 0 % aus."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Le flou diminue progressivement de moitié au milieu de la zone de sécurité, puis s’atténue jusqu’à 0 % en bas."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "흐림은 안전 영역 중간에서 상단 강도의 절반이 되도록 서서히 줄어든 뒤, 하단에서 0%가 되도록 부드럽게 사라집니다."
+      }
+    }
+  }
+},
+
+"安全区与地址栏交界模糊强度": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Blur at Address Bar Boundary"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Unschärfe am Übergang zur Adressleiste"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Flou à la jonction de la barre d’adresse"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "안전 영역과 주소 표시줄 경계 흐림 강도"
+      }
+    }
+  }
+},
+"安全区模糊从顶部强度平滑过渡至交界强度，地址栏从交界强度线性过渡至 0%。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Safe area blur eases from the top strength to the boundary strength. Address bar blur fades linearly from the boundary strength to 0%."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die Unschärfe geht im sicheren Bereich sanft vom oberen Wert zum Übergangswert über und nimmt in der Adressleiste linear auf 0 % ab."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Le flou passe progressivement de la valeur supérieure à celle de la jonction, puis diminue linéairement à 0 % dans la barre d’adresse."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "안전 영역의 흐림은 상단 강도에서 경계 강도로 부드럽게 변하고, 주소 표시줄에서는 경계 강도에서 0%까지 선형으로 줄어듭니다."
+      }
+    }
+  }
+},
+
+"顶部安全区模糊强度": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Top Safe Area Blur"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Unschärfe im oberen sicheren Bereich"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Flou de la zone de sécurité supérieure"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "상단 안전 영역 흐림 강도"
+      }
+    }
+  }
+},
+"安全区模糊从设置值平滑过渡至 10%，地址栏从 10% 线性过渡至 0%。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Safe area blur eases from this value to 10%. Address bar blur fades linearly from 10% to 0%."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Die Unschärfe im sicheren Bereich geht sanft auf 10 % über. In der Adressleiste nimmt sie linear von 10 % auf 0 % ab."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Le flou de la zone de sécurité passe progressivement à 10 %. Celui de la barre d’adresse diminue linéairement de 10 % à 0 %."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "안전 영역의 흐림은 설정값에서 10%까지 부드럽게 변하고, 주소 표시줄은 10%에서 0%까지 선형으로 줄어듭니다."
+      }
+    }
+  }
+},
+
+"请求桌面版网站": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Request Desktop Website"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Desktop-Website anfordern"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Version pour ordinateur"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "데스크탑 웹 사이트 요청"
+      }
+    }
+  }
+},
+"关闭时使用移动版 UA，切换后会重新加载当前网页。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "When off, websites use a mobile user agent. Changing this reloads the current page."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Wenn deaktiviert, wird eine mobile Browserkennung verwendet. Die aktuelle Seite wird beim Umschalten neu geladen."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Désactivez cette option pour utiliser un identifiant mobile. La page actuelle sera rechargée."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "끄면 모바일 사용자 에이전트를 사용합니다. 변경 시 현재 페이지가 새로고침됩니다."
+      }
+    }
+  }
+},
+
+"调整外观和浏览界面透明度。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Customize appearance and browser transparency."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Darstellung und Transparenz des Browsers anpassen."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Personnalisez l’apparence et la transparence du navigateur."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "화면 스타일과 브라우저 투명도를 조절합니다."
+      }
+    }
+  }
+},
+"数值越高越透明；同时调整地址栏和安全区下沿，安全区顶端保留模糊。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Higher values increase transparency for the address bar and the bottom of the safe area. The top remains blurred."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Höhere Werte machen die Adressleiste und den unteren Rand des sicheren Bereichs transparenter. Oben bleibt der Hintergrund weichgezeichnet."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Une valeur élevée rend la barre d’adresse et le bas de la zone de sécurité plus transparents. Le haut reste flouté."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "값이 높을수록 주소 표시줄과 안전 영역 하단이 투명해집니다. 상단에는 흐림 효과가 유지됩니다."
+      }
+    }
+  }
+},
+
+  "界面设置": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Interface"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Darstellung"
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Interface"
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "화면 설정"
+        }
+      }
+    }
+  },
+  "调整外观、液态玻璃和浏览安全区。": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Customize appearance, Liquid Glass, and the browser safe area."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Darstellung, Liquid Glass und den sicheren Browserbereich anpassen."
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Personnalisez l’apparence, Liquid Glass et la zone de sécurité du navigateur."
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "화면 스타일, Liquid Glass 및 브라우저 안전 영역을 조정합니다."
+        }
+      }
+    }
+  },
+  "启用液态玻璃效果": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Enable Liquid Glass"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass aktivieren"
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Activer Liquid Glass"
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass 사용"
+        }
+      }
+    }
+  },
+  "仅影响应用自定义悬浮组件，系统标签栏和菜单仍由 iOS 控制。": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Applies only to custom floating controls. System tab bars and menus are managed by iOS."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Gilt nur für eigene schwebende Bedienelemente. System-Tableisten und Menüs werden von iOS gesteuert."
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "S’applique uniquement aux commandes flottantes personnalisées. Les barres d’onglets et menus système restent gérés par iOS."
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "앱의 사용자 지정 플로팅 컨트롤에만 적용됩니다. 시스템 탭 막대와 메뉴는 iOS가 관리합니다."
+        }
+      }
+    }
+  },
+  "液态玻璃需要 iOS 26 或更高版本，当前使用兼容材质。": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass requires iOS 26 or later. A compatible material is used on this device."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass erfordert iOS 26 oder neuer. Dieses Gerät verwendet kompatibles Material."
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass nécessite iOS 26 ou ultérieur. Cet appareil utilise un matériau compatible."
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Liquid Glass는 iOS 26 이상이 필요합니다. 현재 호환 재질을 사용합니다."
+        }
+      }
+    }
+  },
+  "顶部安全区透明度": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Top safe area transparency"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Transparenz des oberen sicheren Bereichs"
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Transparence de la zone de sécurité supérieure"
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "상단 안전 영역 투명도"
+        }
+      }
+    }
+  },
+  "透明度预览": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Transparency preview"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Transparenzvorschau"
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Aperçu de la transparence"
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "투명도 미리보기"
+        }
+      }
+    }
+  },
+  "数值越高越透明；仅调整浏览页顶部安全区，不改变网页位置。": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Higher values are more transparent. Only affects the browser’s top safe area, not webpage positioning."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Höhere Werte bedeuten mehr Transparenz. Betrifft nur den oberen sicheren Browserbereich, nicht die Position der Webseite."
+        }
+      },
+      "fr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Une valeur élevée augmente la transparence. Seule la zone de sécurité supérieure change, pas la position de la page web."
+        }
+      },
+      "ko": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "값이 높을수록 투명해집니다. 브라우저 상단 안전 영역에만 적용되며 웹페이지 위치는 바뀌지 않습니다."
+        }
+      }
+    }
+  },
+    "切换标签页" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Switch tabs" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Tab wechseln" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Changer d’onglet" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "탭 전환" } }
+      }
+    },
+    "详细信息" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Details" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Details" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Détails" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "상세 정보" } }
+      }
+    },
+    "任务" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Task" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabe" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tâche" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업" } }
+      }
+    },
+    "任务 ID" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Task ID" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben-ID" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Identifiant de tâche" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 ID" } }
+      }
+    },
+    "状态" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Status" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Status" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "État" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "상태" } }
+      }
+    },
+    "进度" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Progress" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fortschritt" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Progression" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "진행률" } }
+      }
+    },
+    "已下载" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloaded" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heruntergeladen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드한 크기" } }
+      }
+    },
+    "文件总大小" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total size" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesamtgröße" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Taille totale" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 크기" } }
+      }
+    },
+    "分片数量" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Segments" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Segmente" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Segments" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "세그먼트 수" } }
+      }
+    },
+    "并发数" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connections" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbindungen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexions" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "연결 수" } }
+      }
+    },
+    "失败原因" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Error" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fehler" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실패 원인" } }
+      }
+    },
+    "来源与解析" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Source and parser" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Quelle und Parser" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Source et analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "출처 및 분석" } }
+      }
+    },
+    "来源网页" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Source page" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Quellseite" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Page source" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "원본 페이지" } }
+      }
+    },
+    "最终来源网页" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Final page URL" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Endgültige Seitenadresse" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Adresse finale de la page" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최종 페이지 주소" } }
+      }
+    },
+    "规范化来源网页" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Normalized page URL" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Normalisierte Seitenadresse" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Adresse normalisée" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정규화된 페이지 주소" } }
+      }
+    },
+    "规范化规则" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Normalization rule" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Normalisierungsregel" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Règle de normalisation" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정규화 규칙" } }
+      }
+    },
+    "解析脚本" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parser script" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Parser-Skript" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Script d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 스크립트" } }
+      }
+    },
+    "解析方式" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing method" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Analysemethode" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Méthode d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 방식" } }
+      }
+    },
+    "脚本解析" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Script" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Skript" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Script" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "스크립트" } }
+      }
+    },
+    "视频 ID" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video ID" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Video-ID" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Identifiant vidéo" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 ID" } }
+      }
+    },
+    "视频规格" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Media details" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mediendetails" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Caractéristiques du média" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "미디어 정보" } }
+      }
+    },
+    "清晰度" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quality" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Qualität" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Qualité" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "화질" } }
+      }
+    },
+    "格式" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Format" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Format" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Format" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "형식" } }
+      }
+    },
+    "宽度" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Width" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Breite" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Largeur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "너비" } }
+      }
+    },
+    "高度" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Height" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Höhe" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Hauteur" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "높이" } }
+      }
+    },
+    "时长（秒）" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Duration (seconds)" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dauer (Sekunden)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Durée (secondes)" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "길이(초)" } }
+      }
+    },
+    "视频编码" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Video codec" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Video-Codec" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Codec vidéo" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "동영상 코덱" } }
+      }
+    },
+    "音频编码" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio codec" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Audio-Codec" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Codec audio" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오디오 코덱" } }
+      }
+    },
+    "帧率" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Frame rate" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bildrate" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fréquence d’images" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "프레임 속도" } }
+      }
+    },
+    "码率" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bitrate" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bitrate" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Débit" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "비트 전송률" } }
+      }
+    },
+    "音轨语言" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio language" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Audiosprache" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Langue audio" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오디오 언어" } }
+      }
+    },
+    "字幕语言" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Subtitle language" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Untertitelsprache" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Langue des sous-titres" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "자막 언어" } }
+      }
+    },
+    "时间记录" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Timeline" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zeitverlauf" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Dates" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시간 기록" } }
+      }
+    },
+    "创建时间" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Created" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Erstellt" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Création" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "생성 시간" } }
+      }
+    },
+    "完成时间" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abgeschlossen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fin" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료 시간" } }
+      }
+    },
+    "更新时间" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Updated" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktualisiert" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mise à jour" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "업데이트 시간" } }
+      }
+    },
+    "文件" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Datei" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일" } }
+      }
+    },
+    "指定文件名" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Chosen filename" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gewählter Dateiname" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom choisi" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "지정 파일명" } }
+      }
+    },
+    "保存文件名" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved filename" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gespeicherter Dateiname" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom du fichier enregistré" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 파일명" } }
+      }
+    },
+    "文件地址" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "File location" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dateipfad" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Emplacement du fichier" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일 위치" } }
+      }
+    },
+    "下载请求" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download request" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Anfrage" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Requête de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 요청" } }
+      }
+    },
+    "下载链接" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download URL" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Adresse" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Adresse de téléchargement" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 주소" } }
+      }
+    },
+    "未获取" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not available" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht verfügbar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Non disponible" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정보 없음" } }
+      }
+    },
+    "全部取消" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel All" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle abbrechen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout annuler" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모두 취소" } }
+      }
+    },
+    "全部分享" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share All" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle teilen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout partager" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "모두 공유" } }
+      }
+    },
+    "全部" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Toutes" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체" } }
+      }
+    },
+    "任务状态" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Task status" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabenstatus" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "État des tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 상태" } }
+      }
+    },
+    "筛选任务" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Filter tasks" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben filtern" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Filtrer les tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "작업 필터" } }
+      }
+    },
+    "排队中 · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "In Warteschlange · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Queued · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En attente · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "대기 중 · %@" } }
+      }
+    },
+    "排队中" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "In Warteschlange" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Queued" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En attente" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "대기 중" } }
+      }
+    },
     "回收站" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Papierkorb" } },
@@ -569,14 +2010,7 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "설정" } }
       }
     },
-    "下载清晰度" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download-Qualität" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Download Quality" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Qualité de téléchargement" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 화질" } }
-      }
-    },
+
     "视频站点" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Videoseiten" } },
@@ -857,12 +2291,12 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "파일이 없거나 삭제되었습니다" } }
       }
     },
-    "取消下载" : {
+    "取消" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Download abbrechen" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel download" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler le téléchargement" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 취소" } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abbrechen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "취소" } }
       }
     },
     "重试" : {
@@ -981,22 +2415,7 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "알 수 없는 화질" } }
       }
     },
-    "每次询问" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Jedes Mal fragen" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ask Every Time" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Demander à chaque fois" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "매번 묻기" } }
-      }
-    },
-    "最佳" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beste" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Meilleure" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "최고 화질" } }
-      }
-    },
+
     "请输入 HTTPS 地址。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Bitte eine HTTPS-Adresse eingeben." } },
@@ -1091,6 +2510,102 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Download failed: %@" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec du téléchargement : %@" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 실패: %@" } }
+      }
+    },
+    "下载中 · %@ · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird geladen · %@ · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading · %@ · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Téléchargement en cours · %@ · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 중 · %@ · %@" } }
+      }
+    },
+    "已完成 · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abgeschlossen · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Terminé · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료 · %@" } }
+      }
+    },
+    "已暂停 · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Pausiert · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Paused · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En pause · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일시 정지 · %@" } }
+      }
+    },
+    "失败 · %@" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fehlgeschlagen · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec · %@" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실패 · %@" } }
+      }
+    },
+    "未开始" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht gestartet" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not Started" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pas commencé" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시작 전" } }
+      }
+    },
+    "下载中" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird geladen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En cours" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다운로드 중" } }
+      }
+    },
+    "未知错误" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbekannter Fehler" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown error" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur inconnue" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "알 수 없는 오류" } }
+      }
+    },
+    "继续" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fortsetzen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Reprendre" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "계속" } }
+      }
+    },
+    "App 在前台开始下载后，系统会授予后台执行时间，并在系统锁屏或灵动岛面板显示进度和取消按钮；该面板无法替换为自定义实时活动。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach dem Start im Vordergrund gewährt das System Hintergrundzeit und zeigt den Fortschritt sowie eine Abbrechen-Schaltfläche auf dem Sperrbildschirm oder in der Dynamic Island. Diese Anzeige lässt sich nicht durch eine eigene Live Activity ersetzen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "After a download starts in the foreground, iOS grants background time and shows progress and a cancel button in its Lock Screen or Dynamic Island interface. That interface can't be replaced with a custom Live Activity." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Après le démarrage d’un téléchargement au premier plan, iOS accorde du temps en arrière-plan et affiche la progression ainsi qu’un bouton d’annulation sur l’écran verrouillé ou la Dynamic Island. Cet affichage ne peut pas être remplacé par une activité en direct personnalisée." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전경에서 다운로드를 시작하면 iOS가 백그라운드 실행 시간을 부여하고 잠금 화면이나 다이내믹 아일랜드에 진행률과 취소 버튼을 표시합니다. 이 화면은 사용자 지정 실시간 활동으로 대체할 수 없습니다." } }
+      }
+    },
+    "循环播放极低音量的静音音频，让 App 保持运行并更新下载进度。可能打断其他 App 的音频播放。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Spielt eine kaum hörbare stille Audiospur in Schleife, damit die App aktiv bleibt und den Downloadfortschritt aktualisiert. Kann die Audiowiedergabe anderer Apps unterbrechen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loops near-silent audio to keep the app active and update download progress. May interrupt audio playing in other apps." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Diffuse en boucle un son presque inaudible pour maintenir l’app active et actualiser la progression. Peut interrompre la lecture audio d’autres apps." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "거의 들리지 않는 무음을 반복 재생해 앱을 활성 상태로 유지하고 다운로드 진행률을 갱신합니다. 다른 앱의 오디오 재생을 중단할 수 있습니다." } }
+      }
+    },
+    "使用系统画中画保持 App 运行并更新下载进度。不占用音频会话，也尽量避免与其他画中画冲突。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hält die App mit systemeigenem Bild-in-Bild aktiv und aktualisiert den Downloadfortschritt. Belegt keine Audiositzung und vermeidet möglichst Konflikte mit anderen PiP-Fenstern." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Uses system Picture in Picture to keep the app active and update download progress. It doesn't use the audio session and helps avoid conflicts with other PiP windows." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilise l’image dans l’image du système pour maintenir l’app active et actualiser la progression. N’utilise pas la session audio et limite les conflits avec les autres fenêtres PiP." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 화면 속 화면으로 앱을 활성 상태로 유지하고 다운로드 진행률을 갱신합니다. 오디오 세션을 사용하지 않으며 다른 PiP 창과의 충돌을 줄입니다." } }
+      }
+    },
+    "HLS 分片缺少下载任务标识" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "HLS-Segment hat keine Download-ID" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "HLS segment is missing its download ID" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L’identifiant de téléchargement du segment HLS est manquant" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "HLS 조각에 다운로드 ID가 없습니다" } }
       }
     },
     "保存文件失败：%@" : {
@@ -1531,6 +3046,30 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing Sources" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sources d'analyse" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 소스" } }
+      }
+    },
+    "解析规则" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Parserregeln" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing Rules" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Règles d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 규칙" } }
+      }
+    },
+    "解析规则操作" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktionen für Parserregeln" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parsing rule actions" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Actions des règles d’analyse" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분석 규칙 작업" } }
+      }
+    },
+    "这是随 App 分发的内置插件；确认后只会从本机解析规则中移除，之后不会再出现。" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieses mit der App gelieferte Plugin wird nur von deinen Parserregeln entfernt und später nicht wiederhergestellt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This bundled plugin will only be removed from your local parsing rules and will not return." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce plugin fourni avec l’app sera seulement retiré de vos règles locales et ne réapparaîtra pas." } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱에 포함된 이 플러그인은 로컬 분석 규칙에서만 제거되며 다시 나타나지 않습니다." } }
       }
     },
     "储存空间" : {
@@ -2389,14 +3928,7 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "내장 플러그인 복원" } }
       }
     },
-    "恢复后会重新显示随 App 分发的单文件插件，例如 Pornhub。" : {
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mit der App gelieferte Einzeldatei-Plugins (z. B. Pornhub) werden wieder angezeigt." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in single-file plugins shipped with the app (for example, Pornhub) will be shown again." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les plugins monofichiers fournis avec l’app (par exemple Pornhub) seront de nouveau affichés." } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱에 포함된 단일 파일 플러그인(예: Pornhub)이 다시 표시됩니다." } }
-      }
-    },
+
     "已收到外部文件：%@" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Externe Datei empfangen: %@" } },
@@ -3581,6 +5113,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지 중단 시 알림" } }
       }
     },
+    "App 前台时显示通知" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mitteilungen anzeigen, wenn die App geöffnet ist" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show notifications while the app is open" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les notifications lorsque l’app est ouverte" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱이 열려 있을 때 알림 표시" } }
+      }
+    },
     "开启后，画中画或持续处理被系统中断时会自动改用静音音频继续下载。这会占用音频会话，可能打断其他 App 正在播放的声音。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Wenn Bild-in-Bild oder kontinuierliche Verarbeitung vom System unterbrochen wird, wechselt Nox zur stillen Audiowiedergabe, um den Download fortzusetzen. Dadurch wird eine Audiositzung belegt und die Wiedergabe anderer Apps kann unterbrochen werden." } },
@@ -3619,6 +5159,14 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Also show the custom Live Activity during continued processing" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher aussi l’activité en direct personnalisée pendant le traitement continu" } },
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "연속 처리 중 사용자 지정 실시간 활동도 표시" } }
+      }
+    },
+    "任务总数" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben gesamt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total tasks" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nombre de tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 작업" } }
       }
     },
     "任务总览" : {

@@ -30,7 +30,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     /// 视图层会用它在页面区域**直接盖一层错误提示**（不再是弹窗）。
     @Published public private(set) var loadErrorMessage: String?
 
-    /// 最近一次加载是不是「用户主动换页」（地址栏输入 / 历史跳转）。
+    /// 最近一次加载是不是「用户主动换页」（地址栏输入 / 外部跳转）。
     ///
     /// 只有这种情况才在换页期间盖一层加载占位，避免「输入了新地址却还显示旧页面」；
     /// 页面内点链接保持浏览器习惯（旧页面留到新页面提交），但失败提示两种都会给。
@@ -39,7 +39,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     /// 最近一次由用户发起的地址，供失败后的「重试」使用。
     public private(set) var lastLoadURL: URL?
 
-    private let webView: WKWebView
+    private var webView: WKWebView
+    @Published public private(set) var browserGeneration = 0
     /// 观察 `estimatedProgress`，把加载进度交给地址栏。
     private var progressObservation: NSKeyValueObservation?
     /// 接收页面里 SPA 换页上报的地址（见 pageURLUserScript）。
@@ -51,7 +52,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
 
     public init(
         sites: SiteAvailabilityProviding,
-        registry: VideoSiteParserRegistry? = nil
+        registry: VideoSiteParserRegistry? = nil,
+        desktopMode: Bool = false
     ) {
         self.sites = sites
         self.registry = registry ?? .shared
@@ -59,6 +61,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
+        configuration.defaultWebpagePreferences.preferredContentMode = .mobile
 
         // 嗅探脚本：跨域 iframe 也会注入，各自 postMessage 上来
         if let script = SnifferScript.userScript() {
@@ -87,6 +90,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
+        pageURLBridge.isCurrentWebView = { [weak self] in self?.webView === $0 }
+        pageLoadingBridge.isCurrentWebView = { [weak self] in self?.webView === $0 }
         pageURLBridge.onURLChange = { [weak self] url in
             self?.currentURL = url
         }
@@ -94,16 +99,23 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
             self?.isSameDocumentLoading = loading
         }
 
+        configureBrowser(desktopMode: desktopMode)
+    }
+
+    private func configureBrowser(desktopMode: Bool) {
         // `estimatedProgress` 的 KVO 回调不保证在主线程投递，显式跳回主线程再改状态。
         progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] webView, _ in
             let value = webView.estimatedProgress
-            Task { @MainActor in self?.loadProgress = value }
+            Task { @MainActor [weak webView] in
+                guard let self, self.webView === webView else { return }
+                self.loadProgress = value
+            }
         }
 
         // 用完整的移动版 Safari UA。
         // WKWebView 的默认 UA 缺少 `Version/... Safari/...` 段，会被部分站点
         // （典型是 YouTube）判定成机器人，要求「请登录，以便我们确认你不是聊天机器人」。
-        webView.customUserAgent = Self.safariUserAgent
+        setDesktopMode(desktopMode, reload: false)
         webView.navigationDelegate = self
         // 边缘左右滑动 = 后退 / 前进
         webView.allowsBackForwardNavigationGestures = true
@@ -115,14 +127,47 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         webView.isOpaque = false
         webView.backgroundColor = .systemBackground
         webView.scrollView.backgroundColor = .systemBackground
-        webView.underPageBackgroundColor = .systemBackground
+
+    }
+
+    /// A new WebView discards the document and back-forward history, not cookies.
+    public func resetBrowser(desktopMode: Bool) {
+        let old = webView
+        old.navigationDelegate = nil
+        old.stopLoading()
+        old.removeFromSuperview()
+        old.loadHTMLString("<html></html>", baseURL: nil)
+        progressObservation?.invalidate()
+        webView = WKWebView(frame: .zero, configuration: old.configuration)
+        configureBrowser(desktopMode: desktopMode)
+        SnifferBridge.shared.reset()
+        isLoading = false
+        pageReady = false
+        pageMatchesRule = false
+        isUserInitiatedLoad = false
+        isSameDocumentLoading = false
+        loadProgress = 0
+        loadErrorMessage = nil
+        currentURL = nil
+        lastLoadURL = nil
+        browserGeneration += 1
+    }
+
+    public func setDesktopMode(_ enabled: Bool, reload: Bool = true) {
+        let agent = enabled
+            ? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+            : Self.safariUserAgent
+        webView.configuration.defaultWebpagePreferences.preferredContentMode = enabled ? .desktop : .mobile
+        guard webView.customUserAgent != agent else { return }
+        webView.customUserAgent = agent
+        if reload, webView.url != nil { webView.reload() }
     }
 
     public var browserWebView: WKWebView { webView }
     public var canParseCurrentPage: Bool { pageReady && pageMatchesRule && !isLoading }
 
     /// 当前页面命中的站点名（仅当该站点开关为开启时）
-    var currentSiteName: String? { activeParser(for: webView.url)?.displayName }
+    public var currentSiteName: String? { activeParser(for: webView.url)?.displayName }
 
     /// 当前页面实际生效的解析器标识。
     ///
@@ -132,8 +177,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
 
     /// 当前页面地址。
     ///
-    /// 从嗅探面板加入下载时，历史记的是**页面**地址而不是媒体地址：
-    /// 这样历史页的「跳转网页」能回到原页面，同一页面上的多条资源也不会各占一条记录。
+    /// 当前来源网页，用于保存下载任务来源与构造 Referer。
     public var currentPageURL: URL? { webView.url }
 
     /// 当前页面标题。WKWebView 加载完成后会自动维护，取用无需再执行 JS。
@@ -151,6 +195,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         lastLoadURL = url
         isUserInitiatedLoad = true
         LogStore.shared.info("open \(url.absoluteString)")
+        // Hide the previous document synchronously, before SwiftUI removes home.
+        webView.alpha = 0
         webView.load(URLRequest(url: url))
     }
 
@@ -182,14 +228,20 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         }
 
         let page = WKWebPageContext(webView: webView)
-        let variants = try await siteParser.parse(page: page)
+        let parsed = try await siteParser.parse(page: page)
+        let variants = parsed.map { variant in
+            var metadata = variant.metadata ?? DownloadMetadata()
+            metadata.originalPageURL = pageURL
+            metadata.parserName = siteParser.displayName
+            return VideoVariant(id: variant.id, quality: variant.quality, format: variant.format,
+                                url: variant.url, metadata: metadata, suggestedTitle: variant.suggestedTitle)
+        }
 
         guard !variants.isEmpty else { throw ParserError.noVideoVariants }
 
-        let title = await page.documentTitle() ?? pageURL.host ?? "Video"
+        let pageTitle = await page.documentTitle() ?? pageURL.host ?? "Video"
+        let title = variants.compactMap(\.suggestedTitle).first(where: { !$0.isEmpty }) ?? pageTitle
         LogStore.shared.info("parsed \(variants.count) variant(s) on \(pageURL.absoluteString)")
-        // 历史在「真正入队下载」时记录（见 DownloadManager.enqueue），
-        // 只解析不下载、或下载被取消，都不该在历史里留下记录。
         return ParsedVideo(title: title, pageURL: pageURL, variants: variants)
     }
 
@@ -237,11 +289,13 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     /// 同时重算命中规则：手势后退 / 前进不一定走完整的 `didStartProvisional`
     /// 流程，只靠 `didFinish` 容易出现「回到上一页后解析入口不出现」。
     public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        webView.alpha = 1
         currentURL = webView.url
         pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        webView.alpha = 1
         isLoading = false
         pageReady = true
         pageMatchesRule = activeParser(for: webView.url) != nil

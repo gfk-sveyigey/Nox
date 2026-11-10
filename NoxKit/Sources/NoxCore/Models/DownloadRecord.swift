@@ -5,12 +5,15 @@ public enum DownloadStatus: String, Codable {
     case downloading
     case finished
     case failed
-    case cancelled
+    case notStarted
+    case paused
+    // Decode-only compatibility for records saved before separate pause/cancel semantics.
+    case legacyCancelled = "cancelled"
 
     /// 任务已经结束，不再占用下载槽位。
     public var isTerminal: Bool {
         switch self {
-        case .finished, .failed, .cancelled:
+        case .finished, .failed, .paused, .notStarted, .legacyCancelled:
             return true
         case .queued, .downloading:
             return false
@@ -49,6 +52,8 @@ public struct DownloadRecord: Identifiable, Codable {
     public var segmentCount: Int?
     /// 实际使用的并发数（普通下载 = 同时在飞的分片数，m3u8 = 分片并发）。
     /// 仅用于在下载列表里如实展示「这个任务开了几条连接」，不参与续传计算。
+    public var metadata: DownloadMetadata?
+
     public var threadCount: Int?
 
     public init(id: UUID = UUID(), title: String, quality: String, format: String, sourceURL: URL,
@@ -56,7 +61,8 @@ public struct DownloadRecord: Identifiable, Codable {
                 fileName: String? = nil, fileURL: URL? = nil, status: DownloadStatus = .queued,
                 progress: Double = 0, createdAt: Date = .now, errorMessage: String? = nil,
                 totalBytes: Int64? = nil, receivedBytes: Int64? = nil, segmentCount: Int? = nil,
-                threadCount: Int? = nil) {
+                threadCount: Int? = nil, metadata: DownloadMetadata? = nil) {
+        self.metadata = metadata
         self.id = id
         self.title = title
         self.quality = quality
@@ -99,7 +105,7 @@ public struct DownloadRecord: Identifiable, Codable {
         translatedQualityLabel(quality)
     }
 
-    /// 历史记录里用的标题：文件名去掉扩展名。
+    /// 实时活动里用的标题：文件名去掉扩展名。
     public var displayTitle: String {
         let stem = (displayFilename as NSString).deletingPathExtension
         return stem.isEmpty ? displayFilename : stem

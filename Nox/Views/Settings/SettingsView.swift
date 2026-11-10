@@ -7,34 +7,43 @@ import NoxParsing
 import NoxDownload
 import NoxState
 
-
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject var localization = LocalizationManager.shared
     @ObservedObject var manager: DownloadManager
     @ObservedObject var registry = VideoSiteParserRegistry.shared
-    let scrollToTopToken: Int
+    var aboutRequest: UUID
+    @State private var showingAbout = false
 
-    init(manager: DownloadManager, scrollToTopToken: Int = 0) {
+    init(manager: DownloadManager, aboutRequest: UUID) {
         _manager = ObservedObject(wrappedValue: manager)
-        self.scrollToTopToken = scrollToTopToken
+        self.aboutRequest = aboutRequest
     }
 
     var body: some View {
         NavigationStack {
-            ScrollViewReader { proxy in
-                Form {
-                    settingsSections
-                }
-                .contentMargins(.top, 20, for: .scrollContent)
-                .onChange(of: scrollToTopToken) { _, _ in
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo("settings-first-row", anchor: .top)
-                    }
-                }
+            Form {
+                settingsSections
             }
+            .contentMargins(.top, 20, for: .scrollContent)
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showingAbout) {
+                NavigationStack {
+                    AboutView()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button(L("完成")) { showingAbout = false }
+                            }
+                        }
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemGroupedBackground))
+            }
+        }
+        .onChange(of: aboutRequest) { _, _ in
+            showingAbout = true
         }
     }
 
@@ -72,21 +81,23 @@ struct SettingsView: View {
                 KeepAliveSettingsView(manager: manager)
             }
 
-            settingsLink(
-                L("储存空间"),
-                subtitle: L("查看储存占用，并清理缓存和临时文件。"),
-                systemImage: "internaldrive",
-                iconColor: .orange
-            ) {
-                StorageSettingsView(manager: manager)
-            }
+
         }
         Section {
+            settingsLink(
+                L("浏览设置"),
+                subtitle: L("设置网站显示方式和管理 Cookie。"),
+                systemImage: "safari",
+                iconColor: .blue
+            ) {
+                BrowserSettingsView()
+            }
+
             NavigationLink {
                 SiteSettingsView()
             } label: {
                 SettingsRowLabel(
-                    title: L("解析来源"),
+                    title: L("解析规则"),
                     subtitle: L("管理站点解析插件和匹配顺序。"),
                     systemImage: "puzzlepiece.extension",
                     iconColor: .purple,
@@ -101,39 +112,33 @@ struct SettingsView: View {
                 )
             }
 
-            settingsLink(
-                L("Cookie 管理"),
-                subtitle: L("查看并清理各网站保存的 Cookie。"),
-                systemImage: "shield",
-                iconColor: .teal
-            ) {
-                CookiesView()
-            }
 
-            settingsLink(
-                L("历史记录"),
-                subtitle: L("设置历史保留方式，并清理访问记录。"),
-                systemImage: "clock.arrow.circlepath",
-                iconColor: .indigo
-            ) {
-                HistorySettingsView()
-            }
+        }
 
+        Section {
+            settingsLink(
+                L("储存空间"),
+                subtitle: L("查看储存占用，并清理缓存和临时文件。"),
+                systemImage: "internaldrive",
+                iconColor: .orange
+            ) {
+                StorageSettingsView(manager: manager)
+            }
             settingsLink(
                 L("日志"),
                 subtitle: L("查看运行日志，帮助定位问题。"),
                 systemImage: "doc.text",
                 iconColor: .brown
             ) {
-                LogsView()
+                LogsView(manager: manager)
             }
         }
 
         Section {
             SettingsPickerRow(
-                title: L("外观"),
-                subtitle: L("选择跟随系统、浅色或深色外观。"),
-                systemImage: "circle.lefthalf.filled",
+                title: L("主题"),
+                subtitle: L("选择浅色、深色或跟随系统。"),
+                systemImage: "paintpalette",
                 iconColor: .pink,
                 selection: $appState.appearanceMode,
                 options: AppearanceMode.allCases.map {
@@ -141,7 +146,6 @@ struct SettingsView: View {
                 }
             )
             .onChange(of: appState.appearanceMode) { _, _ in appState.persist() }
-            .id(localization.language)
 
             SettingsPickerRow(
                 title: L("语言"),
@@ -154,20 +158,11 @@ struct SettingsView: View {
                 }
             )
             .id(localization.language)
-        }
-
-        Section {
-            settingsLink(
-                L("开源许可与致谢"),
-                subtitle: L("查看第三方项目、许可信息与致谢。"),
-                systemImage: "heart.text.square",
-                iconColor: .red
-            ) {
-                LicensesView()
-            }
         } footer: {
             versionFooter
         }
+
+
     }
 
     /// 统一设置条目：图标 + 标题 + 一行说明，并适当增加行高。

@@ -25,37 +25,18 @@ struct StartupView: View {
                 endRadius: 300
             )
 
-            VStack(spacing: 18) {
-                Image("AppIconPreview")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 136, height: 136)
-                    .clipShape(RoundedRectangle(cornerRadius: 31, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 31, style: .continuous)
-                            .stroke(Color.primary.opacity(0.10), lineWidth: 0.5)
-                    }
-                    .shadow(color: Color.primary.opacity(0.14), radius: 34)
-
-                VStack(spacing: 6) {
-                    Text(verbatim: Self.appName.uppercased())
-                        .font(.custom("AvenirNext-Heavy", size: 44))
-                        .foregroundStyle(Color.primary.opacity(0.92))
-                        .tracking(3.2)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-
-                    Text(L("浏览网页，下载视频"))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+            Image("AppIconPreview")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 136, height: 136)
+                .clipShape(RoundedRectangle(cornerRadius: 31, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 31, style: .continuous)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 0.5)
                 }
-                .padding(.horizontal, 32)
-            }
-            .scaleEffect(appeared ? 1 : 0.94)
-            .opacity(appeared ? 1 : 0)
+                .shadow(color: Color.primary.opacity(0.14), radius: 34)
+                .scaleEffect(appeared ? 1 : 0.94)
+                .opacity(appeared ? 1 : 0)
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
@@ -66,9 +47,4 @@ struct StartupView: View {
         }
     }
 
-    private static var appName: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
-            ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String)
-            ?? "Nox"
-    }
 }

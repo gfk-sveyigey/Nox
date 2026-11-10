@@ -18,8 +18,7 @@ struct VideoBrowserView: View {
     @ObservedObject var registry = VideoSiteParserRegistry.shared
 
     @Binding var requestedURL: URL?
-    /// 由 ContentView 在双击「浏览」标签时递增。
-    let scrollToTopToken: Int
+    var parseRequest: UUID
 
     @State var address = ""
     @State var parsedVideo: ParsedVideo?
@@ -57,6 +56,7 @@ struct VideoBrowserView: View {
         let variant: VideoVariant
         let referer: URL?
         let cookieHeader: String?
+        let metadata: DownloadMetadata
         /// 固定的扩展名（不含点）。用户无法修改
         let fileExtension: String
         /// 完整默认文件名（含扩展名），「使用默认文件名」时直接用它
@@ -67,75 +67,97 @@ struct VideoBrowserView: View {
         appState: AppState,
         downloads: DownloadManager,
         requestedURL: Binding<URL?>,
-        scrollToTopToken: Int
+        parseRequest: UUID
     ) {
-        _parser = StateObject(wrappedValue: VideoParser(sites: appState))
+        _parser = StateObject(wrappedValue: VideoParser(sites: appState, desktopMode: appState.browserDesktopMode))
         _downloads = ObservedObject(wrappedValue: downloads)
         _requestedURL = requestedURL
-        self.scrollToTopToken = scrollToTopToken
+        self.parseRequest = parseRequest
+    }
+
+    var browserTopBackdrop: some View {
+        GeometryReader { geometry in
+            let top = geometry.safeAreaInsets.top
+            let bar = isAddressBarHidden ? 0 : addressToolbarHeight
+            BrowserFrostedBackdrop(
+                safeAreaHeight: top, addressBarHeight: bar,
+                topStrength: 1
+            )
+                .frame(height: top + bar)
+                .offset(y: -top)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .animation(.easeInOut(duration: 0.22), value: isAddressBarHidden)
     }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                addressToolbar
+            ZStack(alignment: .top) {
 
                 // 用 ZStack 而不是 .overlay：让徽标与 WebView 处于同一层级的显式上下关系，
                 // 命中测试时徽标在上；`.overlay` 盖在 UIViewRepresentable 之上
                 // 有时会被 WKWebView 的图层抢先，导致点击穿透。
                 ZStack(alignment: .bottomTrailing) {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
-                    WebViewContainer(webView: parser.browserWebView) { offset in
-                        updateCollapsedState(for: offset)
+                    WebViewContainer(
+                        webView: parser.browserWebView,
+                        addressBarInset: isAddressBarHidden ? 0 : addressToolbarHeight
+                    ) { offset, delta in
+                        updateCollapsedState(for: offset, delta: delta)
                     }
+                    .id(parser.browserGeneration)
                     .background(Color(.systemBackground))
+                    .ignoresSafeArea(.container, edges: [.top, .bottom])
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     // 原生首页：盖在 WebView 上，不往网页里塞占位页。
                     // 既让深色模式下「还没打开网页」时不再是白底，也是「主页」入口。
                     if showingHome {
                         homeScreen
-                            .transition(.opacity)
                     }
 
                     if !showingHome {
                         webStateOverlay
 
-                        VStack(alignment: .trailing, spacing: 10) {
-                            if isParseBadgeVisible {
-                                parseBadge
-                                    .transition(.opacity)
-                            }
 
-                            if isSnifferBadgeVisible {
-                                snifferBadge
-                                    .transition(.opacity)
-                            }
-                        }
-                        .padding(16)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                browserTopBackdrop.zIndex(1)
+                addressToolbar.zIndex(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(browserChromeBackground.ignoresSafeArea())
+            .preference(key: BrowserMinimizationPreference.self, value: !showingHome)
+            .preference(key: BrowserParseAvailability.self, value: canOpenParsePanel)
+            .onChange(of: parseRequest) { _, _ in openParsePanel() }
+            .sheet(isPresented: $showSniffer) {
+                SnifferSheet(onRescan: { await parser.rescanPage() }, onDownload: { download($0) })
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showParseSheet) {
+                parseSheet.presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
             .animation(.easeInOut(duration: 0.2), value: isParseBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
-            .animation(.easeInOut(duration: 0.2), value: showingHome)
             // 浏览页没有导航栏内容。保留空 NavigationStack 的导航栏会在地址栏上方
             // 多出一条空白，直接隐藏；顶部安全区仍由系统保留。
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
+                parser.setDesktopMode(appState.browserDesktopMode)
                 loadRequestedURLIfNeeded()
                 parser.refreshSiteRules()
                 // 切走再切回来时 `isLoading` 不一定有变化，这里按当前状态补一次。
                 updateProgressAppearance(isLoading: showsLoadingIndicator)
             }
+            .onChange(of: appState.browserDesktopMode) { _, enabled in
+                parser.setDesktopMode(enabled)
+            }
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()
-            }
-            .onChange(of: scrollToTopToken) { _, _ in
-                scrollBrowserToTop()
             }
             // 地址栏跟随 WebView 的实际地址：页面内点链接、重定向、后退/前进都会更新。
             .onChange(of: parser.currentURL) { _, newValue in

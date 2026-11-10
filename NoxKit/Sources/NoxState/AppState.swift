@@ -26,18 +26,6 @@ public final class AppState: ObservableObject {
     /// 同时进行的下载任务数默认值
     public static let defaultMaxConcurrentDownloads = NoxDefaults.defaultMaxConcurrentDownloads
 
-    /// 历史保留「无限制」的取值
-    public static let unlimitedHistory = NoxDefaults.unlimitedHistory
-    /// 历史「按条数」保留的可选上限（0 = 无限制）
-    public static let historyCountOptions = NoxDefaults.historyCountOptions
-    /// 历史「按条数」保留的默认上限
-    public static let defaultHistoryCount = NoxDefaults.defaultHistoryCount
-    /// 历史「按时间」保留的可选天数（0 = 无限制）
-    public static let historyDayOptions = NoxDefaults.historyDayOptions
-    /// 历史「按时间」保留的默认天数
-    public static let defaultHistoryDays = NoxDefaults.defaultHistoryDays
-
-    @Published public var history: [HistoryItem] = []
     /// 浏览页收藏的书签（最新在最前）
     @Published public var bookmarks: [Bookmark] = []
     @Published public var downloads: [DownloadRecord] = []
@@ -46,7 +34,6 @@ public final class AppState: ObservableObject {
     public var downloadsPublisher: AnyPublisher<[DownloadRecord], Never> {
         $downloads.eraseToAnyPublisher()
     }
-    @Published public var preferredQuality: PreferredQuality = .ask
     /// 实验性：多线程（分片）下载
     @Published public var experimentalMultiThreadDownload = false
     /// 下载线程数（1...32），仅在多线程下载开启时生效
@@ -72,6 +59,8 @@ public final class AppState: ObservableObject {
     @Published public var keepAliveNotifications = false
     /// 下载完成后是否发送本地通知。
     @Published public var downloadCompletionNotifications = false
+    /// App 位于前台时是否展示通知横幅和声音。
+    @Published public var foregroundNotificationsEnabled = true
     /// 实时活动与通知里是否显示具体任务名；关闭时只显示「有任务完成」。
     @Published public var showsTaskNames = true
     /// 是否使用 Nox 自定义的灵动岛 / 实时活动。
@@ -87,8 +76,8 @@ public final class AppState: ObservableObject {
     /// 画中画悬浮窗高度（pt）。0 = 最小化（实际 0.1pt，视觉隐藏），越大窗口越高。
     @Published public var pipWindowHeight: Double = AppState.defaultPiPWindowHeight
 
-    /// 画中画详细日志：开启后输出启动、就绪判断、重试和系统回调等诊断信息。
-    @Published public var pipVerboseLogging = false
+    /// 全局详细日志：覆盖后台方式、网络传输和实时活动诊断。
+    @Published public var verboseLogging = false
 
     /// 画中画窗口高度可选范围：0（最小/隐藏）… 最大可见小窗。
     public static let pipWindowHeightRange: ClosedRange<Double> = NoxDefaults.pipWindowHeightRange
@@ -97,15 +86,9 @@ public final class AppState: ObservableObject {
     /// 实际布局用的最小高度：0.1pt，视觉隐藏。
     public static let minimizedPiPWindowHeight: Double = NoxDefaults.minimizedPiPWindowHeight
 
-    /// 历史记录的保留方式：按条数 / 按时间
-    @Published public var historyRetentionMode: HistoryRetentionMode = .count
-    /// 「按条数」保留时的上限（见 `historyCountOptions`）
-    @Published public var historyRetentionCount: Int = AppState.defaultHistoryCount
-    /// 「按时间」保留时的天数上限（见 `historyDayOptions`）
-    @Published public var historyRetentionDays: Int = AppState.defaultHistoryDays
-
     /// 外观模式：跟随系统 / 浅色 / 深色
     @Published public var appearanceMode: AppearanceMode = .system
+    @Published public var browserDesktopMode = false
 
     /// 被用户关闭的站点标识（未列入即视为开启）
     @Published private var disabledSiteIDs: Set<String> = []
@@ -113,10 +96,8 @@ public final class AppState: ObservableObject {
     /// 浏览器页不能用它的旧值立刻重算，改为在写入完成后递增这里。
     @Published public private(set) var siteAvailabilityRevision = 0
 
-    private let historyKey = "Nox.history"
     private let bookmarksKey = "Nox.bookmarks"
     private let downloadsKey = "Nox.downloads"
-    private let qualityKey = "Nox.quality"
     private let multiThreadKey = "Nox.multiThreadDownload"
     private let segmentCountKey = "Nox.multiThreadSegmentCount"
     private let m3u8ConcurrencyKey = "Nox.m3u8SegmentConcurrency"
@@ -127,98 +108,21 @@ public final class AppState: ObservableObject {
     private let keepAliveSilentAudioFallbackKey = "Nox.keepAliveSilentAudioFallback"
     private let keepAliveNotificationsKey = "Nox.keepAliveNotifications"
     private let downloadCompletionNotificationsKey = "Nox.downloadCompletionNotifications"
+    private let foregroundNotificationsEnabledKey = "Nox.foregroundNotificationsEnabled"
     private let showsTaskNamesKey = "Nox.showsTaskNames"
     private let customLiveActivityEnabledKey = "Nox.customLiveActivityEnabled"
     private let customLiveActivityDuringContinuedProcessingKey = "Nox.customLiveActivityDuringContinuedProcessing"
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
     private let pipWindowHeightKey = "Nox.pipWindowHeight"
-    private let pipVerboseLoggingKey = "Nox.pipVerboseLogging"
+    private let verboseLoggingKey = "Nox.verboseLogging"
     /// 旧版「是否以最小化显示」开关的键，仅用于读盘迁移。
     private let pipMinimizedKey = "Nox.pipMinimized"
-    private let historyRetentionModeKey = "Nox.historyRetentionMode"
-    private let historyRetentionCountKey = "Nox.historyRetentionCount"
-    private let historyRetentionDaysKey = "Nox.historyRetentionDays"
     private let appearanceModeKey = "Nox.appearanceMode"
     private let disabledSitesKey = "Nox.disabledSites"
 
     public init() {
         load()
-    }
-
-    // MARK: - 历史
-
-    /// 追加一条历史。
-    ///
-    /// 同一页面只保留最新一条：用 `URL.pageIdentity` 而不是原样比较 ——
-    /// 同一个页面常带不同的跟踪参数（`utm_*`、`spm_id_from`…），
-    /// 逐字比较会让它反复堆出新记录，历史页很快被同一页刷满。
-    public func addHistory(title: String, url: URL) {
-        let identity = url.pageIdentity
-
-        history.removeAll { $0.url.pageIdentity == identity }
-
-        history.insert(
-            HistoryItem(id: UUID(), title: title, url: url, visitedAt: .now),
-            at: 0
-        )
-        applyHistoryRetention()
-        persist()
-    }
-
-    /// 按当前保留策略裁剪历史。
-    ///
-    /// - 按条数：只保留最新的 N 条；
-    /// - 按时间：丢弃超过 N 天的记录。
-    public func applyHistoryRetention() {
-        switch historyRetentionMode {
-        case .count:
-            // 0 = 无限制：不做裁剪
-            guard historyRetentionCount != Self.unlimitedHistory else { return }
-
-            let limit = max(1, historyRetentionCount)
-            if history.count > limit {
-                history = Array(history.prefix(limit))
-            }
-        case .days:
-            // 0 = 无限制：永不过期
-            guard historyRetentionDays != Self.unlimitedHistory else { return }
-
-            let cutoff = Calendar.current.date(
-                byAdding: .day,
-                value: -max(1, historyRetentionDays),
-                to: .now
-            ) ?? .distantPast
-            history.removeAll { $0.visitedAt < cutoff }
-        }
-    }
-
-    /// 删除某个页面（按归一化身份）对应的历史记录。
-    ///
-    /// 取消下载时会调用：被取消的任务不应留在历史里。
-    public func removeHistory(matching url: URL?) {
-        guard let url else { return }
-        let identity = url.pageIdentity
-        history.removeAll { $0.url.pageIdentity == identity }
-        persist()
-    }
-
-    public func removeHistory(_ item: HistoryItem) {
-        history.removeAll { $0.id == item.id }
-        persist()
-    }
-
-    /// 批量删除（历史页多选时用）
-    public func removeHistory(ids: Set<UUID>) {
-        guard !ids.isEmpty else { return }
-
-        history.removeAll { ids.contains($0.id) }
-        persist()
-    }
-
-    public func clearHistory() {
-        history.removeAll()
-        persist()
     }
 
     // MARK: - 书签
@@ -260,7 +164,13 @@ public final class AppState: ObservableObject {
             return
         }
 
-        downloads[index] = record
+        var updated = record
+        if record.status == .finished && downloads[index].status != .finished {
+            var metadata = updated.metadata ?? DownloadMetadata()
+            metadata.completedAt = Date()
+            updated.metadata = metadata
+        }
+        downloads[index] = updated
 
         if shouldPersist {
             persist()
@@ -276,7 +186,7 @@ public final class AppState: ObservableObject {
         downloads.removeAll {
             $0.status == .finished ||
             $0.status == .failed ||
-            $0.status == .cancelled
+            $0.status == .paused || $0.status == .notStarted
         }
         persist()
     }
@@ -302,10 +212,6 @@ public final class AppState: ObservableObject {
     public func persist() {
         let defaults = UserDefaults.standard
 
-        if let data = try? JSONEncoder().encode(history) {
-            defaults.set(data, forKey: historyKey)
-        }
-
         if let data = try? JSONEncoder().encode(bookmarks) {
             defaults.set(data, forKey: bookmarksKey)
         }
@@ -314,7 +220,6 @@ public final class AppState: ObservableObject {
             defaults.set(data, forKey: downloadsKey)
         }
 
-        defaults.set(preferredQuality.rawValue, forKey: qualityKey)
         defaults.set(experimentalMultiThreadDownload, forKey: multiThreadKey)
         defaults.set(multiThreadSegmentCount, forKey: segmentCountKey)
         defaults.set(m3u8SegmentConcurrency, forKey: m3u8ConcurrencyKey)
@@ -325,27 +230,26 @@ public final class AppState: ObservableObject {
         defaults.set(keepAliveSilentAudioFallback, forKey: keepAliveSilentAudioFallbackKey)
         defaults.set(keepAliveNotifications, forKey: keepAliveNotificationsKey)
         defaults.set(downloadCompletionNotifications, forKey: downloadCompletionNotificationsKey)
+        defaults.set(foregroundNotificationsEnabled, forKey: foregroundNotificationsEnabledKey)
         defaults.set(showsTaskNames, forKey: showsTaskNamesKey)
         defaults.set(customLiveActivityEnabled, forKey: customLiveActivityEnabledKey)
         defaults.set(customLiveActivityDuringContinuedProcessing, forKey: customLiveActivityDuringContinuedProcessingKey)
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
-        defaults.set(pipVerboseLogging, forKey: pipVerboseLoggingKey)
-        defaults.set(historyRetentionMode.rawValue, forKey: historyRetentionModeKey)
-        defaults.set(historyRetentionCount, forKey: historyRetentionCountKey)
-        defaults.set(historyRetentionDays, forKey: historyRetentionDaysKey)
+        defaults.set(verboseLogging, forKey: verboseLoggingKey)
+        defaults.set(browserDesktopMode, forKey: "Nox.browserDesktopMode")
         defaults.set(appearanceMode.rawValue, forKey: appearanceModeKey)
         defaults.set(Array(disabledSiteIDs).sorted(), forKey: disabledSitesKey)
     }
 
     private func load() {
-        let defaults = UserDefaults.standard
-
-        if let data = defaults.data(forKey: historyKey),
-           let value = try? JSONDecoder().decode([HistoryItem].self, from: data) {
-            history = value
+        // Remove obsolete history storage; download records remain untouched.
+        for key in ["Nox.history", "Nox.historyRetentionMode", "Nox.historyRetentionCount", "Nox.historyRetentionDays"] {
+            UserDefaults.standard.removeObject(forKey: key)
         }
+
+        let defaults = UserDefaults.standard
 
         if let data = defaults.data(forKey: bookmarksKey),
            let value = try? JSONDecoder().decode([Bookmark].self, from: data) {
@@ -356,18 +260,26 @@ public final class AppState: ObservableObject {
            let value = try? JSONDecoder().decode([DownloadRecord].self, from: data) {
             // 进程被系统回收时任务不会回调，残留的 .downloading 需要归位，
             // 否则会永远显示「下载中」且无法重试。这里重新排队而不是标成取消：
-            // 用户在 App 内主动暂停时会明确写入 .cancelled，磁盘上的 .downloading
+            // 用户在 App 内主动暂停时会明确写入 .paused，磁盘上的 .downloading
             // 只可能来自异常终止，下次启动（包括 BGTask 后台唤醒）应自动续传。
             downloads = value.map { record in
+                if record.status == .legacyCancelled {
+                    var migrated = record
+                    migrated.status = (record.receivedBytes ?? 0) > 0 ? .paused : .notStarted
+                    migrated.errorMessage = nil
+                    return migrated
+                }
                 guard record.status == .downloading else { return record }
                 var updated = record
                 updated.status = .queued
                 updated.errorMessage = nil
                 return updated
             }
+            if let migrated = try? JSONEncoder().encode(downloads) {
+                defaults.set(migrated, forKey: downloadsKey)
+            }
         }
 
-        preferredQuality = PreferredQuality.migrated(from: defaults.string(forKey: qualityKey))
         experimentalMultiThreadDownload = defaults.bool(forKey: multiThreadKey)
 
         let storedSegments = defaults.integer(forKey: segmentCountKey)
@@ -402,19 +314,7 @@ public final class AppState: ObservableObject {
             minFreeDiskSpace = NoxDefaults.defaultMinFreeDiskSpace
         }
 
-        historyRetentionMode = HistoryRetentionMode(
-            rawValue: defaults.string(forKey: historyRetentionModeKey) ?? ""
-        ) ?? .count
-
-        let storedCount = defaults.integer(forKey: historyRetentionCountKey)
-        historyRetentionCount = Self.historyCountOptions.contains(storedCount)
-            ? storedCount
-            : Self.defaultHistoryCount
-
-        let storedDays = defaults.integer(forKey: historyRetentionDaysKey)
-        historyRetentionDays = Self.historyDayOptions.contains(storedDays)
-            ? storedDays
-            : Self.defaultHistoryDays
+        browserDesktopMode = defaults.bool(forKey: "Nox.browserDesktopMode")
 
         appearanceMode = AppearanceMode(
             rawValue: defaults.string(forKey: appearanceModeKey) ?? ""
@@ -432,6 +332,7 @@ public final class AppState: ObservableObject {
         keepAliveNotifications = defaults.bool(forKey: keepAliveNotificationsKey)
         // 缺键时默认关闭完成通知；显示任务名默认开启，保持原有行为。
         downloadCompletionNotifications = defaults.bool(forKey: downloadCompletionNotificationsKey)
+        foregroundNotificationsEnabled = defaults.object(forKey: foregroundNotificationsEnabledKey) as? Bool ?? true
         showsTaskNames = defaults.object(forKey: showsTaskNamesKey) as? Bool ?? true
         customLiveActivityEnabled = defaults.object(forKey: customLiveActivityEnabledKey) as? Bool ?? true
         customLiveActivityDuringContinuedProcessing = defaults.bool(forKey: customLiveActivityDuringContinuedProcessingKey)
@@ -455,7 +356,8 @@ public final class AppState: ObservableObject {
             pipWindowHeight = Self.defaultPiPWindowHeight
         }
 
-        pipVerboseLogging = defaults.bool(forKey: pipVerboseLoggingKey)
+        verboseLogging = (defaults.object(forKey: verboseLoggingKey) as? Bool)
+            ?? defaults.bool(forKey: "Nox.pipVerboseLogging")
 
         var disabled = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
         // 通用 Sniffer 的旧 ID 是 "generic"，迁移到 "sniffer"。
@@ -465,7 +367,6 @@ public final class AppState: ObservableObject {
         disabledSiteIDs = disabled
 
         // 读盘后先按当前保留策略裁剪一次，避免旧数据一直撑着。
-        applyHistoryRetention()
     }
 }
 

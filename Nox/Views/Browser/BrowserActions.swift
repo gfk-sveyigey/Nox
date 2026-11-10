@@ -28,25 +28,8 @@ extension VideoBrowserView {
 
         requestedURL = nil
         address = url.absoluteString
-        showingHome = false
         parser.load(url)
-    }
-
-    /// 双击底部「浏览」标签时回到网页顶部。
-    ///
-    /// 只看网页内容；首页的书签列表不在这里处理。`adjustedContentInset`
-    /// 用来兼容安全区 / 内容内边距，避免滚到 -0 而不是真正的顶部。
-    func scrollBrowserToTop() {
-        guard !showingHome else { return }
-
-        let scrollView = parser.browserWebView.scrollView
-        let topY = -scrollView.adjustedContentInset.top
-        guard scrollView.contentOffset.y > topY + 0.5 else { return }
-
-        scrollView.setContentOffset(
-            CGPoint(x: 0, y: topY),
-            animated: true
-        )
+        showingHome = false
     }
 
     func openAddress() {
@@ -66,8 +49,8 @@ extension VideoBrowserView {
         }
 
         address = url.absoluteString
-        showingHome = false
         parser.load(url)
+        showingHome = false
     }
 
     func parse() async {
@@ -83,20 +66,13 @@ extension VideoBrowserView {
             let video = try await parser.parseCurrentPage()
             parsedVideo = video
 
-            // 设置里选了明确清晰度就直接开下；否则留在面板里让用户挑。
-            if let variant = preferredVariant(
-                video.variants,
-                preference: appState.preferredQuality
-            ) {
-                await download(variant)
-            }
         } catch {
             parsedVideo = nil
             parseError = error.localizedDescription
         }
     }
 
-    /// 「重新解析」：只刷新面板里的清晰度列表，**不会**因为设置了下载偏好就自动开下。
+    /// 「重新解析」：刷新资源列表，等待用户手动选择。
     func reparse() async {
         guard parser.canParseCurrentPage, !isParsing else { return }
 
@@ -112,44 +88,14 @@ extension VideoBrowserView {
         }
     }
 
-    func preferredVariant(
-        _ variants: [VideoVariant],
-        preference: PreferredQuality
-    ) -> VideoVariant? {
-        switch preference {
-        case .ask:
-            return nil
-        case .best:
-            return variants.max {
-                qualityNumber($0.quality) < qualityNumber($1.quality)
-            } ?? variants.first
-        case .p1080, .p720, .p480, .p360:
-            if let exact = variants.first(where: {
-                qualityNumber($0.quality) == preference.qualityNumber
-            }) {
-                return exact
-            }
-            // 找不到目标清晰度时退回最高可用
-            return variants.max {
-                qualityNumber($0.quality) < qualityNumber($1.quality)
-            } ?? variants.first
-        }
-    }
-
-    func qualityNumber(_ quality: String) -> Int {
-        Int(quality.filter(\.isNumber)) ?? 0
-    }
-
-    /// 「解析视频」路径。历史已由 `parseCurrentPage()` 记过，这里不重复记。
+    /// 「解析视频」路径。
     func download(_ variant: VideoVariant) async {
         guard let parsedVideo else { return }
-        prepareDownload(title: parsedVideo.title, variant: variant, referer: parsedVideo.pageURL)
+        prepareDownload(title: parsedVideo.title, variant: variant, referer: parsedVideo.pageURL, parserName: parser.currentSiteName)
     }
 
     /// 嗅探面板路径。
     ///
-    /// - 历史记的是**页面**地址与页面标题，而不是媒体地址：
-    ///   历史页的「跳转网页」要能回到原页面，且同一页面上的多条资源不会各占一条记录。
     /// - Referer 用 WebView 当前地址。
     func download(_ item: SnifferBridge.Item) {
         showSniffer = false
@@ -166,7 +112,10 @@ extension VideoBrowserView {
     }
 
     /// 统一的入队前准备：收起所有 sheet、取 Cookie、生成默认文件名、弹「选择文件名」。
-    func prepareDownload(title: String, variant: VideoVariant, referer: URL?) {
+    func prepareDownload(title: String, variant: VideoVariant, referer: URL?, parserName: String? = nil) {
+        var metadata = variant.metadata ?? DownloadMetadata()
+        metadata.originalPageURL = metadata.originalPageURL ?? referer ?? parser.currentPageURL
+        metadata.parserName = metadata.parserName ?? parserName
         showParseSheet = false
         showSniffer = false
 
@@ -193,6 +142,7 @@ extension VideoBrowserView {
                 variant: variant,
                 referer: referer,
                 cookieHeader: cookieHeader,
+                metadata: metadata,
                 fileExtension: fileExtension,
                 defaultFilename: suggested
             )
@@ -222,7 +172,8 @@ extension VideoBrowserView {
             variant: request.variant,
             referer: request.referer,
             cookieHeader: request.cookieHeader,
-            filename: filename
+            filename: filename,
+            metadata: request.metadata
         )
 
         isFilenameDialogPresented = false
