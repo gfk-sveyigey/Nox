@@ -150,7 +150,6 @@ struct NativeParseButton: UIViewRepresentable {
 struct BrowserActionInfo: Equatable {
     var canParse = false
     var isParsing = false
-    var scrollingDown = false
 }
 struct BrowserActionPreference: PreferenceKey {
     static var defaultValue = BrowserActionInfo()
@@ -160,7 +159,7 @@ final class BrowserChromeState: ObservableObject {
     @Published var info = BrowserActionInfo()
     @Published var compact = false
     @Published var parseRequest = 0
-    var allowsNativeExpansion: Bool { compact || (!info.canParse && info.scrollingDown) }
+    var allowsNativeExpansion: Bool { compact }
 }
 
 struct NativeBrowserParseAccessory: ViewModifier {

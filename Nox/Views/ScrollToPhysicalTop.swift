@@ -98,12 +98,13 @@ struct TabReselectionInterceptor: UIViewControllerRepresentable {
 
         @objc private func selectedTabTapped() {
             guard let tabs else { return }
+            if tabs.selectedIndex == 0 && !browserTabIsExpanded(in: tabs) { return }
             onReselect(tabs.selectedIndex)
         }
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
             guard let tabs, gestureRecognizer === tapGuard else { return false }
-            if tabs.selectedIndex == 0 && allowsBrowserExpansion { return false }
+            if tabs.selectedIndex == 0 && !browserTabIsExpanded(in: tabs) { return false }
             // Only intercept an actual selected tab control, never blank space or
             // a different tab. This runs before UIKit can perform native reselection.
             var view = touch.view
@@ -119,13 +120,35 @@ struct TabReselectionInterceptor: UIViewControllerRepresentable {
             gestureRecognizer === tapGuard
         }
 
+        /// Expanded bars expose all tab controls to hit testing. Minimized bars
+        /// expose only the current tab. Do not infer this from webpage scrolling:
+        /// the system may expand the bar without scrolling the webpage at all.
+        private func browserTabIsExpanded(in tabs: UITabBarController) -> Bool {
+            guard !allowsBrowserExpansion, let items = tabs.tabBar.items, items.count > 1 else { return false }
+            let bar = tabs.tabBar
+            var visibleControls = 0
+            func visit(_ view: UIView) {
+                guard !view.isHidden, view.alpha > 0.05, view.isUserInteractionEnabled else { return }
+                if let control = view as? UIControl {
+                    let center = control.convert(CGPoint(x: control.bounds.midX, y: control.bounds.midY), to: bar)
+                    if let hit = bar.hitTest(center, with: nil), hit === control || hit.isDescendant(of: control) {
+                        visibleControls += 1
+                        return
+                    }
+                }
+                for child in view.subviews { visit(child) }
+            }
+            for child in bar.subviews { visit(child) }
+            return visibleControls >= items.count
+        }
+
         weak var original: UITabBarControllerDelegate?
         var onReselect: (Int) -> Void
         init(onReselect: @escaping (Int) -> Void) { self.onReselect = onReselect }
 
         func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
             if viewController === tabBarController.selectedViewController {
-                if tabBarController.selectedIndex == 0 && allowsBrowserExpansion { return true }
+                if tabBarController.selectedIndex == 0 && !browserTabIsExpanded(in: tabBarController) { return true }
                 onReselect(tabBarController.selectedIndex)
                 return false
             }

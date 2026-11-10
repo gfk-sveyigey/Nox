@@ -76,10 +76,6 @@ struct SettingsView: View {
             }
         }
         Section {
-            Toggle(L("请求桌面版网站"), isOn: $appState.browserDesktopMode)
-                .onChange(of: appState.browserDesktopMode) { _, _ in appState.persist() }
-            Text(L("关闭时使用移动版 UA，切换后会重新加载当前网页。"))
-                .font(.footnote).foregroundStyle(.secondary)
             NavigationLink {
                 SiteSettingsView()
             } label: {

@@ -223,7 +223,9 @@ final class TabSelectionState: ObservableObject {
             get: { self.selection },
             set: { value in
                 if value == self.selection {
-                    self.handleTabReselect(value)
+                    // Browser reselection is handled only by the interceptor,
+                    // which can distinguish native expansion from a reselect.
+                    if value != 0 { self.handleTabReselect(value) }
                 } else {
                     self.selection = value
                 }

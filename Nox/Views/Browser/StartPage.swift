@@ -118,7 +118,7 @@ extension VideoBrowserView {
         // 回到首页时地址栏也要清空：否则会残留上一个网址，
         // 看起来像「首页其实还停在这个地址」。
         address = ""
-        parser.clearLoadError()
+        // Home is only an overlay. Preserve the document and its load/error state.
         withAnimation(.easeInOut(duration: 0.2)) {
             isScrolledDown = false
             showingHome = true

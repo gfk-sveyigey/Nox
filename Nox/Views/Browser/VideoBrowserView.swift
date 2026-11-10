@@ -154,8 +154,7 @@ struct VideoBrowserView: View {
             .preference(key: BrowserMinimizationPreference.self, value: !showingHome)
             .preference(key: BrowserActionPreference.self, value: BrowserActionInfo(
                 canParse: !showingHome && isParseBadgeVisible,
-                isParsing: isParsing,
-                scrollingDown: !showingHome && isScrolledDown
+                isParsing: isParsing
             ))
             .onChange(of: browserChrome.parseRequest) { _, _ in
                 guard !showingHome && isParseBadgeVisible else { return }

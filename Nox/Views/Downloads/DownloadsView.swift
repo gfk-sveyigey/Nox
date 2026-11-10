@@ -77,7 +77,9 @@ struct DownloadsView: View {
             .toolbarBackground(pageBackgroundColor, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .environment(\.editMode, $editMode)
-            .toolbar { toolbarContent }
+            .toolbar {
+                if !appState.downloads.isEmpty { toolbarContent }
+            }
             // 多选时隐藏底部标签栏，避免与悬浮操作按钮抢位置。
             .toolbar(editMode.isEditing ? .hidden : .visible, for: .tabBar)
             .alert(L("清空下载？"), isPresented: $showingClearConfirmation) {
@@ -121,6 +123,7 @@ struct DownloadsView: View {
             }
             .onChange(of: visibleRecords.map(\.id)) { _, ids in
                 selection.formIntersection(Set(ids))
+                if ids.isEmpty { finishSelection() }
             }
             .onAppear {
                 isVisible = true
@@ -132,7 +135,7 @@ struct DownloadsView: View {
             }
             // 双指滑动：进入多选，并按滑过的路径选中任务。
             .twoFingerPanToSelect(
-                isEnabled: isVisible,
+                isEnabled: isVisible && !visibleRecords.isEmpty,
                 onBegin: { beginTwoFingerSelection() },
                 onPath: { selectRows(in: $0) }
             )
@@ -146,7 +149,7 @@ struct DownloadsView: View {
 
     /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。
     func beginTwoFingerSelection() {
-        guard !editMode.isEditing else { return }
+        guard !visibleRecords.isEmpty, !editMode.isEditing else { return }
         withAnimation { editMode = .active }
     }
 
