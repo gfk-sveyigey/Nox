@@ -45,12 +45,12 @@ final class UnderIslandBrandView: UIView {
         iconView.layer.borderColor = UIColor.white.withAlphaComponent(0.14).cgColor
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
-        let font = UIFont(name: "AvenirNext-DemiBold", size: 13)
-            ?? UIFont.systemFont(ofSize: 13, weight: .semibold)
+        let font = UIFont(name: "SFProDisplay-Medium", size: 13)
+            ?? UIFont.systemFont(ofSize: 13, weight: .medium)
         // 前景色交给 UILabel.textColor（动态颜色会跟随深浅色），
         // attributedText 只负责字体与字距。
         nameLabel.attributedText = NSAttributedString(
-            string: "NOX",
+            string: "Nox",
             attributes: [
                 .font: font,
                 .kern: 1.4

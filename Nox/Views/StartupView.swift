@@ -37,21 +37,13 @@ struct StartupView: View {
                     }
                     .shadow(color: Color.primary.opacity(0.14), radius: 34)
 
-                VStack(spacing: 6) {
-                    Text(verbatim: Self.appName.uppercased())
-                        .font(.custom("AvenirNext-Heavy", size: 44))
-                        .foregroundStyle(Color.primary.opacity(0.92))
-                        .tracking(3.2)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-
-                    Text(L("浏览网页，下载视频"))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(verbatim: "Nox")
+                    .font(Font(UIFont(name: "SFProDisplay-Medium", size: 44)
+                        ?? UIFont.systemFont(ofSize: 44, weight: .medium)))
+                    .foregroundStyle(Color.primary.opacity(0.92))
+                    .tracking(3.2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
                 .padding(.horizontal, 32)
             }
             .scaleEffect(appeared ? 1 : 0.94)
@@ -66,9 +58,4 @@ struct StartupView: View {
         }
     }
 
-    private static var appName: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
-            ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String)
-            ?? "Nox"
-    }
 }
