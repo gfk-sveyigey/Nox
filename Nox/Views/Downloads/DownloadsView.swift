@@ -88,7 +88,7 @@ struct DownloadsView: View {
                 if !appState.downloads.isEmpty { toolbarContent }
             }
             // 多选时隐藏底部标签栏，避免与悬浮操作按钮抢位置。
-            .toolbar(.visible, for: .tabBar)
+            .toolbar(editMode.isEditing ? .hidden : .visible, for: .tabBar)
             .alert(L("清空下载？"), isPresented: $showingClearConfirmation) {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("清空"), role: .destructive) {
@@ -117,8 +117,19 @@ struct DownloadsView: View {
                 DownloadDetailsView(taskID: record.id, appState: appState, manager: manager)
             }
             .onChange(of: menuRequest) { _, _ in showingActionMenu = true }
-            .confirmationDialog(L("更多操作"), isPresented: $showingActionMenu, titleVisibility: .visible) {
-                taskMenuContents
+            .sheet(isPresented: $showingActionMenu) {
+                NavigationStack {
+                    List { taskMenuContents }
+                        .navigationTitle(L("更多操作"))
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button(L("完成")) { showingActionMenu = false }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .onChange(of: editMode) { _, newValue in
                 if !newValue.isEditing {
@@ -498,6 +509,14 @@ struct DownloadsView: View {
             }
         }
         if editMode.isEditing {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu { taskMenuContents } label: {
+                    Image(systemName: "ellipsis")
+                }
+                .accessibilityLabel(L("更多操作"))
+            }
+        }
+        if editMode.isEditing {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button(allSelected ? L("取消全选") : L("全选")) {
                     withAnimation {
@@ -536,6 +555,7 @@ struct DownloadsView: View {
             if !editMode.isEditing {
                 Section {
                     Button {
+                        showingActionMenu = false
                         withAnimation { editMode = .active }
                     } label: {
                         Label(L("选择"), systemImage: "checkmark.circle")
@@ -547,6 +567,7 @@ struct DownloadsView: View {
             Section {
                 if !menuStatuses.isDisjoint(with: [.notStarted, .paused, .failed]) {
                     Button {
+                        showingActionMenu = false
                         manager.retryAll(ids: Set(actionRecords.filter {
                             [.notStarted, .paused, .failed].contains($0.status)
                         }.map(\.id)))
@@ -558,6 +579,7 @@ struct DownloadsView: View {
                 }
                 if !menuStatuses.isDisjoint(with: [.queued, .downloading]) {
                     Button {
+                        showingActionMenu = false
                         manager.pauseAll(ids: Set(actionRecords.filter {
                             [.queued, .downloading].contains($0.status)
                         }.map(\.id)))
@@ -569,6 +591,7 @@ struct DownloadsView: View {
                 }
                 if !menuStatuses.isDisjoint(with: [.queued, .downloading, .paused, .failed]) {
                     Button {
+                        showingActionMenu = false
                         manager.discardAll(ids: Set(actionRecords.filter {
                             [.queued, .downloading, .paused, .failed].contains($0.status)
                         }.map(\.id)))
@@ -583,6 +606,7 @@ struct DownloadsView: View {
             if editMode.isEditing && menuStatuses.contains(.finished) {
                 Section {
                     Button {
+                        showingActionMenu = false
                         shareSelected()
                     } label: {
                         Label(L("分享"), systemImage: "square.and.arrow.up")
@@ -593,6 +617,7 @@ struct DownloadsView: View {
 
             Section {
                 Button(role: .destructive) {
+                    showingActionMenu = false
                     if !editMode.isEditing { selection = Set(visibleRecords.map(\.id)) }
                     showingDeleteConfirmation = true
                 } label: {

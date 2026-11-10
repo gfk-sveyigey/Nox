@@ -31,7 +31,7 @@ struct SettingsView: View {
 
     // MARK: - 设置项
 
-    /// 设置项按用途分成五组，但不显示分组标题，只用间距做视觉分割。
+    /// 设置项按用途分成四组，但不显示分组标题，只用间距做视觉分割。
     @ViewBuilder
     var settingsSections: some View {
         Section {
@@ -140,20 +140,11 @@ struct SettingsView: View {
                 }
             )
             .id(localization.language)
-        }
-
-        Section {
-            settingsLink(
-                L("开源许可与致谢"),
-                subtitle: L("查看第三方项目、许可信息与致谢。"),
-                systemImage: "heart.text.square",
-                iconColor: .red
-            ) {
-                LicensesView()
-            }
         } footer: {
             versionFooter
         }
+
+
     }
 
     /// 统一设置条目：图标 + 标题 + 一行说明，并适当增加行高。
