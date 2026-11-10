@@ -69,14 +69,52 @@ struct TabReselectionInterceptor: UIViewControllerRepresentable {
                     if let tabs = controller as? UITabBarController { return tabs }
                     return controller.children.lazy.compactMap { findTab($0) }.first
                 }
-                guard let tabs = findTab(root), tabs.delegate !== interceptor else { return }
+                guard let tabs = findTab(root) else { return }
+                interceptor.installTapGuard(on: tabs)
+                guard tabs.delegate !== interceptor else { return }
                 interceptor.original = tabs.delegate
                 tabs.delegate = interceptor
             }
         }
     }
 
-    final class Coordinator: NSObject, UITabBarControllerDelegate {
+    final class Coordinator: NSObject, UITabBarControllerDelegate, UIGestureRecognizerDelegate {
+        private weak var tabs: UITabBarController?
+        private var tapGuard: UITapGestureRecognizer?
+
+        func installTapGuard(on tabs: UITabBarController) {
+            self.tabs = tabs
+            guard tapGuard?.view !== tabs.tabBar else { return }
+            if let tapGuard { tapGuard.view?.removeGestureRecognizer(tapGuard) }
+            let gesture = UITapGestureRecognizer(target: self, action: #selector(selectedTabTapped))
+            gesture.delegate = self
+            gesture.cancelsTouchesInView = true
+            tabs.tabBar.addGestureRecognizer(gesture)
+            tapGuard = gesture
+        }
+
+        @objc private func selectedTabTapped() {
+            guard let tabs else { return }
+            onReselect(tabs.selectedIndex)
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard let tabs, gestureRecognizer === tapGuard else { return false }
+            // Only intercept an actual selected tab control, never blank space or
+            // a different tab. This runs before UIKit can perform native reselection.
+            var view = touch.view
+            while let current = view, current !== tabs.tabBar {
+                if let control = current as? UIControl,
+                   control.isSelected || control.accessibilityTraits.contains(.selected) { return true }
+                view = current.superview
+            }
+            return false
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            gestureRecognizer === tapGuard
+        }
+
         weak var original: UITabBarControllerDelegate?
         var onReselect: (Int) -> Void
         init(onReselect: @escaping (Int) -> Void) { self.onReselect = onReselect }

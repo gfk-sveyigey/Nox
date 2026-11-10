@@ -1,6 +1,63 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"请求桌面版网站": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Request Desktop Website"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Desktop-Website anfordern"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Version pour ordinateur"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "데스크탑 웹 사이트 요청"
+      }
+    }
+  }
+},
+"关闭时使用移动版 UA，切换后会重新加载当前网页。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "When off, websites use a mobile user agent. Changing this reloads the current page."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Wenn deaktiviert, wird eine mobile Browserkennung verwendet. Die aktuelle Seite wird beim Umschalten neu geladen."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Désactivez cette option pour utiliser un identifiant mobile. La page actuelle sera rechargée."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "끄면 모바일 사용자 에이전트를 사용합니다. 변경 시 현재 페이지가 새로고침됩니다."
+      }
+    }
+  }
+},
+
 "调整外观和浏览界面透明度。": {
   "localizations": {
     "en": {

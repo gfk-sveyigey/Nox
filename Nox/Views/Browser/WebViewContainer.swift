@@ -32,6 +32,8 @@ struct WebViewContainer: UIViewControllerRepresentable {
         }
 
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.scrollsToTop = false
+        webView.scrollView.clipsToBounds = false
         let controller = BrowserContentController(webView: webView)
         controller.addressBarInset = addressBarInset
         context.coordinator.controller = controller
@@ -105,7 +107,11 @@ final class BrowserContentController: UIViewController {
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError() }
-    override func loadView() { view = webView }
+    override func loadView() {
+        view = UIView()
+        view.clipsToBounds = true
+        view.addSubview(webView)
+    }
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateTopContentInset()
@@ -121,20 +127,21 @@ final class BrowserContentController: UIViewController {
         guard isViewLoaded else { return }
         let scroll = webView.scrollView
         let top = view.safeAreaInsets.top + addressBarInset
-        let previous = scroll.contentInset.top
-        guard abs(top - previous) > 0.5 else { return }
+        let frame = CGRect(x: 0, y: top, width: view.bounds.width, height: max(0, view.bounds.height - top))
+        guard webView.frame != frame || scroll.contentInset.top != 0 else { return }
         isUpdatingInset = true
         defer { isUpdatingInset = false }
-        let wasAtTop = abs(scroll.contentOffset.y + previous) < 1
-        var inset = scroll.contentInset
-        inset.top = top
-        scroll.contentInset = inset
-        var indicators = scroll.verticalScrollIndicatorInsets
-        indicators.top = top
-        scroll.verticalScrollIndicatorInsets = indicators
-        if wasAtTop {
-            scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: -top), animated: false)
+        // A real viewport origin, not a scroll inset: window.scrollTo(0, 0),
+        // input focus and WebKit navigation all agree on the same page top.
+        webView.frame = frame
+        if scroll.contentInset.top != 0 {
+            var inset = scroll.contentInset
+            inset.top = 0
+            scroll.contentInset = inset
         }
+        var indicators = scroll.verticalScrollIndicatorInsets
+        indicators.top = 0
+        scroll.verticalScrollIndicatorInsets = indicators
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -148,10 +155,8 @@ final class BrowserContentController: UIViewController {
     }
     func connectContentScrollView() {
         guard #available(iOS 26.0, *) else { return }
-        var controller: UIViewController? = self
-        while let current = controller, !(current is UITabBarController) {
-            current.setContentScrollView(webView.scrollView)
-            controller = current.parent
-        }
+        // Do not register the web scroll view on ancestor navigation controllers:
+        // UIKit otherwise installs its own single-tap tab-reselection scroll.
+        setContentScrollView(webView.scrollView)
     }
 }

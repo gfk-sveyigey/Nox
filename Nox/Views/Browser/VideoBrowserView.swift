@@ -70,7 +70,7 @@ struct VideoBrowserView: View {
         requestedURL: Binding<URL?>,
         scrollToTopToken: Int
     ) {
-        _parser = StateObject(wrappedValue: VideoParser(sites: appState))
+        _parser = StateObject(wrappedValue: VideoParser(sites: appState, desktopMode: appState.browserDesktopMode))
         _downloads = ObservedObject(wrappedValue: downloads)
         _requestedURL = requestedURL
         self.scrollToTopToken = scrollToTopToken
@@ -153,10 +153,14 @@ struct VideoBrowserView: View {
             // 多出一条空白，直接隐藏；顶部安全区仍由系统保留。
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
+                parser.setDesktopMode(appState.browserDesktopMode)
                 loadRequestedURLIfNeeded()
                 parser.refreshSiteRules()
                 // 切走再切回来时 `isLoading` 不一定有变化，这里按当前状态补一次。
                 updateProgressAppearance(isLoading: showsLoadingIndicator)
+            }
+            .onChange(of: appState.browserDesktopMode) { _, enabled in
+                parser.setDesktopMode(enabled)
             }
             .onChange(of: requestedURL) { _, _ in
                 loadRequestedURLIfNeeded()

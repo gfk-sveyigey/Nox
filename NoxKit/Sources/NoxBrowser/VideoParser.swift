@@ -51,7 +51,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
 
     public init(
         sites: SiteAvailabilityProviding,
-        registry: VideoSiteParserRegistry? = nil
+        registry: VideoSiteParserRegistry? = nil,
+        desktopMode: Bool = false
     ) {
         self.sites = sites
         self.registry = registry ?? .shared
@@ -59,6 +60,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
+        configuration.defaultWebpagePreferences.preferredContentMode = .mobile
 
         // 嗅探脚本：跨域 iframe 也会注入，各自 postMessage 上来
         if let script = SnifferScript.userScript() {
@@ -103,7 +105,7 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         // 用完整的移动版 Safari UA。
         // WKWebView 的默认 UA 缺少 `Version/... Safari/...` 段，会被部分站点
         // （典型是 YouTube）判定成机器人，要求「请登录，以便我们确认你不是聊天机器人」。
-        webView.customUserAgent = Self.safariUserAgent
+        setDesktopMode(desktopMode, reload: false)
         webView.navigationDelegate = self
         // 边缘左右滑动 = 后退 / 前进
         webView.allowsBackForwardNavigationGestures = true
@@ -116,6 +118,16 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         webView.backgroundColor = .systemBackground
         webView.scrollView.backgroundColor = .systemBackground
         webView.underPageBackgroundColor = .systemBackground
+    }
+
+    public func setDesktopMode(_ enabled: Bool, reload: Bool = true) {
+        let agent = enabled
+            ? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+            : Self.safariUserAgent
+        webView.configuration.defaultWebpagePreferences.preferredContentMode = enabled ? .desktop : .mobile
+        guard webView.customUserAgent != agent else { return }
+        webView.customUserAgent = agent
+        if reload, webView.url != nil { webView.reload() }
     }
 
     public var browserWebView: WKWebView { webView }

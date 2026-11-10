@@ -87,6 +87,7 @@ public final class AppState: ObservableObject {
 
     /// 外观模式：跟随系统 / 浅色 / 深色
     @Published public var appearanceMode: AppearanceMode = .system
+    @Published public var browserDesktopMode = false
     @Published public var browserSafeAreaTransparency: Double = 0.35
 
     /// 被用户关闭的站点标识（未列入即视为开启）
@@ -237,6 +238,7 @@ public final class AppState: ObservableObject {
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
         defaults.set(pipVerboseLogging, forKey: pipVerboseLoggingKey)
+        defaults.set(browserDesktopMode, forKey: "Nox.browserDesktopMode")
         defaults.set(browserSafeAreaTransparency, forKey: "Nox.browserSafeAreaTransparency")
         defaults.set(appearanceMode.rawValue, forKey: appearanceModeKey)
         defaults.set(Array(disabledSiteIDs).sorted(), forKey: disabledSitesKey)
@@ -314,6 +316,7 @@ public final class AppState: ObservableObject {
             minFreeDiskSpace = NoxDefaults.defaultMinFreeDiskSpace
         }
 
+        browserDesktopMode = defaults.bool(forKey: "Nox.browserDesktopMode")
         if let value = defaults.object(forKey: "Nox.browserSafeAreaTransparency") as? Double, value.isFinite {
             browserSafeAreaTransparency = min(max(value, 0), 1)
         }

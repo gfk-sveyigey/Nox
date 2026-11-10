@@ -182,11 +182,12 @@ extension VideoBrowserView {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: barControlHeight, height: barControlHeight)
+                .frame(width: 30, height: 30)
                 .contentShape(Circle())
         }
+        .controlSize(.small)
         .buttonBorderShape(.circle)
         .browserGlassButton()
         .disabled(disabled)

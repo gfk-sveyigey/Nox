@@ -37,6 +37,7 @@ extension VideoBrowserView {
     /// 只看网页内容；首页的书签列表不在这里处理。`adjustedContentInset`
     /// 用来兼容安全区 / 内容内边距，避免滚到 -0 而不是真正的顶部。
     func scrollBrowserToTop() {
+        isScrolledDown = false
         guard !showingHome else { return }
 
         let scrollView = parser.browserWebView.scrollView
