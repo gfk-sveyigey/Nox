@@ -16,6 +16,16 @@ struct NotificationSettingsView: View {
         Form {
             Section {
                 Toggle(isOn: Binding(
+                    get: { appState.foregroundNotificationsEnabled },
+                    set: {
+                        appState.foregroundNotificationsEnabled = $0
+                        appState.persist()
+                    }
+                )) {
+                    Text(L("App 前台时显示通知"))
+                }
+
+                Toggle(isOn: Binding(
                     get: { appState.keepAliveNotifications },
                     set: { manager.setKeepAliveNotifications($0) }
                 )) {

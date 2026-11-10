@@ -5061,6 +5061,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "백그라운드 유지 중단 시 알림" } }
       }
     },
+    "App 前台时显示通知" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mitteilungen anzeigen, wenn die App geöffnet ist" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show notifications while the app is open" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les notifications lorsque l’app est ouverte" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "앱이 열려 있을 때 알림 표시" } }
+      }
+    },
     "开启后，画中画或持续处理被系统中断时会自动改用静音音频继续下载。这会占用音频会话，可能打断其他 App 正在播放的声音。" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Wenn Bild-in-Bild oder kontinuierliche Verarbeitung vom System unterbrochen wird, wechselt Nox zur stillen Audiowiedergabe, um den Download fortzusetzen. Dadurch wird eine Audiositzung belegt und die Wiedergabe anderer Apps kann unterbrochen werden." } },

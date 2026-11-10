@@ -59,6 +59,8 @@ public final class AppState: ObservableObject {
     @Published public var keepAliveNotifications = false
     /// 下载完成后是否发送本地通知。
     @Published public var downloadCompletionNotifications = false
+    /// App 位于前台时是否展示通知横幅和声音。
+    @Published public var foregroundNotificationsEnabled = true
     /// 实时活动与通知里是否显示具体任务名；关闭时只显示「有任务完成」。
     @Published public var showsTaskNames = true
     /// 是否使用 Nox 自定义的灵动岛 / 实时活动。
@@ -106,6 +108,7 @@ public final class AppState: ObservableObject {
     private let keepAliveSilentAudioFallbackKey = "Nox.keepAliveSilentAudioFallback"
     private let keepAliveNotificationsKey = "Nox.keepAliveNotifications"
     private let downloadCompletionNotificationsKey = "Nox.downloadCompletionNotifications"
+    private let foregroundNotificationsEnabledKey = "Nox.foregroundNotificationsEnabled"
     private let showsTaskNamesKey = "Nox.showsTaskNames"
     private let customLiveActivityEnabledKey = "Nox.customLiveActivityEnabled"
     private let customLiveActivityDuringContinuedProcessingKey = "Nox.customLiveActivityDuringContinuedProcessing"
@@ -227,6 +230,7 @@ public final class AppState: ObservableObject {
         defaults.set(keepAliveSilentAudioFallback, forKey: keepAliveSilentAudioFallbackKey)
         defaults.set(keepAliveNotifications, forKey: keepAliveNotificationsKey)
         defaults.set(downloadCompletionNotifications, forKey: downloadCompletionNotificationsKey)
+        defaults.set(foregroundNotificationsEnabled, forKey: foregroundNotificationsEnabledKey)
         defaults.set(showsTaskNames, forKey: showsTaskNamesKey)
         defaults.set(customLiveActivityEnabled, forKey: customLiveActivityEnabledKey)
         defaults.set(customLiveActivityDuringContinuedProcessing, forKey: customLiveActivityDuringContinuedProcessingKey)
@@ -328,6 +332,7 @@ public final class AppState: ObservableObject {
         keepAliveNotifications = defaults.bool(forKey: keepAliveNotificationsKey)
         // 缺键时默认关闭完成通知；显示任务名默认开启，保持原有行为。
         downloadCompletionNotifications = defaults.bool(forKey: downloadCompletionNotificationsKey)
+        foregroundNotificationsEnabled = defaults.object(forKey: foregroundNotificationsEnabledKey) as? Bool ?? true
         showsTaskNames = defaults.object(forKey: showsTaskNamesKey) as? Bool ?? true
         customLiveActivityEnabled = defaults.object(forKey: customLiveActivityEnabledKey) as? Bool ?? true
         customLiveActivityDuringContinuedProcessing = defaults.bool(forKey: customLiveActivityDuringContinuedProcessingKey)
