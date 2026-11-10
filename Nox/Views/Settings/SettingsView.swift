@@ -31,7 +31,7 @@ struct SettingsView: View {
 
     // MARK: - 设置项
 
-    /// 设置项按用途分成四组，但不显示分组标题，只用间距做视觉分割。
+    /// 设置项按用途分成五组，但不显示分组标题，只用间距做视觉分割。
     @ViewBuilder
     var settingsSections: some View {
         Section {
@@ -63,14 +63,7 @@ struct SettingsView: View {
                 KeepAliveSettingsView(manager: manager)
             }
 
-            settingsLink(
-                L("储存空间"),
-                subtitle: L("查看储存占用，并清理缓存和临时文件。"),
-                systemImage: "internaldrive",
-                iconColor: .orange
-            ) {
-                StorageSettingsView(manager: manager)
-            }
+
         }
         Section {
             settingsLink(
@@ -101,6 +94,18 @@ struct SettingsView: View {
                 )
             }
 
+
+        }
+
+        Section {
+            settingsLink(
+                L("储存空间"),
+                subtitle: L("查看储存占用，并清理缓存和临时文件。"),
+                systemImage: "internaldrive",
+                iconColor: .orange
+            ) {
+                StorageSettingsView(manager: manager)
+            }
             settingsLink(
                 L("日志"),
                 subtitle: L("查看运行日志，帮助定位问题。"),

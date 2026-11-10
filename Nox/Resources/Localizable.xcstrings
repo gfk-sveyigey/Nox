@@ -1,6 +1,202 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"主要功能": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Features"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Funktionen"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Fonctionnalités"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "주요 기능"
+      }
+    }
+  }
+},
+"作者": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Developer"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Entwickler"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Développeur"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "개발자"
+      }
+    }
+  }
+},
+"项目地址": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Project on GitHub"
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Projekt auf GitHub"
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Projet sur GitHub"
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "GitHub 프로젝트"
+      }
+    }
+  }
+},
+"浏览、发现，保存你喜欢的视频。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Browse, discover, and save videos you love."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Videos entdecken und speichern."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Explorez et enregistrez vos vidéos préférées."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "웹을 탐색하고 마음에 드는 동영상을 저장하세요."
+      }
+    }
+  }
+},
+"使用内置浏览器访问网站并收藏常用网页。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Browse websites and bookmark your favorites."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Websites besuchen und als Lesezeichen speichern."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Parcourez le Web et ajoutez vos sites favoris."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "내장 브라우저로 웹사이트를 방문하고 북마크를 저장하세요."
+      }
+    }
+  }
+},
+"通过解析插件或资源嗅探发现可下载内容。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Find downloadable media with plugins and resource detection."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Medien mit Plugins und Ressourcenerkennung finden."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Trouvez des médias à télécharger grâce aux plugins et à la détection de ressources."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "플러그인과 리소스 감지로 다운로드할 미디어를 찾으세요."
+      }
+    }
+  }
+},
+"管理下载任务，支持暂停、继续和后台下载。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Manage tasks with pause, resume, and background downloading."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Downloads verwalten, pausieren und im Hintergrund fortsetzen."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Gérez les téléchargements, mettez-les en pause et reprenez-les en arrière-plan."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "작업을 관리하고 다운로드를 일시 정지하거나 백그라운드에서 계속하세요."
+      }
+    }
+  }
+},
 "解析": {
   "localizations": {
     "en": {

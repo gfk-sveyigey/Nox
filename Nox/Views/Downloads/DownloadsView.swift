@@ -10,6 +10,9 @@ struct DownloadsView: View {
     @ObservedObject var manager: DownloadManager
     @ObservedObject var localization = LocalizationManager.shared
 
+    var menuRequest: UUID
+    @State private var showingActionMenu = false
+
     @State var showingClearConfirmation = false
     @State private var detailsRecord: DownloadRecord?
     @State var shareFailureMessage: String?
@@ -44,7 +47,8 @@ struct DownloadsView: View {
     @State var tapFlashSelection = Set<UUID>()
     @State var tapFlashToken = UUID()
 
-    init(appState: AppState, manager: DownloadManager) {
+    init(appState: AppState, manager: DownloadManager, menuRequest: UUID) {
+        self.menuRequest = menuRequest
         self.appState = appState
         _manager = ObservedObject(wrappedValue: manager)
     }
@@ -84,7 +88,7 @@ struct DownloadsView: View {
                 if !appState.downloads.isEmpty { toolbarContent }
             }
             // 多选时隐藏底部标签栏，避免与悬浮操作按钮抢位置。
-            .toolbar(editMode.isEditing ? .hidden : .visible, for: .tabBar)
+            .toolbar(.visible, for: .tabBar)
             .alert(L("清空下载？"), isPresented: $showingClearConfirmation) {
                 Button(L("取消"), role: .cancel) {}
                 Button(L("清空"), role: .destructive) {
@@ -111,6 +115,10 @@ struct DownloadsView: View {
             }
             .sheet(item: $detailsRecord) { record in
                 DownloadDetailsView(taskID: record.id, appState: appState, manager: manager)
+            }
+            .onChange(of: menuRequest) { _, _ in showingActionMenu = true }
+            .confirmationDialog(L("更多操作"), isPresented: $showingActionMenu, titleVisibility: .visible) {
+                taskMenuContents
             }
             .onChange(of: editMode) { _, newValue in
                 if !newValue.isEditing {
@@ -489,9 +497,6 @@ struct DownloadsView: View {
                 .accessibilityLabel(L("筛选任务"))
             }
         }
-        ToolbarItem(placement: .topBarTrailing) {
-            multiFunctionMenu
-        }
         if editMode.isEditing {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button(allSelected ? L("取消全选") : L("全选")) {
@@ -526,8 +531,8 @@ struct DownloadsView: View {
         Set(visibleRecords.map(\.status))
     }
 
-    var multiFunctionMenu: some View {
-        Menu {
+    @ViewBuilder
+    var taskMenuContents: some View {
             if !editMode.isEditing {
                 Section {
                     Button {
@@ -595,10 +600,7 @@ struct DownloadsView: View {
                 }
                 .disabled(actionRecords.isEmpty)
             }
-        } label: {
-            Image(systemName: "ellipsis")
-        }
-        .accessibilityLabel(L("更多操作"))
+
     }
 
     // MARK: - 多选批量操作

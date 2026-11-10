@@ -18,6 +18,8 @@ struct ContentView: View {
     @State private var browserAllowsMinimization = false
     @State private var browserCanParse = false
     @State private var parseRequest = UUID()
+    @State private var taskMenuRequest = UUID()
+    @State private var showingAbout = false
     @State private var didLogSession = false
     @State private var startupFinished = false
     @State private var didPrepareStartup = false
@@ -34,6 +36,16 @@ struct ContentView: View {
         .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserParseAvailability.self) { browserCanParse = $0 }
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
+        .sheet(isPresented: $showingAbout) {
+            NavigationStack {
+                AboutView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(L("完成")) { showingAbout = false }
+                        }
+                    }
+            }
+        }
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -141,10 +153,31 @@ struct ContentView: View {
         selectedTab = value
     }
 
+    private var contextActionTitle: String {
+        selectedTab == 1 ? L("更多操作") : selectedTab == 2 ? L("关于") : L("解析")
+    }
+
+    private var contextActionImage: String {
+        selectedTab == 1 ? "ellipsis" : selectedTab == 2 ? "info.circle" : "dot.radiowaves.left.and.right"
+    }
+
+    private var contextActionEnabled: Bool {
+        selectedTab != 0 || (browserAllowsMinimization && browserCanParse)
+    }
+
+    private func activateContextAction() {
+        switch selectedTab {
+        case 1: taskMenuRequest = UUID()
+        case 2: showingAbout = true
+        default:
+            if contextActionEnabled { parseRequest = UUID() }
+        }
+    }
+
     private var tabSelection: Binding<Int> {
         Binding(get: { selectedTab }, set: { value in
             if value == 3 {
-                if browserCanParse { parseRequest = UUID() }
+                activateContextAction()
             } else {
                 selectTab(value)
             }
@@ -162,32 +195,28 @@ struct ContentView: View {
             TabView(selection: tabSelection) {
                 Tab(L("浏览"), systemImage: "safari", value: 0) { browser }
                 Tab(L("任务"), systemImage: "arrow.down.circle", value: 1) {
-                    DownloadsView(appState: appState, manager: downloadManager)
+                    DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
                 }
                 Tab(L("设置"), systemImage: "gearshape", value: 2) {
                     SettingsView(manager: downloadManager)
                 }
-                if selectedTab == 0 && browserAllowsMinimization {
-                    Tab(value: 3, role: .search) { Color.clear } label: {
-                        Label(L("解析"), systemImage: "dot.radiowaves.left.and.right")
+                Tab(value: 3, role: .search) { Color.clear } label: {
+                        Label(contextActionTitle, systemImage: contextActionImage)
                     }
-                }
             }
-            .background(ParseTabAvailability(isEnabled: browserCanParse) { parseRequest = UUID() })
+            .background(ParseTabAvailability(isEnabled: contextActionEnabled) { activateContextAction() })
         } else {
             TabView(selection: tabSelection) {
                 browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
-                DownloadsView(appState: appState, manager: downloadManager)
+                DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
                     .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }.tag(1)
                 SettingsView(manager: downloadManager)
                     .tabItem { Label(L("设置"), systemImage: "gearshape") }.tag(2)
-                if selectedTab == 0 && browserAllowsMinimization {
-                    Color.clear
-                        .tabItem { Label(L("解析"), systemImage: "dot.radiowaves.left.and.right") }
-                        .tag(3)
-                }
+                Color.clear
+                    .tabItem { Label(contextActionTitle, systemImage: contextActionImage) }
+                    .tag(3)
             }
-            .background(ParseTabAvailability(isEnabled: browserCanParse) { parseRequest = UUID() })
+            .background(ParseTabAvailability(isEnabled: contextActionEnabled) { activateContextAction() })
         }
     }
 
@@ -320,4 +349,3 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
         }
     }
 }
-
