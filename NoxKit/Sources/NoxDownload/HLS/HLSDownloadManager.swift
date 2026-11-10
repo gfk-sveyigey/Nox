@@ -78,6 +78,17 @@ extension DownloadManager {
                 Task { @MainActor in
                     guard let self, self.isCurrentRun(id, token: token) else { return }
                     self.hlsProgress[id] = progress
+                    // Persist the manifest's segment count as soon as it is known,
+                    // even before the first segment has finished downloading.
+                    if progress.total > 0,
+                       var live = self.store.downloads.first(where: { $0.id == id }),
+                       live.segmentCount != progress.total {
+                        live.segmentCount = progress.total
+                        if progress.estimatedTotalBytes > 0 {
+                            live.totalBytes = progress.estimatedTotalBytes
+                        }
+                        self.store.updateDownload(live)
+                    }
                     self.publishProgressIfNeeded()
                 }
             }
@@ -176,6 +187,7 @@ extension DownloadManager {
                 record.progress = 1
                 record.errorMessage = nil
                 record.receivedBytes = mergedSize
+                record.totalBytes = mergedSize
             }
         } catch {
             record.status = .failed

@@ -129,6 +129,8 @@ extension DownloadManager {
 
             if isHLS {
                 if let snapshot = hlsProgress[id], snapshot.total > 0 {
+                    updated.segmentCount = snapshot.total
+                    if total > 0 { updated.totalBytes = total }
                     updated.progress = min(
                         Double(snapshot.completed) / Double(snapshot.total),
                         1
