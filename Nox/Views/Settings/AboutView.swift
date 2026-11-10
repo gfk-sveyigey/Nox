@@ -44,10 +44,8 @@ struct AboutView: View {
 
                     Link(destination: URL(string: "https://github.com/gfk-sveyigey/Nox")!) {
                         infoCard(title: L("项目地址"), detail: "github.com/gfk-sveyigey/Nox", trailingIcon: "arrow.up.right") {
-                            Image("GitHubMark")
-                                .resizable()
-                                .renderingMode(.template)
-                                .scaledToFit()
+                            Image(systemName: "link.circle")
+                                .font(.system(size: 32, weight: .regular))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -59,6 +57,8 @@ struct AboutView: View {
                             Image(systemName: "checkmark.seal")
                                 .font(.system(size: 21, weight: .medium))
                                 .foregroundStyle(.pink)
+                                .frame(width: 40, height: 40)
+                                .background(.pink.opacity(0.1), in: Circle())
                         }
                     }
                 }
@@ -67,7 +67,10 @@ struct AboutView: View {
             .padding(.top, 16)
             .padding(.bottom, 24)
         }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .buttonStyle(.plain)
+        .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .navigationTitle(L("关于"))
         .navigationBarTitleDisplayMode(.inline)
     }

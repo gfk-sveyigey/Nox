@@ -37,6 +37,9 @@ struct SettingsView: View {
                             }
                         }
                 }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemGroupedBackground))
             }
         }
         .onChange(of: aboutRequest) { _, _ in
