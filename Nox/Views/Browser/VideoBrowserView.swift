@@ -131,7 +131,7 @@ struct VideoBrowserView: View {
                             Spacer(minLength: 0)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                        .padding(.leading, 20)
+                        .padding(.leading, 28)
                         .padding(.trailing, 16)
                         .padding(.bottom, 16)
                     }
