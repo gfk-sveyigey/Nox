@@ -290,11 +290,11 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
             guard !UIAccessibility.isReduceMotionEnabled,
                   transitionSnapshot == nil,
                   let bar = observedTabs?.tabBar,
-                  let container = bar.superview, bar.window != nil, !bar.isHidden,
+                  let container = bar.window, !bar.isHidden,
                   let snapshot = bar.snapshotView(afterScreenUpdates: false) else { return }
             // Capture BEFORE SwiftUI changes the tab collection. Observing the
             // item count after layout is too late to capture the old appearance.
-            snapshot.frame = bar.frame
+            snapshot.frame = bar.convert(bar.bounds, to: container)
             snapshot.isUserInteractionEnabled = false
             snapshot.accessibilityElementsHidden = true
             container.addSubview(snapshot)
@@ -326,12 +326,13 @@ private struct ParseTabAvailability: UIViewControllerRepresentable {
                 if actionEnabled { onParse?() }
                 return false
             }
-            let allowed = originalDelegate?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
-            if allowed, tabBarController.selectedViewController !== viewController,
+            // SwiftUI's delegate may synchronously update the selection and
+            // remove the search tab. Capture the old bar before forwarding.
+            if tabBarController.selectedViewController !== viewController,
                tabBarController.viewControllers?.count == 4 {
                 prepareLayoutTransition()
             }
-            return allowed
+            return originalDelegate?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
         }
 
         override func responds(to selector: Selector!) -> Bool {
