@@ -42,16 +42,6 @@ struct ContentView: View {
         .alert(L("提示"), isPresented: Binding(get: { actionNotice != nil }, set: { if !$0 { actionNotice = nil } })) {
             Button(L("确定"), role: .cancel) { actionNotice = nil }
         } message: { Text(actionNotice ?? "") }
-        .sheet(isPresented: $showingAbout) {
-            NavigationStack {
-                AboutView()
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(L("完成")) { showingAbout = false }
-                        }
-                    }
-            }
-        }
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -193,7 +183,7 @@ struct ContentView: View {
     private var tabSelection: Binding<Int> {
         Binding(get: { selectedTab }, set: { value in
             if value == 3 {
-                activateContextAction()
+                DispatchQueue.main.async { activateContextAction() }
             } else {
                 selectTab(value)
             }
@@ -214,7 +204,7 @@ struct ContentView: View {
                     DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
                 }
                 Tab(L("设置"), systemImage: "gearshape", value: 2) {
-                    SettingsView(manager: downloadManager)
+                    SettingsView(manager: downloadManager, showingAbout: $showingAbout)
                 }
                 Tab(value: 3, role: .search) { Color.clear } label: {
                         Label(contextActionTitle, systemImage: contextActionImage)
@@ -226,7 +216,7 @@ struct ContentView: View {
                 browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
                 DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
                     .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }.tag(1)
-                SettingsView(manager: downloadManager)
+                SettingsView(manager: downloadManager, showingAbout: $showingAbout)
                     .tabItem { Label(L("设置"), systemImage: "gearshape") }.tag(2)
                 Color.clear
                     .tabItem { Label(contextActionTitle, systemImage: contextActionImage) }

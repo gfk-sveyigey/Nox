@@ -13,9 +13,11 @@ struct SettingsView: View {
     @ObservedObject var localization = LocalizationManager.shared
     @ObservedObject var manager: DownloadManager
     @ObservedObject var registry = VideoSiteParserRegistry.shared
+    @Binding var showingAbout: Bool
 
-    init(manager: DownloadManager) {
+    init(manager: DownloadManager, showingAbout: Binding<Bool>) {
         _manager = ObservedObject(wrappedValue: manager)
+        _showingAbout = showingAbout
     }
 
     var body: some View {
@@ -26,6 +28,16 @@ struct SettingsView: View {
             .contentMargins(.top, 20, for: .scrollContent)
             .navigationTitle(L("设置"))
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showingAbout) {
+                NavigationStack {
+                    AboutView()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button(L("完成")) { showingAbout = false }
+                            }
+                        }
+                }
+            }
         }
     }
 
