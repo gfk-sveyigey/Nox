@@ -127,7 +127,7 @@ struct SettingsView: View {
                 systemImage: "doc.text",
                 iconColor: .brown
             ) {
-                LogsView()
+                LogsView(manager: manager)
             }
         }
 

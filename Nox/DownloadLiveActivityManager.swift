@@ -20,6 +20,7 @@ final class DownloadLiveActivityManager {
     private var activity: Activity<DownloadActivityAttributes>?
     private var lastState: DownloadActivityAttributes.ContentState?
     private var lastUpdateAt = Date.distantPast
+    private var lastDiagnosticAt = Date.distantPast
     /// 结束旧活动的清理任务；新建活动前要先等它完成，
     /// 否则旧的 ended / stale 活动仍会和新的抢灵动岛。
     private var cleanupTask: Task<Void, Never>?
@@ -170,7 +171,7 @@ final class DownloadLiveActivityManager {
             lastState = nil
             lastUpdateAt = .distantPast
             LogStore.shared.info(
-                "live activity adopted · usable \(usable.count) · stale \(obsolete.count)"
+                "[activity] adopted · usable \(usable.count) · stale \(obsolete.count)"
             )
             enqueueCleanup(existing.filter { $0.id != adopted.id })
         } else {
@@ -191,7 +192,7 @@ final class DownloadLiveActivityManager {
     private func enqueueCleanup(_ activities: [Activity<DownloadActivityAttributes>]) {
         let scheduled = activities.filter { cleaningIDs.insert($0.id).inserted }
         guard !scheduled.isEmpty else { return }
-        LogStore.shared.info("live activity cleanup · ending \(scheduled.count)")
+        LogStore.shared.info("[activity] cleanup · ending \(scheduled.count)")
 
         let previous = cleanupTask
         cleanupTask = Task { @MainActor [scheduled] in
@@ -287,11 +288,11 @@ final class DownloadLiveActivityManager {
             lastState = state
             lastUpdateAt = .now
             LogStore.shared.info(
-                "live activity started · app=\(UIApplication.shared.applicationState.rawValue)"
+                "[activity] started · app=\(UIApplication.shared.applicationState.rawValue)"
             )
         } catch {
             LogStore.shared.warning(
-                "live activity start failed · \(error.localizedDescription)"
+                "[activity] start failed · \(error.localizedDescription)"
             )
         }
     }
@@ -324,6 +325,10 @@ final class DownloadLiveActivityManager {
             staleDate: now.addingTimeInterval(Self.staleInterval),
             relevanceScore: 100
         )
+        if appState.verboseLogging, force || now.timeIntervalSince(lastDiagnosticAt) >= 15 {
+            lastDiagnosticAt = now
+            LogStore.shared.info("[activity.diag] update requested · id=\(activity.id) state=\(activity.activityState) app=\(UIApplication.shared.applicationState.rawValue) progress=\(state.progress) tasks=\(state.activeCount)")
+        }
         Task { await activity.update(content) }
     }
 
@@ -345,6 +350,6 @@ final class DownloadLiveActivityManager {
                 dismissalPolicy: .after(Date().addingTimeInterval(3))
             )
         }
-        LogStore.shared.info("live activity ended")
+        LogStore.shared.info("[activity] ended")
     }
 }

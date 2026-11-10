@@ -29,7 +29,7 @@ public final class BackgroundExecutionGrace {
         }
 
         guard identifier != .invalid else {
-            LogStore.shared.warning("background grace unavailable · \(reason)")
+            LogStore.shared.warning("[keepalive.grace] unavailable · \(reason)")
             return nil
         }
 
@@ -37,7 +37,7 @@ public final class BackgroundExecutionGrace {
         startedAt.lock()
         starts[token] = Date()
         startedAt.unlock()
-        LogStore.shared.info("background grace begin · \(reason)")
+        LogStore.shared.info("[keepalive.grace] begin · \(reason)")
         return token
     }
 
@@ -50,7 +50,7 @@ public final class BackgroundExecutionGrace {
         startedAt.unlock()
         UIApplication.shared.endBackgroundTask(identifier)
         LogStore.shared.info(
-            String(format: "background grace end · %@ · %.1fs", reason, duration)
+            String(format: "[keepalive.grace] end · %@ · %.1fs", reason, duration)
         )
     }
 
@@ -61,6 +61,6 @@ public final class BackgroundExecutionGrace {
         startedAt.unlock()
         // 到期回调必须调用 endBackgroundTask，否则系统会强杀进程。
         UIApplication.shared.endBackgroundTask(identifier)
-        LogStore.shared.warning("background grace expired · \(reason)")
+        LogStore.shared.warning("[keepalive.grace] expired · \(reason)")
     }
 }

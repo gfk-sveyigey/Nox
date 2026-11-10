@@ -84,12 +84,12 @@ public final class KeepAliveCoordinator: ObservableObject {
         }
     }
 
-    /// 是否输出画中画详细诊断日志（设置页开关）。
-    public var piPVerboseLogging = false {
+    /// 是否输出所有后台方式的详细诊断日志（日志页全局开关）。
+    public var verboseLogging = false {
         didSet {
-            guard piPVerboseLogging != oldValue else { return }
-            pictureInPicture.verboseLogging = piPVerboseLogging
-            onLog?("画中画详细日志已\(piPVerboseLogging ? "开启" : "关闭")")
+            guard verboseLogging != oldValue else { return }
+            pictureInPicture.verboseLogging = verboseLogging
+            onLog?("[diagnostics] verbose=\(verboseLogging)")
         }
     }
 
@@ -98,11 +98,10 @@ public final class KeepAliveCoordinator: ObservableObject {
     /// 保活无法维持且未降级恢复时通知下载管理器暂停前台会话任务。
     public var onInterruption: (() -> Void)?
 
-    /// 详细诊断日志（只在画中画相关时输出）。
+    /// 所有后台方式共用的详细诊断日志。
     private func verboseLog(_ message: @autoclosure () -> String) {
-        guard piPVerboseLogging,
-              preferredMode == .pictureInPicture || activeMode == .pictureInPicture else { return }
-        onLog?("[keepalive.pip.diag] \(message())")
+        guard verboseLogging else { return }
+        onLog?("[keepalive.diag] \(message())")
     }
 
     private func logTransition(_ event: String, detail: String? = nil) {
@@ -153,7 +152,7 @@ public final class KeepAliveCoordinator: ObservableObject {
     public init() {
         pictureInPicture.coexistenceFallback = piPCoexistenceFallback
         pictureInPicture.windowHeight = pipWindowHeight
-        pictureInPicture.verboseLogging = piPVerboseLogging
+        pictureInPicture.verboseLogging = verboseLogging
         // 回调可能来自非主线程（音频中断通知等），显式跳回主线程再改状态。
         silentAudio.onInterruption = { [weak self] in
             Task { @MainActor in self?.handleInterruption() }

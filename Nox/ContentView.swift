@@ -86,14 +86,14 @@ struct ContentView: View {
 
             // 冷启动时 `scenePhase` 的 onChange 不一定触发，这里补一次前台处理，
             // 让「启动即常驻」模式在首次进入界面时就能拉起保活。
-            downloadManager.handleScenePhase(isActive: scenePhase == .active)
+            downloadManager.handleScenePhase(isActive: scenePhase == .active, isBackground: scenePhase == .background)
             guard !didLogSession else { return }
             didLogSession = true
             LogStore.shared.recordSessionStart()
         }
         // 回到前台：重置速度采样（后台期间定时器不触发），并让后台保活自愈。
         .onChange(of: scenePhase) { _, phase in
-            downloadManager.handleScenePhase(isActive: phase == .active)
+            downloadManager.handleScenePhase(isActive: phase == .active, isBackground: phase == .background)
 
             if phase == .active {
                 incomingURL.sceneDidBecomeActive()

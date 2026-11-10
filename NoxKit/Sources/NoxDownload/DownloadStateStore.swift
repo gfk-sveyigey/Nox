@@ -29,7 +29,7 @@ public protocol DownloadStateStore: AnyObject {
     var keepAliveLifetime: KeepAliveLifetime { get set }
     var pipCoexistenceFallback: PiPCoexistenceFallback { get set }
     var pipWindowHeight: Double { get set }
-    var pipVerboseLogging: Bool { get set }
+    var verboseLogging: Bool { get set }
 
     func addDownload(_ record: DownloadRecord)
     func updateDownload(_ record: DownloadRecord, persist: Bool)

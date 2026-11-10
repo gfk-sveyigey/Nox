@@ -48,6 +48,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
     var lastProgressPublishTime: TimeInterval = 0
     /// 限频检查整机剩余空间，避免每秒都读文件系统。
     var lastStorageCheck = Date.distantPast
+    var lastDiagnosticSnapshotAt = Date.distantPast
 
     /// 后台保活：有活跃下载时启动，全部结束 / 取消时停止。
     let keepAlive: KeepAliveCoordinator
@@ -217,7 +218,7 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         keepAlive.onInterruption = { [weak self] in
             self?.pauseForKeepAliveInterruption()
         }
-        keepAlive.piPVerboseLogging = store.pipVerboseLogging
+        keepAlive.verboseLogging = store.verboseLogging
         keepAlive.preferredMode = store.keepAliveMode
         keepAlive.piPCoexistenceFallback = store.pipCoexistenceFallback
         keepAlive.lifetime = store.keepAliveLifetime
@@ -396,11 +397,11 @@ public final class DownloadManager: NSObject, ObservableObject, URLSessionDownlo
         keepAlive.pipWindowHeight = height
     }
 
-    /// 设置页切换「画中画详细日志」。
-    public func setPiPVerboseLogging(_ enabled: Bool) {
-        store.pipVerboseLogging = enabled
+    /// 日志页切换全局详细诊断。
+    public func setVerboseLogging(_ enabled: Bool) {
+        store.verboseLogging = enabled
         store.persist()
-        keepAlive.piPVerboseLogging = enabled
+        keepAlive.verboseLogging = enabled
     }
 
     // MARK: - 对外接口

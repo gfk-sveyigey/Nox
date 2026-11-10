@@ -144,6 +144,13 @@ extension DownloadManager {
             store.updateDownload(updated, persist: false)
         }
 
+        if store.verboseLogging, Date().timeIntervalSince(lastDiagnosticSnapshotAt) >= 15 {
+            lastDiagnosticSnapshotAt = .now
+            let bytes = transfers.values.reduce(Int64(0)) { $0 + $1.bytesReceived }
+            let speed = transfers.values.reduce(0.0) { $0 + $1.bytesPerSecond }
+            LogStore.shared.info("[download.diag] snapshot · mode=\(store.keepAliveMode.rawValue) app=\(UIApplication.shared.applicationState.rawValue) tasks=\(activeRecords.count) bytes=\(bytes) bytesPerSecond=\(Int64(speed)) segments=\(contexts.count + hlsSegmentContexts.count)")
+        }
+
         // 系统持续处理代表整个队列，进度统计需包含尚未占用并发槽位的排队任务。
         let processingRecords = store.downloads.filter {
             $0.status == .queued || $0.status == .downloading

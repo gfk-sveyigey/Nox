@@ -76,8 +76,8 @@ public final class AppState: ObservableObject {
     /// 画中画悬浮窗高度（pt）。0 = 最小化（实际 0.1pt，视觉隐藏），越大窗口越高。
     @Published public var pipWindowHeight: Double = AppState.defaultPiPWindowHeight
 
-    /// 画中画详细日志：开启后输出启动、就绪判断、重试和系统回调等诊断信息。
-    @Published public var pipVerboseLogging = false
+    /// 全局详细日志：覆盖后台方式、网络传输和实时活动诊断。
+    @Published public var verboseLogging = false
 
     /// 画中画窗口高度可选范围：0（最小/隐藏）… 最大可见小窗。
     public static let pipWindowHeightRange: ClosedRange<Double> = NoxDefaults.pipWindowHeightRange
@@ -115,7 +115,7 @@ public final class AppState: ObservableObject {
     private let pipCoexistenceFallbackKey = "Nox.pipCoexistenceFallback"
     private let keepAliveLifetimeKey = "Nox.keepAliveLifetime"
     private let pipWindowHeightKey = "Nox.pipWindowHeight"
-    private let pipVerboseLoggingKey = "Nox.pipVerboseLogging"
+    private let verboseLoggingKey = "Nox.verboseLogging"
     /// 旧版「是否以最小化显示」开关的键，仅用于读盘迁移。
     private let pipMinimizedKey = "Nox.pipMinimized"
     private let appearanceModeKey = "Nox.appearanceMode"
@@ -237,7 +237,7 @@ public final class AppState: ObservableObject {
         defaults.set(pipCoexistenceFallback.rawValue, forKey: pipCoexistenceFallbackKey)
         defaults.set(keepAliveLifetime.rawValue, forKey: keepAliveLifetimeKey)
         defaults.set(pipWindowHeight, forKey: pipWindowHeightKey)
-        defaults.set(pipVerboseLogging, forKey: pipVerboseLoggingKey)
+        defaults.set(verboseLogging, forKey: verboseLoggingKey)
         defaults.set(browserDesktopMode, forKey: "Nox.browserDesktopMode")
         defaults.set(appearanceMode.rawValue, forKey: appearanceModeKey)
         defaults.set(Array(disabledSiteIDs).sorted(), forKey: disabledSitesKey)
@@ -356,7 +356,8 @@ public final class AppState: ObservableObject {
             pipWindowHeight = Self.defaultPiPWindowHeight
         }
 
-        pipVerboseLogging = defaults.bool(forKey: pipVerboseLoggingKey)
+        verboseLogging = (defaults.object(forKey: verboseLoggingKey) as? Bool)
+            ?? defaults.bool(forKey: "Nox.pipVerboseLogging")
 
         var disabled = Set(defaults.stringArray(forKey: disabledSitesKey) ?? [])
         // 通用 Sniffer 的旧 ID 是 "generic"，迁移到 "sniffer"。

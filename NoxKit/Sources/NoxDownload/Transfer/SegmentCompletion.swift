@@ -253,8 +253,15 @@ extension DownloadManager {
         guard let error else { return }
 
         let identifier = task.taskIdentifier
+        let sessionName = session.configuration.identifier ?? "default"
+        let nsError = error as NSError
+        let errorDomain = nsError.domain
+        let errorCode = nsError.code
 
         Task { @MainActor in
+            if self.store.verboseLogging {
+                LogStore.shared.info("[download.diag] task completed with error · session=\(sessionName) task=\(identifier) domain=\(errorDomain) code=\(errorCode)")
+            }
             if let context = self.hlsSegmentContexts.removeValue(forKey: identifier) {
                 context.continuation.resume(throwing: error)
                 return
@@ -275,6 +282,11 @@ extension DownloadManager {
         forBackgroundURLSession session: URLSession
     ) {
         let identifier = session.configuration.identifier ?? "com.aholic.nox.downloads"
+        Task { @MainActor in
+            if self.store.verboseLogging {
+                LogStore.shared.info("[download.diag] background events finished · session=\(identifier)")
+            }
+        }
         BackgroundSessionEvents.shared.complete(identifier: identifier)
     }
 }

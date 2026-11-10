@@ -122,19 +122,7 @@ struct KeepAliveSettingsView: View {
                 }
             }
 
-            // 详细日志只影响画中画保活的诊断输出，不改变保活行为。
-            if appState.keepAliveMode == .pictureInPicture {
-                Section {
-                    Toggle(isOn: Binding(
-                        get: { appState.pipVerboseLogging },
-                        set: { manager.setPiPVerboseLogging($0) }
-                    )) {
-                        Text(L("详细日志"))
-                    }
-                } footer: {
-                    Text(L("开启后记录画中画启动、就绪判断、重试及系统回调等诊断信息，日志量会明显增加；排查完成后建议关闭。"))
-                }
-            }
+
         }
         .navigationTitle(L("后台下载"))
         .navigationBarTitleDisplayMode(.inline)

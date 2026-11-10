@@ -12,6 +12,7 @@ struct TaskFilterAvailabilityPreference: PreferenceKey {
 }
 
 struct DownloadsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var appState: AppState
     @ObservedObject var manager: DownloadManager
     @ObservedObject var localization = LocalizationManager.shared
@@ -180,7 +181,13 @@ struct DownloadsView: View {
 
     /// 与设置页保持一致，空页面也使用分组列表背景色。
     var pageBackgroundColor: Color {
-        Color(.systemGroupedBackground)
+        resolvedColor(.systemGroupedBackground)
+    }
+
+    private func resolvedColor(_ color: UIColor) -> Color {
+        Color(uiColor: color.resolvedColor(with: UITraitCollection(
+            userInterfaceStyle: colorScheme == .dark ? .dark : .light
+        )))
     }
 
     /// 双指滑动开始时进入多选；已经在多选态时不重复触发动画。
@@ -212,6 +219,7 @@ struct DownloadsView: View {
         List(selection: listSelection) { rows }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
+            .foregroundStyle(resolvedColor(.label))
             .contentMargins(.top, 20, for: .scrollContent)
             .listSectionSpacing(12)
             .onPreferenceChange(SelectableRowFrameKey.self) { rowFrames = $0 }
@@ -277,6 +285,7 @@ struct DownloadsView: View {
                     )
                 }
             }
+            .listRowBackground(resolvedColor(.secondarySystemGroupedBackground))
             .tag(record.id)
             // 用 swipeActions 而不是 onDelete：后者会让每行在编辑态多出一个
             // 左侧红色减号按钮，与悬浮删除按钮重复。

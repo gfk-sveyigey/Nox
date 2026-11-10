@@ -8,6 +8,8 @@ import NoxDownload
 import NoxState
 
 struct LogsView: View {
+    @EnvironmentObject var appState: AppState
+    @ObservedObject var manager: DownloadManager
     @ObservedObject var store = LogStore.shared
     @ObservedObject var localization = LocalizationManager.shared
 
@@ -22,6 +24,10 @@ struct LogsView: View {
     var body: some View {
         List {
             Section {
+                Toggle(L("详细日志"), isOn: Binding(
+                    get: { appState.verboseLogging },
+                    set: { manager.setVerboseLogging($0) }
+                ))
                 SettingsPickerRow(
                     title: L("日志保留"),
                     selection: $store.retentionDays,
