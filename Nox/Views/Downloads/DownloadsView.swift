@@ -335,25 +335,40 @@ struct DownloadsView: View {
         var body: some View {
             NavigationStack {
                 ScrollView {
-                    VStack(spacing: 16) {
-                        HStack(spacing: 12) {
-                            valueCard(title: L("总速度"), value: speed)
-                            valueCard(title: L("总进度"),
-                                      value: progress.formatted(.percent.precision(.fractionLength(0)).locale(AppLocale.current)))
+                    VStack(spacing: 0) {
+                        HStack(spacing: 10) {
+                            summaryCard(title: L("总速度"), value: speed,
+                                        icon: "speedometer", tint: .blue)
+                            summaryCard(title: L("总进度"),
+                                        value: progress.formatted(.percent.precision(.fractionLength(0)).locale(AppLocale.current)),
+                                        icon: "chart.pie.fill", tint: .green)
                         }
+                        .padding(.bottom, 18)
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 142), spacing: 10)], spacing: 10) {
                             ForEach(metrics) { metric in
-                                HStack(spacing: 9) {
-                                    Text(metric.count.formatted(.number.locale(AppLocale.current)))
-                                        .font(.title3.monospacedDigit().weight(.semibold))
+                                HStack(spacing: 11) {
+                                    Image(systemName: icon(for: metric.title))
+                                        .font(.system(size: 18, weight: .semibold))
                                         .foregroundStyle(metric.color)
-                                    Text(L(metric.title)).font(.body).foregroundStyle(.secondary)
-                                        .lineLimit(1).minimumScaleFactor(0.8)
+                                        .frame(width: 30, height: 30)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(L(metric.title))
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                        Text(metric.count.formatted(.number.locale(AppLocale.current)))
+                                            .font(.title3.monospacedDigit().weight(.semibold))
+                                            .foregroundStyle(.primary)
+                                    }
                                     Spacer(minLength: 0)
                                 }
-                                .padding(.horizontal, 14)
-                                .frame(maxWidth: .infinity, minHeight: 64)
-                                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                                .padding(.horizontal, 13)
+                                .frame(maxWidth: .infinity, minHeight: 66)
+                                .background(Color(.tertiarySystemGroupedBackground).opacity(0.68),
+                                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.045), lineWidth: 1)
+                                }
                                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
                             }
                         }
@@ -364,9 +379,18 @@ struct DownloadsView: View {
                         }
                     }
                     .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .background(Color(red: 0.105, green: 0.11, blue: 0.125),
+                                in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.055), lineWidth: 1)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
                     .animation(.easeInOut(duration: 0.24), value: metrics.map(\.count))
                 }
-                .background(Color(.systemGroupedBackground))
+                .background(Color.black.ignoresSafeArea())
                 .navigationTitle(L("任务总览"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -379,15 +403,38 @@ struct DownloadsView: View {
             .presentationDragIndicator(.visible)
         }
 
-        private func valueCard(title: String, value: String) -> some View {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title).font(.subheadline).foregroundStyle(.secondary)
-                Text(value).font(.title3.monospacedDigit().weight(.semibold))
+        private func summaryCard(title: String, value: String, icon: String, tint: Color) -> some View {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: icon)
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(tint)
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                Text(value)
+                    .font(.title2.monospacedDigit().weight(.bold))
+                    .foregroundStyle(.white)
                     .lineLimit(1).minimumScaleFactor(0.75)
             }
-            .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
-            .padding(.horizontal, 16)
-            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
+            .padding(.horizontal, 13)
+            .background(Color.white.opacity(0.055),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+
+        private func icon(for title: String) -> String {
+            switch title {
+            case "下载中": return "arrow.down.circle.fill"
+            case "未开始": return "circle.dashed"
+            case "排队中": return "list.number"
+            case "已暂停": return "pause.circle.fill"
+            case "已完成": return "checkmark.circle.fill"
+            default: return "exclamationmark.circle.fill"
+            }
         }
     }
 
