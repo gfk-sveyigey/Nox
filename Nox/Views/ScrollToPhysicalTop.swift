@@ -41,6 +41,7 @@ struct ScrollToPhysicalTop: UIViewRepresentable {
 
 /// Reject native reselection before UIKit performs its automatic single-tap scroll.
 struct TabReselectionInterceptor: UIViewControllerRepresentable {
+    var allowsBrowserExpansion: Bool = false
     let onReselect: (Int) -> Void
 
     func makeUIViewController(context: Context) -> ProbeController {
@@ -51,6 +52,7 @@ struct TabReselectionInterceptor: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(onReselect: onReselect) }
     func updateUIViewController(_ controller: ProbeController, context: Context) {
         context.coordinator.onReselect = onReselect
+        context.coordinator.allowsBrowserExpansion = allowsBrowserExpansion
         controller.install()
     }
 
@@ -79,6 +81,7 @@ struct TabReselectionInterceptor: UIViewControllerRepresentable {
     }
 
     final class Coordinator: NSObject, UITabBarControllerDelegate, UIGestureRecognizerDelegate {
+        var allowsBrowserExpansion = false
         private weak var tabs: UITabBarController?
         private var tapGuard: UITapGestureRecognizer?
 
@@ -100,6 +103,7 @@ struct TabReselectionInterceptor: UIViewControllerRepresentable {
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
             guard let tabs, gestureRecognizer === tapGuard else { return false }
+            if tabs.selectedIndex == 0 && allowsBrowserExpansion { return false }
             // Only intercept an actual selected tab control, never blank space or
             // a different tab. This runs before UIKit can perform native reselection.
             var view = touch.view
@@ -121,6 +125,7 @@ struct TabReselectionInterceptor: UIViewControllerRepresentable {
 
         func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
             if viewController === tabBarController.selectedViewController {
+                if tabBarController.selectedIndex == 0 && allowsBrowserExpansion { return true }
                 onReselect(tabBarController.selectedIndex)
                 return false
             }

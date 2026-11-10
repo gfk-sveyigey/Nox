@@ -162,6 +162,8 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
         lastLoadURL = url
         isUserInitiatedLoad = true
         LogStore.shared.info("open \(url.absoluteString)")
+        // Hide the previous document synchronously, before SwiftUI removes home.
+        webView.alpha = 0
         webView.load(URLRequest(url: url))
     }
 
@@ -253,11 +255,13 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
     /// 同时重算命中规则：手势后退 / 前进不一定走完整的 `didStartProvisional`
     /// 流程，只靠 `didFinish` 容易出现「回到上一页后解析入口不出现」。
     public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        webView.alpha = 1
         currentURL = webView.url
         pageMatchesRule = activeParser(for: webView.url) != nil
     }
 
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        webView.alpha = 1
         isLoading = false
         pageReady = true
         pageMatchesRule = activeParser(for: webView.url) != nil

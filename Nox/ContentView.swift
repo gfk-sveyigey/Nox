@@ -17,6 +17,7 @@ struct ContentView: View {
     /// 用 ObservableObject 包住选中项：TabView 在重复点击当前标签时，
     /// 会把同一个值再写回绑定，借此可以拿到系统的「再次点击」事件。
     @StateObject private var tabSelection = TabSelectionState()
+    @StateObject private var browserChrome = BrowserChromeState()
     @State private var browserURL: URL?
     @State private var browserAllowsMinimization = false
     @State private var didLogSession = false
@@ -55,7 +56,13 @@ struct ContentView: View {
         }
         .modifier(NativeBrowserTabMinimization(enabled: tabSelection.selection == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
-        .background(TabReselectionInterceptor { tabSelection.handleTabReselect($0) })
+        .onPreferenceChange(BrowserActionPreference.self) { browserChrome.info = $0 }
+        .modifier(NativeBrowserParseAccessory(chrome: browserChrome, enabled: tabSelection.selection == 0))
+        .background(TabReselectionInterceptor(
+            allowsBrowserExpansion: browserChrome.allowsNativeExpansion,
+            onReselect: { tabSelection.handleTabReselect($0) }
+        ))
+        .environmentObject(browserChrome)
         .environmentObject(appState)
         .environmentObject(pluginImport)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

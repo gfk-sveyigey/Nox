@@ -35,6 +35,7 @@ struct WebViewContainer: UIViewControllerRepresentable {
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.scrollsToTop = false
         webView.scrollView.clipsToBounds = false
+        webView.clipsToBounds = false
         let controller = BrowserContentController(webView: webView)
         controller.addressBarInset = addressBarInset
         controller.lastTopRequest = topRequest

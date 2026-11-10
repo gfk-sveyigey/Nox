@@ -20,10 +20,6 @@ extension VideoBrowserView {
         addressBar
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background {
-                Rectangle().fill(.ultraThinMaterial)
-                    .opacity(1 - appState.browserSafeAreaTransparency)
-            }
             .offset(y: isAddressBarHidden ? -addressToolbarHeight : 0)
             .opacity(isAddressBarHidden ? 0 : 1)
             .allowsHitTesting(!isAddressBarHidden)

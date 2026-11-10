@@ -108,8 +108,8 @@ extension VideoBrowserView {
     func openBookmark(_ bookmark: Bookmark) {
         addressFocused = false
         address = bookmark.url.absoluteString
-        showingHome = false
         parser.load(bookmark.url)
+        showingHome = false
     }
 
     /// 回到首页。不卸载当前页面，从书签 / 地址栏再前进即可。

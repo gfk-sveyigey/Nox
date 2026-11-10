@@ -28,8 +28,8 @@ extension VideoBrowserView {
 
         requestedURL = nil
         address = url.absoluteString
-        showingHome = false
         parser.load(url)
+        showingHome = false
     }
 
     /// 双击底部「浏览」标签时回到网页顶部。
@@ -62,8 +62,8 @@ extension VideoBrowserView {
         }
 
         address = url.absoluteString
-        showingHome = false
         parser.load(url)
+        showingHome = false
     }
 
     func parse() async {

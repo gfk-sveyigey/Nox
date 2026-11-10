@@ -45,23 +45,13 @@ extension VideoBrowserView {
     }
 
     /// 「解析视频」悬浮胶囊：与嗅探入口同样的样式，点击弹出半屏面板。
-    func parseBadge(compact: Bool, diameter: CGFloat) -> some View {
-        NativeParseButton(
-            title: L("解析视频"), compact: compact, diameter: diameter, isParsing: isParsing
-        ) {
+    var legacyParseBadge: some View {
+        NativeParseButton(title: L("解析视频"), compact: false, diameter: 48, isParsing: isParsing) {
             parsedVideo = nil
             parseError = nil
             showParseSheet = true
             Task { await parse() }
-        }
-        .fixedSize()
-        .zIndex(1)
-        .accessibilityLabel(L("解析视频"))
-        .sheet(isPresented: $showParseSheet) {
-            parseSheet
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
+        }.fixedSize()
     }
 
     /// 悬浮胶囊：显示当前已嗅探到的资源数。
@@ -111,95 +101,9 @@ struct BrowserMinimizationPreference: PreferenceKey {
     static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }
 
-/// Read the native tab control's actual visible geometry rather than estimating
-/// its collapsed size from the webpage's scroll offset. No private selectors or
-/// UIKit class names are used. A full-size tab bar reports an empty rectangle.
-struct BrowserTabGeometryReader: UIViewControllerRepresentable {
-    let onChange: (CGRect) -> Void
-
-    func makeUIViewController(context: Context) -> Probe {
-        let probe = Probe()
-        probe.onChange = onChange
-        return probe
-    }
-    func updateUIViewController(_ controller: Probe, context: Context) {
-        controller.onChange = onChange
-    }
-    static func dismantleUIViewController(_ controller: Probe, coordinator: ()) {
-        controller.stopObserving()
-    }
-
-    final class Probe: UIViewController {
-        var onChange: ((CGRect) -> Void)?
-        private var displayLink: CADisplayLink?
-        private var lastFrame: CGRect = .zero
-        private weak var tabs: UITabBarController?
-
-        // CADisplayLink retains its target. Keep only a weak reference back to
-        // the controller so leaving the browser never leaves an active timer.
-        private final class TickTarget: NSObject {
-            weak var owner: Probe?
-            @objc func tick() { owner?.measure() }
-        }
-        private let tickTarget = TickTarget()
-
-        override func loadView() {
-            view = UIView()
-            view.isUserInteractionEnabled = false
-        }
-        override func viewDidAppear(_ animated: Bool) {
-            super.viewDidAppear(animated)
-            guard #available(iOS 26.0, *), UIDevice.current.userInterfaceIdiom == .phone else { return }
-            tabs = tabBarController
-            tickTarget.owner = self
-            guard displayLink == nil else { return }
-            let link = CADisplayLink(target: tickTarget, selector: #selector(TickTarget.tick))
-            link.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 30)
-            link.add(to: .main, forMode: .common)
-            displayLink = link
-        }
-        override func viewDidDisappear(_ animated: Bool) {
-            super.viewDidDisappear(animated)
-            stopObserving()
-        }
-        func stopObserving() {
-            displayLink?.invalidate()
-            displayLink = nil
-        }
-        private func measure() {
-            guard let bar = tabs?.tabBar, let window = bar.window else { return }
-            var selectedControl: UIControl?
-            func findSelected(in parent: UIView) {
-                guard !parent.isHidden, parent.alpha > 0.05 else { return }
-                if let control = parent as? UIControl,
-                   control.isSelected || control.accessibilityTraits.contains(.selected) {
-                    selectedControl = control
-                    return
-                }
-                for child in parent.subviews where selectedControl == nil { findSelected(in: child) }
-            }
-            findSelected(in: bar)
-            var frame = CGRect.zero
-            if let control = selectedControl {
-                // Normal tabs occupy a wide segment. The minimized native tab
-                // is a single round control; use its real size and baseline.
-                let bounds = control.bounds
-                if bounds.height >= 32, bounds.width >= 32,
-                   bounds.width <= bounds.height * 1.35 {
-                    frame = control.convert(bounds, to: window)
-                }
-            }
-            guard frame != lastFrame else { return }
-            lastFrame = frame
-            onChange?(frame)
-        }
-    }
-}
-
-
 /// UIKit owns the glass rendering, interaction and accessibility. The compact
 /// configuration has no content insets, so its frame matches the native tab.
-private struct NativeParseButton: UIViewRepresentable {
+struct NativeParseButton: UIViewRepresentable {
     let title: String
     let compact: Bool
     let diameter: CGFloat
@@ -239,5 +143,60 @@ private struct NativeParseButton: UIViewRepresentable {
         var action: () -> Void
         init(action: @escaping () -> Void) { self.action = action }
         @objc func activate() { action() }
+    }
+}
+
+
+struct BrowserActionInfo: Equatable {
+    var canParse = false
+    var isParsing = false
+    var scrollingDown = false
+}
+struct BrowserActionPreference: PreferenceKey {
+    static var defaultValue = BrowserActionInfo()
+    static func reduce(value: inout BrowserActionInfo, nextValue: () -> BrowserActionInfo) { value = nextValue() }
+}
+final class BrowserChromeState: ObservableObject {
+    @Published var info = BrowserActionInfo()
+    @Published var compact = false
+    @Published var parseRequest = 0
+    var allowsNativeExpansion: Bool { compact || (!info.canParse && info.scrollingDown) }
+}
+
+struct NativeBrowserParseAccessory: ViewModifier {
+    @ObservedObject var chrome: BrowserChromeState
+    let enabled: Bool
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            content.tabViewBottomAccessory(isEnabled: enabled && chrome.info.canParse) {
+                BrowserParseAccessory(chrome: chrome)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+@available(iOS 26.1, *)
+private struct BrowserParseAccessory: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    @ObservedObject var chrome: BrowserChromeState
+    var body: some View {
+        GeometryReader { geometry in
+            let compact = placement == .inline
+            HStack {
+                Spacer(minLength: 0)
+                NativeParseButton(title: L("解析视频"), compact: compact,
+                                  diameter: max(44, geometry.size.height), isParsing: chrome.info.isParsing) {
+                    chrome.parseRequest += 1
+                }
+                .fixedSize()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+        }
+        .frame(height: 48)
+        .onAppear { chrome.compact = placement == .inline }
+        .onChange(of: placement) { _, value in chrome.compact = value == .inline }
+        .onDisappear { chrome.compact = false }
     }
 }

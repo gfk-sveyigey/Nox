@@ -10,6 +10,7 @@ import NoxBrowser
 
 struct VideoBrowserView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var browserChrome: BrowserChromeState
     @ObservedObject var localization = LocalizationManager.shared
 
     @StateObject var parser: VideoParser
@@ -36,7 +37,6 @@ struct VideoBrowserView: View {
     /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
     @State var isScrolledDown = false
     @State var browserTopRequest = 0
-    @State var compactTabFrame = CGRect.zero
     /// 地址栏加载底色的进度（0…1）与可见 / 呼吸状态（见 `addressLoadingTint`）。
     @State var progressFraction: Double = 0
     @State var isProgressVisible = false
@@ -78,6 +78,32 @@ struct VideoBrowserView: View {
         self.scrollToTopToken = scrollToTopToken
     }
 
+    var usesNativeParseAccessory: Bool {
+        if #available(iOS 26.1, *) { return true }
+        return false
+    }
+
+    var browserTopBackdrop: some View {
+        GeometryReader { geometry in
+            let top = geometry.safeAreaInsets.top
+            let bar = isAddressBarHidden ? 0 : addressToolbarHeight
+            Rectangle()
+                .fill(.regularMaterial)
+                .frame(height: top + bar + 12)
+                .mask {
+                    LinearGradient(stops: [
+                        .init(color: .black.opacity(max(0.85, 1 - appState.browserSafeAreaTransparency)), location: 0),
+                        .init(color: .black.opacity(1 - appState.browserSafeAreaTransparency), location: 0.85),
+                        .init(color: .clear, location: 1)
+                    ], startPoint: .top, endPoint: .bottom)
+                }
+                .offset(y: -top)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .animation(.easeInOut(duration: 0.22), value: isAddressBarHidden)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
@@ -102,13 +128,15 @@ struct VideoBrowserView: View {
                     // 既让深色模式下「还没打开网页」时不再是白底，也是「主页」入口。
                     if showingHome {
                         homeScreen
-                            .transition(.opacity)
                     }
 
                     if !showingHome {
                         webStateOverlay
 
                         VStack(alignment: .trailing, spacing: 10) {
+                            if !usesNativeParseAccessory && isParseBadgeVisible {
+                                legacyParseBadge
+                            }
                             if isSnifferBadgeVisible {
                                 snifferBadge
                                     .transition(.opacity)
@@ -118,57 +146,30 @@ struct VideoBrowserView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                browserTopBackdrop.zIndex(1)
                 addressToolbar.zIndex(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(browserChromeBackground.ignoresSafeArea())
             .preference(key: BrowserMinimizationPreference.self, value: !showingHome)
-            .background(BrowserTabGeometryReader { frame in
-                guard compactTabFrame != frame else { return }
-                compactTabFrame = frame
-            })
-            .overlay {
-                GeometryReader { geometry in
-                    if !showingHome && isParseBadgeVisible {
-                        let compact = !compactTabFrame.isEmpty
-                        let diameter = compact ? compactTabFrame.height : 48
-                        parseBadge(compact: compact, diameter: diameter)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                            .padding(16)
-                            .padding(.bottom, compact ? 0 : geometry.safeAreaInsets.bottom)
-                            .offset(y: compact
-                                ? compactTabFrame.maxY - geometry.frame(in: .global).maxY + 16
-                                : 0)
-                            .animation(.smooth(duration: 0.25), value: compact)
-                    }
-                }
-                .ignoresSafeArea(.container, edges: .bottom)
+            .preference(key: BrowserActionPreference.self, value: BrowserActionInfo(
+                canParse: !showingHome && isParseBadgeVisible,
+                isParsing: isParsing,
+                scrollingDown: !showingHome && isScrolledDown
+            ))
+            .onChange(of: browserChrome.parseRequest) { _, _ in
+                guard !showingHome && isParseBadgeVisible else { return }
+                parsedVideo = nil
+                parseError = nil
+                showParseSheet = true
+                Task { await parse() }
             }
-            .overlay(alignment: .top) {
-                GeometryReader { geometry in
-                    // Backdrop material samples the moving webpage, not a snapshot.
-                    // Only this layer extends into the status-bar safe area.
-                    Rectangle()
-                        .fill(.ultraThinMaterial)
-                        .frame(height: geometry.safeAreaInsets.top + 12)
-                        .mask {
-                            LinearGradient(
-                                stops: [
-                                    .init(color: .black.opacity(max(0.8, 1 - appState.browserSafeAreaTransparency)), location: 0),
-                                    .init(color: .black.opacity(1 - appState.browserSafeAreaTransparency), location: 0.85),
-                                    .init(color: .clear, location: 1)
-                                ],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        }
-                        .offset(y: -geometry.safeAreaInsets.top)
-                }
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            .sheet(isPresented: $showParseSheet) {
+                parseSheet.presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
             .animation(.easeInOut(duration: 0.2), value: isParseBadgeVisible)
             .animation(.easeInOut(duration: 0.2), value: isSnifferBadgeVisible)
-            .animation(.easeInOut(duration: 0.2), value: showingHome)
             // 浏览页没有导航栏内容。保留空 NavigationStack 的导航栏会在地址栏上方
             // 多出一条空白，直接隐藏；顶部安全区仍由系统保留。
             .toolbar(.hidden, for: .navigationBar)
