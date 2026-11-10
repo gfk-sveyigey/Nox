@@ -5045,6 +5045,14 @@
         "ko" : { "stringUnit" : { "state" : "translated", "value" : "연속 처리 중 사용자 지정 실시간 활동도 표시" } }
       }
     },
+    "任务总数" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgaben gesamt" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total tasks" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nombre de tâches" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 작업" } }
+      }
+    },
     "任务总览" : {
       "localizations" : {
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Aufgabenübersicht" } },

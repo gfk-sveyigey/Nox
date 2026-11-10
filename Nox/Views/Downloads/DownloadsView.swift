@@ -332,65 +332,76 @@ struct DownloadsView: View {
             } / Double(records.count)
         }
 
+        private var totalCount: String {
+            records.count.formatted(.number.locale(AppLocale.current))
+        }
+
         var body: some View {
             NavigationStack {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        HStack(spacing: 10) {
-                            summaryCard(title: L("总速度"), value: speed,
-                                        icon: "speedometer", tint: .blue)
-                            summaryCard(title: L("总进度"),
-                                        value: progress.formatted(.percent.precision(.fractionLength(0)).locale(AppLocale.current)),
-                                        icon: "chart.pie.fill", tint: .green)
-                        }
-                        .padding(.bottom, 18)
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 142), spacing: 10)], spacing: 10) {
-                            ForEach(metrics) { metric in
-                                HStack(spacing: 11) {
-                                    Image(systemName: icon(for: metric.title))
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundStyle(metric.color)
-                                        .frame(width: 30, height: 30)
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(L(metric.title))
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                        Text(metric.count.formatted(.number.locale(AppLocale.current)))
-                                            .font(.title3.monospacedDigit().weight(.semibold))
-                                            .foregroundStyle(.primary)
+                GeometryReader { geometry in
+                    let spacing: CGFloat = 10
+                    let horizontalPadding: CGFloat = 16
+                    let availableWidth = max(0, geometry.size.width - horizontalPadding * 2)
+                    let columns = max(1, Int((availableWidth + spacing) / (152 + spacing)))
+                    let rows = (metrics.count + columns - 1) / columns
+
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            HStack(spacing: 10) {
+                                summaryCard(title: L("任务总数"), value: totalCount,
+                                            icon: "square.stack.3d.up.fill", tint: .indigo)
+                                summaryCard(title: L("总速度"), value: speed,
+                                            icon: "speedometer", tint: .blue)
+                                summaryCard(title: L("总进度"),
+                                            value: progress.formatted(.percent.precision(.fractionLength(0)).locale(AppLocale.current)),
+                                            icon: "chart.pie.fill", tint: .green)
+                            }
+
+                            VStack(spacing: spacing) {
+                                ForEach(0..<rows, id: \.self) { row in
+                                    let start = row * columns
+                                    let end = min(start + columns, metrics.count)
+                                    HStack(spacing: spacing) {
+                                        ForEach(Array(metrics[start..<end])) { metric in
+                                            HStack(spacing: 11) {
+                                                Image(systemName: icon(for: metric.title))
+                                                    .font(.system(size: 18, weight: .semibold))
+                                                    .foregroundStyle(metric.color)
+                                                    .frame(width: 30, height: 30)
+                                                VStack(alignment: .leading, spacing: 3) {
+                                                    Text(L(metric.title))
+                                                        .font(.subheadline)
+                                                        .foregroundStyle(.secondary)
+                                                    Text(metric.count.formatted(.number.locale(AppLocale.current)))
+                                                        .font(.title3.monospacedDigit().weight(.semibold))
+                                                        .foregroundStyle(.primary)
+                                                }
+                                                Spacer(minLength: 0)
+                                            }
+                                            .padding(.horizontal, 13)
+                                            .frame(maxWidth: .infinity, minHeight: 66)
+                                            .background(Color(.tertiarySystemGroupedBackground),
+                                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                                        }
                                     }
-                                    Spacer(minLength: 0)
                                 }
-                                .padding(.horizontal, 13)
-                                .frame(maxWidth: .infinity, minHeight: 66)
-                                .background(Color(.tertiarySystemGroupedBackground).opacity(0.68),
-                                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.045), lineWidth: 1)
-                                }
-                                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                            }
+
+                            if storageBlocked {
+                                Label(L("储存空间不足"), systemImage: "externaldrive.fill.badge.exclamationmark")
+                                    .font(.footnote.weight(.medium)).foregroundStyle(.orange)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
-                        if storageBlocked {
-                            Label(L("储存空间不足"), systemImage: "externaldrive.fill.badge.exclamationmark")
-                                .font(.footnote.weight(.medium)).foregroundStyle(.orange)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.top, 14)
+                        .padding(.bottom, 16)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .animation(.easeInOut(duration: 0.24), value: metrics.map(\.count))
                     }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .background(Color(red: 0.105, green: 0.11, blue: 0.125),
-                                in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.055), lineWidth: 1)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 14)
-                    .animation(.easeInOut(duration: 0.24), value: metrics.map(\.count))
                 }
-                .background(Color.black.ignoresSafeArea())
+                .background(Color(.systemGroupedBackground))
                 .navigationTitle(L("任务总览"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -411,18 +422,18 @@ struct DownloadsView: View {
                         .foregroundStyle(tint)
                     Text(title)
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Color.white.opacity(0.72))
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
                 Text(value)
                     .font(.title2.monospacedDigit().weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1).minimumScaleFactor(0.75)
             }
             .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
             .padding(.horizontal, 13)
-            .background(Color.white.opacity(0.055),
+            .background(Color(.tertiarySystemGroupedBackground),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
 
