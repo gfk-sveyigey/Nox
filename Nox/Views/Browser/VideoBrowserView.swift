@@ -99,6 +99,7 @@ struct VideoBrowserView: View {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
                     WebViewContainer(
                         webView: parser.browserWebView,
+                        backgroundColor: parser.browserThemeColor,
                         addressBarInset: isAddressBarHidden ? 0 : addressToolbarHeight
                     ) { offset, delta in
                         updateCollapsedState(for: offset, delta: delta)
@@ -117,21 +118,24 @@ struct VideoBrowserView: View {
                     if !showingHome {
                         webStateOverlay
 
-                        VStack(alignment: .trailing, spacing: 10) {
-                            if isSnifferBadgeVisible {
-                                snifferBadge
-                                    .transition(.opacity)
+                        // Both mutually exclusive video actions share a left
+                        // anchor, including the generic-sniffer fallback.
+                        HStack {
+                            VStack(alignment: .leading, spacing: 10) {
+                                if isParseBadgeVisible {
+                                    parseBadge
+                                }
+                                if isSnifferBadgeVisible {
+                                    snifferBadge.transition(.opacity)
+                                }
                             }
+                            Spacer(minLength: 0)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                         .padding(16)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .bottomLeading) {
-                    if !showingHome && isParseBadgeVisible {
-                        parseBadge.padding(16)
-                    }
-                }
                 browserTopBackdrop.zIndex(1)
                 addressToolbar.zIndex(2)
             }
