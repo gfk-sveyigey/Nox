@@ -16,6 +16,8 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var browserURL: URL?
     @State private var browserAllowsMinimization = false
+    @State private var browserCanParse = false
+    @State private var parseRequest = UUID()
     @State private var didLogSession = false
     @State private var startupFinished = false
     @State private var didPrepareStartup = false
@@ -28,27 +30,9 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            VideoBrowserView(
-                appState: appState,
-                downloads: downloadManager,
-                requestedURL: $browserURL
-            )
-                .tabItem { Label(L("浏览"), systemImage: "safari") }
-                .tag(0)
-
-            DownloadsView(
-                appState: appState,
-                manager: downloadManager
-            )
-                .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }
-                .tag(1)
-
-            SettingsView(manager: downloadManager)
-                .tabItem { Label(L("设置"), systemImage: "gearshape") }
-                .tag(2)
-        }
+        mainTabs
         .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
+        .onPreferenceChange(BrowserParseAvailability.self) { browserCanParse = $0 }
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
         .environmentObject(appState)
         .environmentObject(pluginImport)
@@ -153,6 +137,50 @@ struct ContentView: View {
         }
     }
 
+    private var tabSelection: Binding<Int> {
+        Binding(get: { selectedTab }, set: { value in
+            if value == 3 {
+                if browserCanParse { parseRequest = UUID() }
+            } else {
+                selectedTab = value
+            }
+        })
+    }
+
+    private var browser: some View {
+        VideoBrowserView(appState: appState, downloads: downloadManager,
+                         requestedURL: $browserURL, parseRequest: parseRequest)
+    }
+
+    @ViewBuilder
+    private var mainTabs: some View {
+        if #available(iOS 26.0, *) {
+            TabView(selection: tabSelection) {
+                Tab(L("浏览"), systemImage: "safari", value: 0) { browser }
+                Tab(L("任务"), systemImage: "arrow.down.circle", value: 1) {
+                    DownloadsView(appState: appState, manager: downloadManager)
+                }
+                Tab(L("设置"), systemImage: "gearshape", value: 2) {
+                    SettingsView(manager: downloadManager)
+                }
+                if selectedTab == 0 && browserAllowsMinimization {
+                    Tab(value: 3, role: .search) { Color.clear } label: {
+                        Label(L("解析视频"), systemImage: "arrow.down.circle")
+                    }
+                }
+            }
+            .background(ParseTabAvailability(isEnabled: browserCanParse))
+        } else {
+            TabView(selection: $selectedTab) {
+                browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
+                DownloadsView(appState: appState, manager: downloadManager)
+                    .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }.tag(1)
+                SettingsView(manager: downloadManager)
+                    .tabItem { Label(L("设置"), systemImage: "gearshape") }.tag(2)
+            }
+        }
+    }
+
     @MainActor
     private func prepareStartupIfNeeded() {
         guard !didPrepareStartup else { return }
@@ -203,6 +231,41 @@ private struct NativeBrowserTabMinimization: ViewModifier {
             content.tabBarMinimizeBehavior(enabled ? .onScrollDown : .never)
         } else {
             content
+        }
+    }
+}
+
+/// Keep the action tab's native disabled appearance and accessibility state in sync.
+private struct ParseTabAvailability: UIViewControllerRepresentable {
+    let isEnabled: Bool
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.actionEnabled = isEnabled
+        controller.updateItem()
+        DispatchQueue.main.async { controller.updateItem() }
+    }
+    final class Controller: UIViewController {
+        var actionEnabled = false
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            updateItem()
+        }
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            updateItem()
+        }
+        func updateItem() {
+            func findTabs(_ controller: UIViewController) -> UITabBarController? {
+                if let tabs = controller as? UITabBarController { return tabs }
+                for child in controller.children {
+                    if let tabs = findTabs(child) { return tabs }
+                }
+                return nil
+            }
+            var root: UIViewController = self
+            while let parent = root.parent { root = parent }
+            guard let tabs = findTabs(root), let items = tabs.tabBar.items, items.count == 4 else { return }
+            items[3].isEnabled = actionEnabled
         }
     }
 }

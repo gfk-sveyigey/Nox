@@ -44,41 +44,29 @@ extension VideoBrowserView {
         parser.canParseCurrentPage && !isUsingGenericSniffer
     }
 
-    /// 「解析视频」悬浮胶囊：与嗅探入口同样的样式，点击弹出半屏面板。
-    var parseBadge: some View {
-        NativeParseButton(title: L("解析视频"), isParsing: isParsing) {
+    var canOpenParsePanel: Bool {
+        !showingHome && !isParsing && (isParseBadgeVisible || isSnifferBadgeVisible)
+    }
+
+    func openParsePanel() {
+        guard canOpenParsePanel else { return }
+        if isSnifferBadgeVisible {
+            showSniffer = true
+        } else {
             parsedVideo = nil
             parseError = nil
             showParseSheet = true
             Task { await parse() }
-        }.fixedSize()
+        }
     }
 
-    /// 悬浮胶囊：显示当前已嗅探到的资源数。
-    ///
-    /// 用 `contentShape(Capsule())` 把命中区域收敛到胶囊本身，
-    /// 否则外层留白会落到 WebView 上（表现为「点按钮顺带点了页面」）。
-    /// `.sheet` 挂在徽标上而不是外层 `VStack`：后者已挂了 `parseSheet`，
-    /// 同一视图叠两个 `.sheet` 会互相干扰。
-    var snifferBadge: some View {
-        NativeParseButton(title: L("已嗅探"), systemImage: "dot.radiowaves.left.and.right", isParsing: false) {
-            showSniffer = true
+    var browserParseButton: some View {
+        NativeParseButton(title: L("解析视频"), isParsing: isParsing, isEnabled: canOpenParsePanel) {
+            openParsePanel()
         }
         .fixedSize()
-        .accessibilityValue(String(sniffer.items.count))
-        .sheet(isPresented: $showSniffer) {
-            SnifferSheet(
-                onRescan: {
-                    await parser.rescanPage()
-                },
-                onDownload: { item in
-                    download(item)
-                }
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-        }
     }
+
 }
 
 /// Home does not participate in the system's scroll-driven tab minimization.
@@ -92,6 +80,7 @@ struct NativeParseButton: UIViewRepresentable {
     let title: String
     var systemImage: String = "arrow.down.circle"
     let isParsing: Bool
+    var isEnabled: Bool = true
     let action: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
@@ -115,6 +104,7 @@ struct NativeParseButton: UIViewRepresentable {
         configuration.showsActivityIndicator = isParsing
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
         button.configuration = configuration
+        button.isEnabled = isEnabled
         button.accessibilityLabel = title
         button.invalidateIntrinsicContentSize()
     }
@@ -126,4 +116,9 @@ struct NativeParseButton: UIViewRepresentable {
         init(action: @escaping () -> Void) { self.action = action }
         @objc func activate() { action() }
     }
+}
+
+struct BrowserParseAvailability: PreferenceKey {
+    static var defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }

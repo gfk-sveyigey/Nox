@@ -21,17 +21,20 @@ extension VideoBrowserView {
             homeBackgroundColor.ignoresSafeArea()
 
             if appState.bookmarks.isEmpty {
-                ContentUnavailableView {
-                    Label {
-                        Text(L("无书签"))
-                            .font(.title2.weight(.regular))
-                    } icon: {
-                        Image(systemName: "book")
+                GeometryReader { geometry in
+                    ContentUnavailableView {
+                        Label {
+                            Text(L("无书签"))
+                                .font(.title2.weight(.regular))
+                        } icon: {
+                            Image(systemName: "book")
+                        }
+                    } description: {
+                        EmptyView()
                     }
-                } description: {
-                    EmptyView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .offset(y: (geometry.safeAreaInsets.bottom - geometry.safeAreaInsets.top) / 2)
                 }
-                .padding(.top, 44)
             } else {
                 List {
                     Section {

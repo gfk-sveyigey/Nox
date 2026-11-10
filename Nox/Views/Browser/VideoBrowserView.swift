@@ -18,6 +18,7 @@ struct VideoBrowserView: View {
     @ObservedObject var registry = VideoSiteParserRegistry.shared
 
     @Binding var requestedURL: URL?
+    var parseRequest: UUID
 
     @State var address = ""
     @State var parsedVideo: ParsedVideo?
@@ -65,11 +66,13 @@ struct VideoBrowserView: View {
     init(
         appState: AppState,
         downloads: DownloadManager,
-        requestedURL: Binding<URL?>
+        requestedURL: Binding<URL?>,
+        parseRequest: UUID
     ) {
         _parser = StateObject(wrappedValue: VideoParser(sites: appState, desktopMode: appState.browserDesktopMode))
         _downloads = ObservedObject(wrappedValue: downloads)
         _requestedURL = requestedURL
+        self.parseRequest = parseRequest
     }
 
     var browserTopBackdrop: some View {
@@ -117,23 +120,15 @@ struct VideoBrowserView: View {
                     if !showingHome {
                         webStateOverlay
 
-                        // Both mutually exclusive video actions share a left
-                        // anchor, including the generic-sniffer fallback.
-                        HStack {
-                            VStack(alignment: .leading, spacing: 10) {
-                                if isParseBadgeVisible {
-                                    parseBadge
-                                }
-                                if isSnifferBadgeVisible {
-                                    snifferBadge.transition(.opacity)
-                                }
+                        if #unavailable(iOS 26.0) {
+                            HStack {
+                                browserParseButton
+                                Spacer(minLength: 0)
                             }
-                            Spacer(minLength: 0)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                            .padding(.leading, 28)
+                            .padding(.bottom, 16)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                        .padding(.leading, 28)
-                        .padding(.trailing, 16)
-                        .padding(.bottom, 16)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -143,6 +138,13 @@ struct VideoBrowserView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(browserChromeBackground.ignoresSafeArea())
             .preference(key: BrowserMinimizationPreference.self, value: !showingHome)
+            .preference(key: BrowserParseAvailability.self, value: canOpenParsePanel)
+            .onChange(of: parseRequest) { _, _ in openParsePanel() }
+            .sheet(isPresented: $showSniffer) {
+                SnifferSheet(onRescan: { await parser.rescanPage() }, onDownload: { download($0) })
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
             .sheet(isPresented: $showParseSheet) {
                 parseSheet.presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
