@@ -45,32 +45,16 @@ extension VideoBrowserView {
     }
 
     /// 「解析视频」悬浮胶囊：与嗅探入口同样的样式，点击弹出半屏面板。
-    var parseBadge: some View {
-        Button {
+    func parseBadge(compact: Bool, diameter: CGFloat) -> some View {
+        NativeParseButton(
+            title: L("解析视频"), compact: compact, diameter: diameter, isParsing: isParsing
+        ) {
             parsedVideo = nil
             parseError = nil
             showParseSheet = true
             Task { await parse() }
-        } label: {
-            HStack(spacing: 6) {
-                if isParsing {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Image(systemName: "arrow.down.circle")
-                }
-
-                Text(L("解析视频"))
-                    .lineLimit(1)
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color.accentColor)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .browserGlassBar(cornerRadius: nil)
+        .fixedSize()
         .zIndex(1)
         .accessibilityLabel(L("解析视频"))
         .sheet(isPresented: $showParseSheet) {
@@ -118,5 +102,142 @@ extension VideoBrowserView {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+    }
+}
+
+/// Home does not participate in the system's scroll-driven tab minimization.
+struct BrowserMinimizationPreference: PreferenceKey {
+    static var defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
+/// Read the native tab control's actual visible geometry rather than estimating
+/// its collapsed size from the webpage's scroll offset. No private selectors or
+/// UIKit class names are used. A full-size tab bar reports an empty rectangle.
+struct BrowserTabGeometryReader: UIViewControllerRepresentable {
+    let onChange: (CGRect) -> Void
+
+    func makeUIViewController(context: Context) -> Probe {
+        let probe = Probe()
+        probe.onChange = onChange
+        return probe
+    }
+    func updateUIViewController(_ controller: Probe, context: Context) {
+        controller.onChange = onChange
+    }
+    static func dismantleUIViewController(_ controller: Probe, coordinator: ()) {
+        controller.stopObserving()
+    }
+
+    final class Probe: UIViewController {
+        var onChange: ((CGRect) -> Void)?
+        private var displayLink: CADisplayLink?
+        private var lastFrame: CGRect = .zero
+        private weak var tabs: UITabBarController?
+
+        // CADisplayLink retains its target. Keep only a weak reference back to
+        // the controller so leaving the browser never leaves an active timer.
+        private final class TickTarget: NSObject {
+            weak var owner: Probe?
+            @objc func tick() { owner?.measure() }
+        }
+        private let tickTarget = TickTarget()
+
+        override func loadView() {
+            view = UIView()
+            view.isUserInteractionEnabled = false
+        }
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            guard #available(iOS 26.0, *), UIDevice.current.userInterfaceIdiom == .phone else { return }
+            tabs = tabBarController
+            tickTarget.owner = self
+            guard displayLink == nil else { return }
+            let link = CADisplayLink(target: tickTarget, selector: #selector(TickTarget.tick))
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 30)
+            link.add(to: .main, forMode: .common)
+            displayLink = link
+        }
+        override func viewDidDisappear(_ animated: Bool) {
+            super.viewDidDisappear(animated)
+            stopObserving()
+        }
+        func stopObserving() {
+            displayLink?.invalidate()
+            displayLink = nil
+        }
+        private func measure() {
+            guard let bar = tabs?.tabBar, let window = bar.window else { return }
+            var selectedControl: UIControl?
+            func findSelected(in parent: UIView) {
+                guard !parent.isHidden, parent.alpha > 0.05 else { return }
+                if let control = parent as? UIControl,
+                   control.isSelected || control.accessibilityTraits.contains(.selected) {
+                    selectedControl = control
+                    return
+                }
+                for child in parent.subviews where selectedControl == nil { findSelected(in: child) }
+            }
+            findSelected(in: bar)
+            var frame = CGRect.zero
+            if let control = selectedControl {
+                // Normal tabs occupy a wide segment. The minimized native tab
+                // is a single round control; use its real size and baseline.
+                let bounds = control.bounds
+                if bounds.height >= 32, bounds.width >= 32,
+                   bounds.width <= bounds.height * 1.35 {
+                    frame = control.convert(bounds, to: window)
+                }
+            }
+            guard frame != lastFrame else { return }
+            lastFrame = frame
+            onChange?(frame)
+        }
+    }
+}
+
+
+/// UIKit owns the glass rendering, interaction and accessibility. The compact
+/// configuration has no content insets, so its frame matches the native tab.
+private struct NativeParseButton: UIViewRepresentable {
+    let title: String
+    let compact: Bool
+    let diameter: CGFloat
+    let isParsing: Bool
+    let action: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(action: action) }
+    func makeUIView(context: Context) -> UIButton {
+        let button = UIButton(type: .system)
+        button.addTarget(context.coordinator, action: #selector(Coordinator.activate), for: .touchUpInside)
+        return button
+    }
+    func updateUIView(_ button: UIButton, context: Context) {
+        context.coordinator.action = action
+        var configuration: UIButton.Configuration
+        if #available(iOS 26.0, *) {
+            configuration = .glass()
+        } else {
+            configuration = .tinted()
+        }
+        configuration.cornerStyle = .capsule
+        configuration.title = compact ? nil : title
+        configuration.image = UIImage(systemName: "arrow.down.circle")
+        configuration.imagePadding = compact ? 0 : 6
+        configuration.showsActivityIndicator = isParsing
+        configuration.contentInsets = compact ? .zero : NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+        button.configuration = configuration
+        button.accessibilityLabel = title
+        button.invalidateIntrinsicContentSize()
+    }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIButton, context: Context) -> CGSize? {
+        if compact { return CGSize(width: diameter, height: diameter) }
+        let size = uiView.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: 44))
+        return CGSize(width: size.width, height: max(44, size.height))
+    }
+    final class Coordinator: NSObject {
+        var action: () -> Void
+        init(action: @escaping () -> Void) { self.action = action }
+        @objc func activate() { action() }
     }
 }

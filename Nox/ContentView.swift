@@ -18,6 +18,7 @@ struct ContentView: View {
     /// 会把同一个值再写回绑定，借此可以拿到系统的「再次点击」事件。
     @StateObject private var tabSelection = TabSelectionState()
     @State private var browserURL: URL?
+    @State private var browserAllowsMinimization = false
     @State private var didLogSession = false
     @State private var startupFinished = false
     @State private var didPrepareStartup = false
@@ -52,7 +53,8 @@ struct ContentView: View {
                 .tabItem { Label(L("设置"), systemImage: "gearshape") }
                 .tag(2)
         }
-        .modifier(NativeBrowserTabMinimization(enabled: tabSelection.selection == 0))
+        .modifier(NativeBrowserTabMinimization(enabled: tabSelection.selection == 0 && browserAllowsMinimization))
+        .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
         .background(TabReselectionInterceptor { tabSelection.handleTabReselect($0) })
         .environmentObject(appState)
         .environmentObject(pluginImport)

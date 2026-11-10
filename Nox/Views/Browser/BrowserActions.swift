@@ -40,14 +40,9 @@ extension VideoBrowserView {
         isScrolledDown = false
         guard !showingHome else { return }
 
-        let scrollView = parser.browserWebView.scrollView
-        let topY = -scrollView.adjustedContentInset.top
-        guard scrollView.contentOffset.y > topY + 0.5 else { return }
-
-        scrollView.setContentOffset(
-            CGPoint(x: 0, y: topY),
-            animated: true
-        )
+        // The container owns layout and scrolling so the target is never computed
+        // against the old, collapsed viewport.
+        browserTopRequest += 1
     }
 
     func openAddress() {

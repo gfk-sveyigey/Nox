@@ -119,6 +119,9 @@ extension VideoBrowserView {
         // 看起来像「首页其实还停在这个地址」。
         address = ""
         parser.clearLoadError()
-        withAnimation(.easeInOut(duration: 0.2)) { showingHome = true }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isScrolledDown = false
+            showingHome = true
+        }
     }
 }

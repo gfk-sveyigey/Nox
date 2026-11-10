@@ -35,6 +35,8 @@ struct VideoBrowserView: View {
     @State var filenameInput = ""
     /// 页面向下滚动时收起地址栏（悬浮窗保持不变）
     @State var isScrolledDown = false
+    @State var browserTopRequest = 0
+    @State var compactTabFrame = CGRect.zero
     /// 地址栏加载底色的进度（0…1）与可见 / 呼吸状态（见 `addressLoadingTint`）。
     @State var progressFraction: Double = 0
     @State var isProgressVisible = false
@@ -87,7 +89,8 @@ struct VideoBrowserView: View {
                     // 下拉刷新、边缘滑动前进/后退都在 WebView 内部处理
                     WebViewContainer(
                         webView: parser.browserWebView,
-                        addressBarInset: isAddressBarHidden ? 0 : addressToolbarHeight
+                        addressBarInset: isAddressBarHidden ? 0 : addressToolbarHeight,
+                        topRequest: browserTopRequest
                     ) { offset, delta in
                         updateCollapsedState(for: offset, delta: delta)
                     }
@@ -106,11 +109,6 @@ struct VideoBrowserView: View {
                         webStateOverlay
 
                         VStack(alignment: .trailing, spacing: 10) {
-                            if isParseBadgeVisible {
-                                parseBadge
-                                    .transition(.opacity)
-                            }
-
                             if isSnifferBadgeVisible {
                                 snifferBadge
                                     .transition(.opacity)
@@ -124,6 +122,28 @@ struct VideoBrowserView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(browserChromeBackground.ignoresSafeArea())
+            .preference(key: BrowserMinimizationPreference.self, value: !showingHome)
+            .background(BrowserTabGeometryReader { frame in
+                guard compactTabFrame != frame else { return }
+                compactTabFrame = frame
+            })
+            .overlay {
+                GeometryReader { geometry in
+                    if !showingHome && isParseBadgeVisible {
+                        let compact = !compactTabFrame.isEmpty
+                        let diameter = compact ? compactTabFrame.height : 48
+                        parseBadge(compact: compact, diameter: diameter)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                            .padding(16)
+                            .padding(.bottom, compact ? 0 : geometry.safeAreaInsets.bottom)
+                            .offset(y: compact
+                                ? compactTabFrame.maxY - geometry.frame(in: .global).maxY + 16
+                                : 0)
+                            .animation(.smooth(duration: 0.25), value: compact)
+                    }
+                }
+                .ignoresSafeArea(.container, edges: .bottom)
+            }
             .overlay(alignment: .top) {
                 GeometryReader { geometry in
                     // Backdrop material samples the moving webpage, not a snapshot.
