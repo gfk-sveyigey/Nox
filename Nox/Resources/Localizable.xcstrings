@@ -1,6 +1,62 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+"当前页面暂无可解析的内容。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "No downloadable media is available on this page."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Auf dieser Seite sind keine herunterladbaren Medien verfügbar."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Aucun média à télécharger sur cette page."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "현재 페이지에 분석할 미디어가 없습니다."
+      }
+    }
+  }
+},
+"暂无任务可供查看。": {
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "There are no tasks to view."
+      }
+    },
+    "de": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Keine Aufgaben vorhanden."
+      }
+    },
+    "fr": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Aucune tâche à afficher."
+      }
+    },
+    "ko": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "표시할 작업이 없습니다."
+      }
+    }
+  }
+},
 "主要功能": {
   "localizations": {
     "en": {

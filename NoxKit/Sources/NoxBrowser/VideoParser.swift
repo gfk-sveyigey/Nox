@@ -234,12 +234,13 @@ public final class VideoParser: NSObject, ObservableObject, WKNavigationDelegate
             metadata.originalPageURL = lastLoadURL ?? pageURL
             metadata.parserName = siteParser.displayName
             return VideoVariant(id: variant.id, quality: variant.quality, format: variant.format,
-                                url: variant.url, metadata: metadata)
+                                url: variant.url, metadata: metadata, suggestedTitle: variant.suggestedTitle)
         }
 
         guard !variants.isEmpty else { throw ParserError.noVideoVariants }
 
-        let title = await page.documentTitle() ?? pageURL.host ?? "Video"
+        let pageTitle = await page.documentTitle() ?? pageURL.host ?? "Video"
+        let title = variants.compactMap(\.suggestedTitle).first(where: { !$0.isEmpty }) ?? pageTitle
         LogStore.shared.info("parsed \(variants.count) variant(s) on \(pageURL.absoluteString)")
         return ParsedVideo(title: title, pageURL: pageURL, variants: variants)
     }

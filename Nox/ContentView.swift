@@ -20,6 +20,7 @@ struct ContentView: View {
     @State private var parseRequest = UUID()
     @State private var taskMenuRequest = UUID()
     @State private var showingAbout = false
+    @State private var actionNotice: String?
     @State private var didLogSession = false
     @State private var startupFinished = false
     @State private var didPrepareStartup = false
@@ -36,6 +37,9 @@ struct ContentView: View {
         .modifier(NativeBrowserTabMinimization(enabled: selectedTab == 0 && browserAllowsMinimization))
         .onPreferenceChange(BrowserParseAvailability.self) { browserCanParse = $0 }
         .onPreferenceChange(BrowserMinimizationPreference.self) { browserAllowsMinimization = $0 }
+        .alert(L("提示"), isPresented: Binding(get: { actionNotice != nil }, set: { if !$0 { actionNotice = nil } })) {
+            Button(L("确定"), role: .cancel) { actionNotice = nil }
+        } message: { Text(actionNotice ?? "") }
         .sheet(isPresented: $showingAbout) {
             NavigationStack {
                 AboutView()
@@ -158,7 +162,7 @@ struct ContentView: View {
     }
 
     private var contextActionImage: String {
-        selectedTab == 1 ? "chart.bar" : selectedTab == 2 ? "info.circle" : "dot.radiowaves.left.and.right"
+        selectedTab == 1 ? "chart.pie" : selectedTab == 2 ? "info.circle" : "dot.radiowaves.left.and.right"
     }
 
     private var contextActionEnabled: Bool {
@@ -171,7 +175,10 @@ struct ContentView: View {
     }
 
     private func activateContextAction() {
-        guard contextActionEnabled else { return }
+        guard contextActionEnabled else {
+            actionNotice = selectedTab == 1 ? L("暂无任务可供查看。") : L("当前页面暂无可解析的内容。")
+            return
+        }
         switch selectedTab {
         case 1: taskMenuRequest = UUID()
         case 2: showingAbout = true
@@ -210,7 +217,7 @@ struct ContentView: View {
                         Label(contextActionTitle, systemImage: contextActionImage)
                     }
             }
-            .background(ParseTabAvailability(isEnabled: contextActionEnabled) { activateContextAction() })
+            .background(ParseTabAvailability(isEnabled: true) { activateContextAction() })
         } else {
             TabView(selection: tabSelection) {
                 browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
@@ -222,7 +229,7 @@ struct ContentView: View {
                     .tabItem { Label(contextActionTitle, systemImage: contextActionImage) }
                     .tag(3)
             }
-            .background(ParseTabAvailability(isEnabled: contextActionEnabled) { activateContextAction() })
+            .background(ParseTabAvailability(isEnabled: true) { activateContextAction() })
         }
     }
 
