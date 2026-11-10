@@ -36,6 +36,7 @@ extension VideoBrowserView {
                     tint: .secondary,
                     action: goHome
                 )
+                .transition(.opacity.combined(with: .scale(scale: 0.85)))
             }
 
             ZStack {
@@ -81,8 +82,10 @@ extension VideoBrowserView {
                     disabled: !canBookmarkCurrentPage,
                     action: toggleBookmark
                 )
+                .transition(.opacity.combined(with: .scale(scale: 0.85)))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: showingHome)
     }
 
     /// 是否在地址栏上显示加载提示。
