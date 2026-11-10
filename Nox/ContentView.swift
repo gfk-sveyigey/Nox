@@ -20,7 +20,6 @@ struct ContentView: View {
     @State private var taskFilterHasItems = false
     @State private var parseRequest = UUID()
     @State private var taskMenuRequest = UUID()
-    @State private var showingAbout = false
     @State private var actionNotice: String?
     @State private var didLogSession = false
     @State private var startupFinished = false
@@ -170,7 +169,7 @@ struct ContentView: View {
             }
             taskMenuRequest = UUID()
         case 2:
-            showingAbout = true
+            NotificationCenter.default.post(name: .presentAbout, object: nil)
         default:
             guard browserAllowsMinimization && browserCanParse else {
                 actionNotice = L("当前页面暂无可解析的内容。")
@@ -183,7 +182,7 @@ struct ContentView: View {
     private var tabSelection: Binding<Int> {
         Binding(get: { selectedTab }, set: { value in
             if value == 3 {
-                DispatchQueue.main.async { activateContextAction() }
+                activateContextAction()
             } else {
                 selectTab(value)
             }
@@ -204,7 +203,7 @@ struct ContentView: View {
                     DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
                 }
                 Tab(L("设置"), systemImage: "gearshape", value: 2) {
-                    SettingsView(manager: downloadManager, showingAbout: $showingAbout)
+                    SettingsView(manager: downloadManager)
                 }
                 Tab(value: 3, role: .search) { Color.clear } label: {
                         Label(contextActionTitle, systemImage: contextActionImage)
@@ -216,7 +215,7 @@ struct ContentView: View {
                 browser.tabItem { Label(L("浏览"), systemImage: "safari") }.tag(0)
                 DownloadsView(appState: appState, manager: downloadManager, menuRequest: taskMenuRequest)
                     .tabItem { Label(L("任务"), systemImage: "arrow.down.circle") }.tag(1)
-                SettingsView(manager: downloadManager, showingAbout: $showingAbout)
+                SettingsView(manager: downloadManager)
                     .tabItem { Label(L("设置"), systemImage: "gearshape") }.tag(2)
                 Color.clear
                     .tabItem { Label(contextActionTitle, systemImage: contextActionImage) }
