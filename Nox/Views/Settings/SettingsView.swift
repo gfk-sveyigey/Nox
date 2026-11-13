@@ -39,7 +39,7 @@ struct SettingsView: View {
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemGroupedBackground))
+                .presentationBackground(.ultraThinMaterial)
             }
         }
         .onChange(of: aboutRequest) { _, _ in

@@ -69,7 +69,7 @@ struct AboutView: View {
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .buttonStyle(.plain)
-        .toolbarBackground(Color(.systemGroupedBackground), for: .navigationBar)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .navigationTitle(L("关于"))
         .navigationBarTitleDisplayMode(.inline)
